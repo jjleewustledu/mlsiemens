@@ -14,42 +14,47 @@ classdef Test_VideenAutoradiography < matlab.unittest.TestCase
  	
 
 	properties
- 		registry
+        % from '/Volumes/SeagateBP4/cvl/np755/mm01-007_p7267_2008jun16/bayesian_pet'
+        % whole-brain CBF = 56.417 mL/100g/min on vidi, 40% uthresh
+        %                 = 0.00987298 1/s        
+        %              af = 2.035279E-06 from metcalc
+        %              bf = 2.096733E-02 
+        % estimated    A0 = 0.290615
+        
+        dcvShift  = -18
+        ecatShift = -6
+        pie       = 5.2038;
         sessionData
  		testObj
  	end
 
 	methods (Test)
-		function test_afun(this)
- 			import mlsiemens.*;
- 			this.assumeEqual(1,1);
- 			this.verifyEqual(1,1);
- 			this.assertEqual(1,1);
- 		end
  		function test_plotInitialData(this)
             this.testObj.plotInitialData;
  		end 
  		function test_plotParVars(this)
-            this.testObj.plotParVars('A0', [0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2]);
-            this.testObj.plotParVars('PS', [0.01 0.02 0.03 0.04 0.05]);
-            this.testObj.plotParVars('f',  [0.002 0.004 0.005 0.006 0.007 0.008 0.009 0.01 0.015 0.02]);
-            this.testObj.plotParVars('t0', [0 1 2 4 8 16 32]);
+            this.testObj.plotParVars('A0', [0.2 0.22 0.24 0.26 0.28 0.3 0.32 0.34 0.36]);
+            this.testObj.plotParVars('f',  [0.005 0.006 0.007 0.008 0.009 0.01 0.011 0.012 0.013]);
         end 
         function test_simulateItsMcmc(this)
             this.testObj.simulateItsMcmc;
         end
         function test_estimateParameters(this)
-            this.testObj3 = this.testObj.estimateParameters;
+            this.testObj = this.testObj.estimateParameters;
         end
 	end
 
  	methods (TestClassSetup)
 		function setupVideenAutoradiography(this)
- 			import mlsiemens.*;
-            studyd = mlraichle.SynthStudyData;
-            sessp = fullfile(studyd.subjectsDir, 'HYGLY35', '');
-            this.sessionData = mlraichle.SynthSessionData('studyData', studyd, 'sessionPath', sessp);
- 			this.testObj_ = VideenAutoradiography;
+ 			import mlderdeyn.* mlsiemens.*;
+            studyd = StudyDataSingleton.instance;
+            sessp = fullfile(studyd.subjectsDir, 'mm01-007_p7267_2008jun16', '');
+            this.sessionData = SessionData('studyData', studyd, 'sessionPath', sessp);
+ 			this.testObj_ = VideenAutoradiography( ...
+                'sessionData', this.sessionData, ...
+                'concAShift', this.dcvShift, ...
+                'concObsShift', this.ecatShift, ...
+                'pie', this.pie);
  		end
 	end
 

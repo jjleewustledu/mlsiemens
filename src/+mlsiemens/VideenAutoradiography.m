@@ -17,8 +17,8 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
  	
 
 	properties
-        A0 = 0.391698
-        f  = 0.00956157346232341 % mL/s/mL, [15O]H_2O
+        A0 = 0.290615
+        f  = 0.00987298 % mL/s/mL, [15O]H_2O
         af = 2.035279E-06
         bf = 2.096733E-02
     end
@@ -95,11 +95,11 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
         end
         function this = simulateMcmc(A0, af, bf, f, t, conc_a, map, pie, timeLimits, mask, aif, ecat)
             import mlpet.*;       
-            conc_i = VideenAutoradiography.concentration_i(A0, af, bf, f, t, conc_a, pie, timeLimits); % simulated
+            conc_i = VideenAutoradiography.estimatedData(A0, af, bf, f, t, conc_a, pie, timeLimits); % simulated
             this   = VideenAutoradiography(conc_a, t, conc_i, mask, aif, ecat);
             this   = this.estimateParameters(map) %#ok<NOPRT>
         end   
-        function ci   = concentration_i(A0, af, bf, f, t, conc_a, pie, timeLimits)
+        function ci   = estimatedData(A0, af, bf, f, t, conc_a, pie, timeLimits)
             import mlpet.*;
             petti    = VideenAutoradiography.pett_i(f, t, conc_a);
             sumPetti = sum(petti(timeLimits(1):timeLimits(2))) * (t(2) - t(1)); % well-counts     
@@ -143,15 +143,24 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
     end
     
 	methods
- 		function this = VideenAutoradiography(conc_a, times_i, conc_i, mask, aif, ecat)
- 			%% VideenAutoradiography 
- 			%  Usage:  this = VideenAutoradiography(concentration_a, times_i, concentration_i, mask, aif, ecat) 
-            %                                    ^ counts/s/mL    ^ s      ^ counts/s/g
-
- 			this = this@mlsiemens.AutoradiographyBuilder(conc_a, times_i, conc_i, mask, aif, ecat); 
+ 		function this = VideenAutoradiography(varargin) 
+            %% VideenAutoradiography 
+            % previously (conc_a, times_i, conc_i, mask, aif, ecat)
+ 			
+            this = this@mlsiemens.AutoradiographyBuilder(conc_a, times_i, conc_i, mask, aif, ecat); 
+            
+            ip = inputParser;
+            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
+            addParameter(ip, 'concAShift', 0, @isnumeric);
+            addParameter(ip, 'concObsShift', 0, @isnumeric);
+            parse(varargin{:});
+            
             this.pie_                   = this.ecat_.pie; % caching
             this.timeLimits_            = this.getTimeLimits;
             this.expectedBestFitParams_ = [this.A0 this.af this.bf this.f]'; % initial expected values from properties
+        end
+        
+        function this = buildPetObs(this)
         end
         
         function this = simulateItsMcmc(this, conc_a)
@@ -159,8 +168,8 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
                    this.A0, this.af, this.bf, this.f, this.times, conc_a, this.map, this.pie, this.timeLimits, ...
                    this.mask, this.aif, this.ecat);
         end
-        function ci   = itsConcentration_i(this)
-            ci = mlpet.VideenAutoradiography.concentration_i( ...
+        function ci   = itsEstimatedData(this)
+            ci = mlpet.VideenAutoradiography.estimatedData( ...
                 this.A0, this.af, this.bf, this.f, this.times, this.concentration_a, this.pie, this.timeLimits);
         end
         function this = estimateParameters(this, varargin)
@@ -187,7 +196,7 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
                 this.finalParams(keys{4}));
         end
         function ed   = estimateDataFast(this, A0, af, bf, f)
-            ed = mlpet.VideenAutoradiography.concentration_i( ...
+            ed = mlpet.VideenAutoradiography.estimatedData( ...
                        A0, af, bf, f, this.times, this.concentration_a, this.pie, this.timeLimits);
         end
         function x    = priorLow(~, x)
@@ -208,7 +217,7 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
         function        plotProduct(this)
             figure;
             plot(this.times, this.estimateData, this.times, this.dependentData, 'o');
-            legend('Bayesian concentration_i', 'concentration_obj from data');
+            legend('Bayesian estimatedData', 'concentration_obj from data');
             title(sprintf('VideenAutoradiography.plotProduct:  A0 %g, af %g, bf %g, f %g', this.A0, this.af, this.bf, this.f), 'Interpreter', 'none');
             xlabel(this.xLabel);
             ylabel(this.yLabel);

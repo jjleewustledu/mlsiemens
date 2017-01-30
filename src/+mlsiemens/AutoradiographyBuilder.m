@@ -1,4 +1,4 @@
-classdef AutoradiographyBuilder < mlbayesian.AbstractPerfusionProblem
+classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
 	%% AUTORADIOGRAPHYBUILDER  
 
 	%  $Revision$
@@ -28,10 +28,11 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractPerfusionProblem
         yLabel = 'concentration/(well-counts/mL)'
     end
     
-    properties (Dependent)
+    properties (Dependent)  
+        concentration_a
+        concentration_obs
+        
         pnum
-        dcv
-        dcvShift
         aif
         aifShift
         mask
@@ -41,19 +42,21 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractPerfusionProblem
         dose
         duration
         volume
+        product
     end
     
     methods %% GET
+        function cobs = get.concentration_a(this)
+            assert(~isempty(this.dependentData1));
+            cobs = this.dependentData1;
+        end
+        function cobs = get.concentration_obs(this)
+            assert(~isempty(this.dependentData));
+            cobs = this.dependentData;
+        end
+        
         function p = get.pnum(~)
             p = str2pnum(pwd);
-        end
-        function a  = get.dcv(this)
-            assert(~isempty(this.dcv_));
-            a = this.dcv_;
-        end
-        function a  = get.dcvShift(this)
-            assert(~isempty(this.dcvShift_));
-            a = this.dcvShift_;
         end
         function a  = get.aif(this)
             assert(~isempty(this.aif_));
@@ -90,9 +93,24 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractPerfusionProblem
             assert(~isempty(this.volume_));
             d = this.volume_;
         end
+        function p  = get.product(this)
+            p = this.product_;
+        end
     end
     
     methods (Static)
+        function args = interpolateData(mask, aif, ecat, aifShift, ecatShift)
+            ecat = ecat.masked(mask);
+            ecat = ecat.volumeSummed;   
+            import mlpet.*;
+            [t_a,c_a] = AutoradiographyBuilder.shiftData( aif.times,  aif.wellCounts,               aifShift);
+            [t_i,c_i] = AutoradiographyBuilder.shiftData(ecat.times, ecat.becquerels/ecat.nPixels, ecatShift); % well-counts/cc/s     
+            dt  = min(min(aif.taus), min(ecat.taus));
+            t   = min(t_a(1), t_i(1)):dt:min(t_a(end), t_i(end));
+            c_a = pchip(t_a, c_a, t);
+            c_i = pchip(t_i, c_i, t);            
+            args = {c_a t c_i mask aif ecat};
+        end
         function this = loadAif(varargin)  %#ok<VANUS>
             this = [];
         end
@@ -151,40 +169,26 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractPerfusionProblem
     end
     
 	methods
- 		function this = AutoradiographyBuilder(conc_a, times_i, conc_i, varargin) 
- 			%% AUTORADIOGRAPHYBUILDER  
- 			%  Usage:  this = AutoradiographyBuilder( ...
-            %                 concentration_a, times_i, concentration_i[, mask, aif, ecat]) 
-            %                 ^ counts/s/mL    ^ s      ^ counts/s/g
-            %                                                             ^ INIfTI
-            %                                                                   ^ ILaif, IWellData 
-            %                                                                        ^ IScannerData
-            %  for DSC*Autoradiography, concentration_a <- concentrationBar_a
+ 		function this = AutoradiographyBuilder(varargin) 
+ 			%% AUTORADIOGRAPHYBUILDER
+            %  @param named sessionData is an mlpipeline.ISessionData
 
- 			this = this@mlbayesian.AbstractPerfusionProblem(conc_a, times_i, conc_i); 
             ip = inputParser;
-            addRequired(ip, 'conc_a',  @isnumeric);
-            addRequired(ip, 'times_i', @isnumeric);
-            addRequired(ip, 'conc_i',  @isnumeric);
-            addOptional(ip, 'mask', [], @(x) isa(x, 'mlfourd.INIfTI'));
-            addOptional(ip, 'aif',  [], @(x) isa(x, 'mlperfusion.ILaif') || isa(x, 'mlpet.IWellData'));
-            addOptional(ip, 'ecat', [], @(x) isa(x, 'mlpet.IScannerData'));   
-            addOptional(ip, 'dcv',  [], @(x) isa(x, 'mlperfusion.ILaif') || isa(x, 'mlpet.IWellData'));
-            parse(ip, conc_a, times_i, conc_i, varargin{:});
+            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
+            addParameter(ip, 'concAShift', 0, @isnumeric);
+            addParameter(ip, 'concObsShift', 0, @isnumeric);
+            parse(ip, varargin{:});                            
+            [times,manifold] = interpolateData(ip.Results);
+ 			this = this@mlbayesian.AbstractDynamicProblem(times, manifold);
             
-            this.mask_     = ip.Results.mask;
-            this.aif_      = ip.Results.aif;
-            this.ecat_     = ip.Results.ecat;
-            this.dcv_      = ip.Results.dcv;
-            this.dose_     = this.itsDose; 
+            this.aif_      = ip.Results.sessionData.aif.wellCounts;
+            this.ecat_     = ip.Results.sessionData.ecat;
+            this.mask_     = ip.Results.sessionData.mask('typ', 'mlfourd.NIfTId');
+            this.dose_     = this.itsDose;
             this.duration_ = this.itsDuration;
             this.volume_   = this.itsVolume;
         end
         
-        function dcv  = itsDcv(this)
-            dcv = mlpet.PETAutoradiography.loadAif( ...
-                 fullfile(this.ecat.filepath, [this.pnum 'ho1.dcv'])); 
-        end 
         function dose = itsDose(this)
             taus              = this.times(2:end) - this.times(1:end-1);
             taus(this.length) = taus(this.length - 1);                       
@@ -211,8 +215,6 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractPerfusionProblem
     %% PROTECTED
     
     properties (Access = 'protected')
-        dcv_
-        dcvShift_
         aif_
         aifShift_ = 0
         mask_
@@ -220,7 +222,8 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractPerfusionProblem
         ecatShift_
         dose_ 
         duration_
-        volume_
+        volume_        
+        product_
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
