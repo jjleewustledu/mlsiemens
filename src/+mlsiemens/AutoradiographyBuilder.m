@@ -181,8 +181,8 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
             [times,manifold] = interpolateData(ip.Results);
  			this = this@mlbayesian.AbstractDynamicProblem(times, manifold);
             
-            this.aif_      = ip.Results.sessionData.aif.wellCounts;
             this.ecat_     = ip.Results.sessionData.ecat;
+            this.aif_      = mlpet.BloodSucker('scannerData', this.ecat_, 'aifTimeShift', ip.Results.concAShift);
             this.mask_     = ip.Results.sessionData.mask('typ', 'mlfourd.NIfTId');
             this.dose_     = this.itsDose;
             this.duration_ = this.itsDuration;

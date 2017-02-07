@@ -1,5 +1,5 @@
 classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
-	%% BiographMMR enables polymorphism of NIfTId over PET data.
+	%% BiographMMR enables polymorphism of NIfTId over PET data.  It is also a NIfTIdecorator.
 
 	%  $Revision$
  	%  was created 08-Dec-2015 15:11:44
@@ -14,20 +14,26 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         %% IScannerData
         
         sessionData
-        doseAdminTime  
+        datetime0
+        doseAdminDatetime  
         dt
         time0
-        timeF      
+        timeF
+        timeDuration
         times
         timeMidpoints
         taus        
         counts
         becquerels
+        isotope
+        efficiencyFactor
         
         %% new
         
         mask
         nPixels
+        scannerTimeShift
+        W
     end    
     
     methods %% GET
@@ -41,62 +47,56 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             assert(isa(s, 'mlpipeline.SessionData'));
             this.sessionData_ = s;
         end
-        function g    = get.doseAdminTime(this)
-            error('mlsiemens:notImplmented', 'BiographMMR.get.dosAdminTime');
+        function g    = get.datetime0(this)
+            g = this.timingData_.datetime0;
+        end
+        function this = set.datetime0(this, s)
+            this.timingData_.datetime0 = s;
+        end
+        function g    = get.doseAdminDatetime(this)
+            g = this.doseAdminDatetime_;
+        end
+        function this = set.doseAdminDatetime(this, s)
+            assert(isa(s, 'datetime'));
+            this.doseAdminDatetime_ = s;
         end
         function g    = get.dt(this)
-            if (~isempty(this.dt_))
-                g = this.dt_;
-                return
-            end            
-            g = min(this.taus)/2;
+            g = this.timingData_.dt;
         end
         function this = set.dt(this, s)
-            assert(isnumeric(s));
-            this.dt_ = s;
+            this.timingData_.dt = s;
         end
         function g    = get.time0(this)
-            if (~isempty(this.time0_))
-                g = this.time0_;
-                return
-            end            
-            g = this.times(1);
+            g = this.timingData_.time0;
         end
         function this = set.time0(this, s)
-            assert(isnumeric(s));
-            this.time0_ = s;
+            this.this.timingData_.time0 = s;
         end
         function g    = get.timeF(this)
-            if (~isempty(this.timeF_))
-                g = this.timeF_;
-                return
-            end            
-            g = this.times(end);
+            g = this.timingData_.timeF;
         end
         function this = set.timeF(this, s)
-            assert(isnumeric(s));
-            this.timeF_ = s;
+            this.timingData_.timeF = s;
         end
-        function t    = get.times(this)
-            assert(~isempty(this.times_));
-            t = this.times_;
+        function g    = get.timeDuration(this)
+            g = this.timingData_.timeDuration;
         end
-        function this = set.times(this, t)
-            assert(isnumeric(t));
-            this.times_ = t;
+        function g    = get.times(this)
+            g = this.timingData_.times;
         end
-        function tmp  = get.timeMidpoints(this)
-            assert(~isempty(this.timeMidpoints_));
-            tmp = this.timeMidpoints_;
+        function this = set.times(this, s)
+            this.timingData_.times = s;
         end
-        function t    = get.taus(this)
-            assert(~isempty(this.taus_));
-            t = this.taus_;
+        function g    = get.timeMidpoints(this)
+            g = this.timingData_.timeMidpoints;
         end
-        function c    = get.counts(this)
-            c = this.becquerels2petCounts(this.becquerels);
+        function g    = get.taus(this)
+            g = this.timingData_.taus;
         end
-        function b    = get.becquerels(this)
+        function g    = get.counts(this)
+            g = this.becquerels2petCounts(this.becquerels);
+        end
+        function g    = get.becquerels(this)
             assert(~isempty(this.component.img));
             if (size(this.component.img,4) > length(this.times)) 
                 warning('mlsiemens:unexpectedDataSize', ...
@@ -104,29 +104,41 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                         num2str(size(this.component)), length(this.times)); 
                 this.component.img = this.component.img(:,:,:,1:length(this.times)); 
             end
-            b = this.component.img;
-            b = double(b);
-            b = squeeze(b);
+            g = this.component.img;
+            g = double(g);
+            g = squeeze(g);
         end
-        function this = set.becquerels(this, b)
-            assert(isnumeric(b));
-            this.component.img = double(b);
+        function this = set.becquerels(this, s)
+            assert(isnumeric(s));
+            this.component.img = double(s);
+        end
+        function g    = get.isotope(this)
+            g = this.sessionData.isotope;
+        end
+        function e    = get.efficiencyFactor(this)
+            e = this.efficiencyFactor_;
         end
         
         %% new
         
-        function m   = get.mask(this)
-            m = this.mask_;
+        function g   = get.mask(this)
+            g = this.mask_;
         end
-        function n   = get.nPixels(this)
+        function g   = get.nPixels(this)
             if (isempty(this.mask_))
-                n = prod(this.component.size(1:3));
+                g = prod(this.component.size(1:3));
             else
                 assert(1 == max(max(max(this.mask_.img))));
                 assert(0 == min(min(min(this.mask_.img))));
-                n = sum(sum(sum(this.mask_.img)));
+                g = sum(sum(sum(this.mask_.img)));
             end
         end  
+        function g   = get.scannerTimeShift(this)
+            g = this.scannerTimeShift_;
+        end
+        function w   = get.W(this)
+            w = this.efficiencyFactor;
+        end
     end
 
     methods (Static) 
@@ -147,13 +159,40 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 this = this.component;
                 return
             end
+            
+            ip = inputParser;
+            addParameter(ip, 'sessionData', []);
+            parse(ip, varargin{:});
+            this.sessionData_ = ip.Results.sessionData;            
+            this.tableSif_    = this.readtable;
+            this.timingData_  = mldata.TimingData( ...
+                'times',         this.tableSif_{:,'Start_msec_'}/1000, ...
+                'timeMidpoints', this.tableSif_{:,'Midpoint_sec_'}, ...
+                'taus',          this.tableSif_{:,'Length_msec_'}/1000, ...
+                'datetime0',     this.readDatetime0);
+            
             this = this.append_descrip('decorated by BiographMMR');
-            this.tableSif_ = this.readTableSif__;
-            this.times_ = (this.tableSif_{:,'Start_msec_'}/1000)';
-            this.timeMidpoints_ = this.tableSif_{:,'Midpoint_sec_'}';
-            this.taus_ = (this.tableSif_{:,'Length_msec_'}/1000)';
         end
         
+        function this = crossCalibrate(this, varargin)
+            ip = inputParser;
+            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.IScanner'));
+            addParameter(ip, 'wellCounter', [], @(x) isa(x, 'mlpet.IBloodData'));
+            addParameter(ip, 'aifSampler', this, @(x) isa(x, 'mlpet.IAifData'));
+            parse(ip, varargin{:});
+            
+            cc = mlpet.CrossCalibrator(varargin{:});
+            this.efficiencyFactor_ = cc.scannerEfficiency;
+        end
+        function tbl  = readtable(this, varargin)
+            ip = inputParser;
+            addOptional(ip, 'tracerSif', [this.sessionData.tracerSif '.4dfp.img.rec'], @(x) lexist(x, 'file'));
+            parse(ip, varargin{:});
+            
+            tbl = readtable(...
+                ip.Results.tracerSif, ...
+                'FileType', 'text', 'ReadVariableNames', true, 'ReadRowNames', true, 'CommentStyle', 'endrec');
+        end
         function this = save(this)
             this.component.fqfileprefix = sprintf('%s_%s', this.component.fqfileprefix, datestr(now, 30));
             this.component.save;
@@ -161,41 +200,19 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function this = saveas(this, fqfn)
             this.component.fqfilename = fqfn;
             this.save;
+        end     
+        function this = shiftTimes(this, Dt)
+            [this.times_,this.component.img] = shiftTensor(this.times_, this.component.img, Dt);
         end
-        
         function [t,this] = timeInterpolants(this, varargin)
-            if (~isempty(this.timesInterpolants_))
-                t = this.timesInterpolants_;
-                return
-            end
-            
-            t = this.time0:this.dt:this.timeF;
-            this.timesInterpolants_ = t;
-            if (~isempty(varargin))
-                t = t(varargin{:}); end
+            [t,this] = this.timingData_.timeInterpolants(varargin{:});
         end
         function [t,this] = timeMidpointInterpolants(this, varargin)
-            if (~isempty(this.timeMidpointInterpolants_))
-                t = this.timeMidpointInterpolants_;
-                return
-            end
-            
-            t = this.time0+this.dt/2:this.dt:this.timeF+this.dt/2;
-            this.timeMidpointInterpolants_ = t;
-            if (~isempty(varargin))
-                t = t(varargin{:}); end
+            [t,this] = this.timingData_.timeMidpointInterpolants(varargin{:});
         end
         function [t,this] = tauInterpolants(this, varargin)
-            if (~isempty(this.tauInterpolants_))
-                t = this.tauInterpolants_;
-                return
-            end
-            
-            t = this.dt*ones(1, length(this.timeInterpolants));
-            this.tauInterpolants_ = t;
-            if (~isempty(varargin))
-                t = t(varargin{:}); end
-        end
+            [t,this] = this.timingData_.tauInterpolants(varargin{:});
+        end        
         function c = countInterpolants(this, varargin)
             c = pchip(this.times, this.counts, this.timeInterpolants);            
             if (~isempty(varargin))
@@ -207,22 +224,10 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 b = b(varargin{:}); end
         end
         
-        function i    = guessIsotope(this)
-            tr = lower(this.sessionData.tracer);
-            if (lstrfind(tr, {'ho' 'oo' 'oc' 'co'}))
-                i = '15O';
-                return
-            end
-            if (lstrfind(tr, 'fdg'))
-                i = '18F';
-                return
-            end 
-            if (lstrfind(tr, 'g'))
-                i = '11C';
-                return
-            end            
-            error('mlsiemens:indeterminatePropertyValue', ...
-                'BiographMMR.guessIsotope could not recognize the isotope of %s', this.sessionData.tracer);
+        function this = blurred(this, blur)
+            bl = mlfourd.BlurringNIfTId(this.component);
+            bl = bl.blurred(blur);
+            this.component = bl.component;
         end
         function this = masked(this, msk)
             assert(isa(msk, 'mlfourd.INIfTI'));
@@ -230,6 +235,17 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
             dyn = dyn.masked(msk);
             this.component = dyn.component;
+        end
+        function this = petobs(this)
+            this.fileprefix = [this.fileprefix '_obs'];
+            
+            [~,idx0] = max(this.times >= this.time0);
+            [~,idxF] = max(this.times >= this.timeF);
+            if (idx0 == idxF)
+                this.img = squeeze(this.counts);
+                return
+            end
+            this.img = trapz(this.times(idx0:idxF), this.counts(:,:,:,idx0:idxF), 4);
         end
         function this = timeSummed(this)
             dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
@@ -246,22 +262,16 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     %% PROTECTED
     
     properties (Access = protected)
-        sessionData_
-        dt_
-        time0_
-        timeF_
-        times_
-        timeMidpoints_
-        taus_
-        timeInterpolants_
-        timeMidpointInterpolants_
-        tauInterpolants_
-        tableSif_
-        
+        doseAdminDatetime_
+        efficiencyFactor_ = 1
         mask_
+        scannerTimeShift_
+        sessionData_
+        tableSif_
+        timingData_        
     end
     
-    methods (Access = protected)        
+    methods (Access = protected)
         function img = becquerels2petCounts(this, img)
             %% BECQUERELS2PETCOUNTS; does not divide out number of pixels.
             
@@ -282,14 +292,20 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                           'size(BiographMMR.becquerels2petCounts.img) -> %s', mat2str(size(img)));
             end
         end
-        function tab = readTableSif__(this, varargin)
-            ip = inputParser;
-            addOptional(ip, 'tracerSif', [this.sessionData.tracerSif '.4dfp.img.rec'], @(x) lexist(x, 'file'));
-            parse(ip, varargin{:});
-            
-            tab = readtable(...
-                ip.Results.tracerSif, ...
-                'FileType', 'text', 'ReadVariableNames', true, 'ReadRowNames', true, 'CommentStyle', 'endrec');
+        function dt0 = readDatetime0(this)
+            mhdr = this.sessionData.tracerListmodeMhdr;
+            lp = mlio.LogParser.load(mhdr);
+            [dateStr,idx] = lp.findNextCell('%study date (yyyy:mm:dd):=', 1);
+             timeStr      = lp.findNextCell('%study time (hh:mm:ss GMT+00:00):=', idx);
+            dateNames = regexp(dateStr, '%study date (yyyy:mm:dd):=(?<Y>\d\d\d\d):(?<M>\d+):(?<D>\d+)', 'names');
+            timeNames = regexp(timeStr, '%study time (hh:mm:ss GMT+00:00):=(?<H>\d+):(?<MI>\d+):(?<S>\d+)', 'names');
+            Y  = str2double(dateNames.Y);
+            M  = str2double(dateNames.M);
+            D  = str2double(dateNames.D);
+            H  = str2double(timeNames.H);
+            MI = str2double(timeNames.MI);
+            S  = str2double(timeNames.S);
+            dt0 = datetime(Y,M,D,H,MI,S);
         end
     end
 
