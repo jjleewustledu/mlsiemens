@@ -13,17 +13,18 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
  	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.
  	
 
-	properties        
-        a1 = 7.374242468030524e-12 % Twilite eff. 0.5654*0.487/7.775e-3, decays/cc or Bq/cc
-        a2 = 3.323973301051093e-05 % "
+	properties    
+        twiliteEff = 0.5654*0.487/7.775e-3
+        a1 = 9.732e-12 % Twilite eff. 0.5654*0.487/7.775e-3, decays/cc or Bq/cc; => CBF ~ 54
+        a2 = 3.4252e-05 % "
         % a1 = 2.012469259834277e-12 % Twilite eff.  223*0.304, decays/cc or Bq/cc; => CBF ~ 25
         % a2 = 1.736454658827487e-05 % "
-        % a1 = 3.4549e-12 % Twilite eff. 51.74
-        % a2 = 2.2752e-05 % "
-        b1 = -1.9763 % -2.2916
-        b2 =  1154.1 % 1338.3
-        b3 = -88.855
-        b4 =  34170
+        % a1 = 4.5595e-12 % decay-adjusted time shifts, Twilite eff. 51.74; => CBF ~ 34
+        % a2 = 2.3444e-05 % "
+        b1 = -1.1629
+        b2 =  703.31
+        b3 = -76.244
+        b4 =  27251
         fracHOMetab = 153/263
         ooFracTime  = 3661+120
         ooPeakTime  = 3661  
@@ -47,8 +48,8 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         end
         function test_aifs(this)
             this = this.configTracer('OC');
-            twilite.OC.times = this.aif.times(this.aif.index0-60:this.aif.indexF);
-            twilite.OC.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0-60:this.aif.indexF); 
+            twilite.OC.times = this.aif.times(this.aif.index0:this.aif.indexF);
+            twilite.OC.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF); 
             this = this.configTracer('HO');
             twilite.HO.times = this.aif.times(this.aif.index0:this.aif.indexF);
             twilite.HO.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF);          
@@ -100,7 +101,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj    = obj.buildCbfMap;
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.cbf('typ','fqfn'));
+            obj.product.saveas(this.sessionData.cbf('typ','fqfn','suffix','op_fdg'));
         end
         function test_buildCbfWholebrain(this)
             this = this.configTracer('HO');
@@ -108,19 +109,19 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.a1 = this.a1;
             obj.a2 = this.a2;
             obj = obj.buildCbfWholebrain;
-            this.verifyEqual(obj.product, 54.9476616922272, 'RelTol', 0.01);
+            this.verifyEqual(obj.product, 55.7551472410379, 'RelTol', 0.01);
         end        
         function test_buildCbvMap(this)
             this = this.configTracer('OC');
             obj  = this.testObj.buildCbvMap;
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.cbv('typ','fqfn'));
+            obj.product.saveas(this.sessionData.cbv('typ','fqfn','suffix','op_fdg'));
         end
         function test_buildCbvWholebrain(this)
             this = this.configTracer('OC');
             obj = this.testObj.buildCbvWholebrain;            
-            this.verifyEqual(obj.product, 2.385875880554465, 'RelTol', 0.01);
+            this.verifyEqual(obj.product, 4.59889065603964, 'RelTol', 0.01);
         end
         function test_buildCmro2Map(this)
             labs.pH = 7.36;
@@ -142,6 +143,11 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.product.view;
             obj.product.saveas(this.sessionData.cmro2('typ','fqfn','suffix','op_resolved'));
         end
+        function test_buildCmro2Wholebrain(this)
+            this = this.configTracer('OO');
+            obj = this.testObj.buildCmro2Wholebrain;            
+            this.verifyEqual(obj.product, nan, 'RelTol', 0.01);
+        end 
         function test_buildOefMap(this)
             this = this.configTracer('OO');
             obj = this.testObj;
@@ -149,24 +155,24 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.b2 = this.b2;
             obj.b3 = this.b3;
             obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_resolved');
-            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_resolved');
+            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_fdg');
+            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_fdg');
             obj = obj.buildOefMap;
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.oef('typ','fqfn','suffix','op_resolved'));
+            obj.product.saveas(this.sessionData.oef('typ','fqfn','suffix','op_fdg'));
         end
         function test_buildOefWholebrain(this)
             this = this.configTracer('OO');
-            obj = this.testObj;            
+            obj = this.testObj;
             obj.b1 = this.b1;
             obj.b2 = this.b2;
             obj.b3 = this.b3;
             obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_resolved');
-            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_resolved');
+            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_fdg');
+            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_fdg');
             obj = obj.buildOefWholebrain;
-            this.verifyEqual(obj.product, 0.2372, 'RelTol', 0.01);
+            this.verifyEqual(obj.product, 0.3049, 'RelTol', 0.01);
         end        
 	end
 
@@ -179,6 +185,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this.sessionData = SessionData( ...
                 'studyData', studyd, 'sessionPath', sessp, ...
                 'tracer', '', 'snumber', 1, 'vnumber', 2, 'ac', true);
+            cd(this.sessionData.vLocation);
             setenv(upper('Test_Herscovitch1985'), '1');
             this.addTeardown(@this.teardownHerscovitch1985);
  		end
@@ -204,8 +211,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                 case 'HO'
                     this.sessionData.tracer = 'HO';
                     pic = this.sessionData.ho( ...
-                        'typ', 'mlpet.PETImagingContext', ...
-                        'suffix', 'op_resolved');
+                        'typ', 'mlpet.PETImagingContext');
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
@@ -217,12 +223,12 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                     this.aif = Twilite( ...
                         'scannerData', this.scanner, ...
                         'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
+                        'efficiencyFactor', this.twiliteEff, ...
                         'aifTimeShift', -20);
                 case 'OO'
                     this.sessionData.tracer = 'OO';
                     pic = this.sessionData.oo( ...
-                        'typ', 'mlpet.PETImagingContext', ...
-                        'suffix', 'op_resolved');
+                        'typ', 'mlpet.PETImagingContext');
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
@@ -234,12 +240,12 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                     this.aif = Twilite( ...
                         'scannerData', this.scanner, ...
                         'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
+                        'efficiencyFactor', this.twiliteEff, ...
                         'aifTimeShift', -8);
                 case 'OC'
                     this.sessionData.tracer = 'OC';
                     pic = this.sessionData.oc( ...
-                        'typ', 'mlpet.PETImagingContext', ...
-                        'suffix', 'op_resolved');
+                        'typ', 'mlpet.PETImagingContext');
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
@@ -251,6 +257,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                     this.aif = Twilite( ...
                         'scannerData', this.scanner, ...
                         'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
+                        'efficiencyFactor', this.twiliteEff, ...
                         'aifTimeShift', 0);
                 otherwise
                     error('mlpet:unsupportedSwitchCase', 'Test_Herscovitch1985.configTracer');

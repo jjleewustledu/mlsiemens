@@ -55,16 +55,16 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             sc = sc.petobs;
             sc.img = sc.img*this.MAGIC; 
             sc.img = 100*sc.img*this.aif.W/(this.RBC_FACTOR*this.BRAIN_DENSITY*this.aif.specificActivityIntegral);
-            sc.fileprefix = this.sessionData.cbv('typ', 'fp');
+            sc.fileprefix = this.sessionData.cbv('typ','fp','suffix',this.resolveTag);
             sc = sc.blurred(this.petPointSpread);
             this.product_ = mlpet.PETImagingContext(sc.component);
         end
-        function this = buildCmro2(this, labs)
+        function this = buildCmro2Map(this, labs)
             sc = this.scanner;
             sc =sc.petobs;
             sc.img = sc.img*this.MAGIC;
-            cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_resolved');
-            oef = obj.sessionData.oef('typ','mlpet.PETImagingContext','suffix','op_resolved');
+            cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix',this.resolveTag);
+            oef = obj.sessionData.oef('typ','mlpet.PETImagingContext','suffix',this.resolveTag);
             sc.img = 0.01*labs.o2Content*oef.niftid.img*cbf.niftid.img;
             sc.fileprefix = this.sessionData.cmro2('typ', 'fp');
             this.product_ = mlpet.PETImagingContext(sc.component);
@@ -86,13 +86,28 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         function aifi = estimateAifOOIntegral(this)
             aifi = 0.01*this.SMALL_LARGE_HCT_RATIO*this.BRAIN_DENSITY*this.aifOO.specificActivityIntegral;
         end
+        function buildT4Resolved(this)
+            import mlfourdfp.*;
+            fv = FourdfpVisitor;
+            sessFdg = this.sessionData;
+            sessFdg.tracer = 'FDG';
+            fv.lns_4dfp([sessd.tracerRevision('typ','fqfp') '_on_resolved_sumt'], ...
+                        [sessd.tracerRevision('typ','fqfp') 'OnResolved_sumt']);
+            
+            ct4rb = CompositeT4ResolveBuilder();
+        end
+        function buildResolvedAndPasted(this)
+        end
+        function buildResolvedOpFdg(this)
+        end
         
         %% plotting support 
         
         function plotAif(this)
             figure;
             a = this.aif;
-            plot(a.times(a.index0:a.indexF), a.becquerelsPerCC(a.index0:a.indexF)/10e3);
+            idxF = a.indexF + 40;
+            plot(a.times(a.index0:idxF), a.becquerelsPerCC(a.index0:idxF)/10e3);
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAif:\n%s %s', sd.sessionPath, sd.tracer));
         end
@@ -100,7 +115,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             this = this.ensureAifHOMetab;
             figure;
             a = this.aifHOMetab;
-            plot(a.times(a.index0:a.indexF), a.becquerelsPerCC(a.index0:a.indexF)/10e3);
+            idxF = a.indexF + 40;
+            plot(a.times(a.index0:idxF), a.becquerelsPerCC(a.index0:idxF)/10e3);
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAifHOMetab:\n%s %s', sd.sessionPath, sd.tracer));
         end
@@ -108,7 +124,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             this = this.ensureAifOO;
             figure;
             a = this.aifOO;
-            plot(a.times(a.index0:a.indexF), a.becquerelsPerCC(a.index0:a.indexF)/10e3);
+            idxF = a.indexF + 40;
+            plot(a.times(a.index0:idxF), a.becquerelsPerCC(a.index0:idxF)/10e3);
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAifOO:\n%s %s', sd.sessionPath, sd.tracer));
         end

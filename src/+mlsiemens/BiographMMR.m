@@ -15,13 +15,17 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         SPECIFIC_ACTIVITY_KIND = 'becquerelsPerCC' %'decaysPerCC'
     end
     
+    properties         
+        uncorrected = false
+    end
+    
     properties (Dependent)
         
         %% IScannerData
         
         sessionData
         consoleClockOffset
-        datetime0
+        datetime0 % used with mlpet.DecayCorrection, determines datetime of this.times(1)
         doseAdminDatetime  
         dt
         index0
@@ -74,6 +78,9 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         end
         function g    = get.doseAdminDatetime(this)
             g = this.doseAdminDatetime_;
+        end
+        function this = set.doseAdminDatetime(this, s)
+            this.doseAdminDatetime_ = s;
         end
         function g    = get.dt(this)
             g = this.timingData_.dt;
@@ -236,10 +243,12 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 'timeMidpoints', this.tableSif_{:,'Midpoint_sec_'}, ...
                 'taus',          this.tableSif_{:,'Length_msec_'}/1000, ...
                 'datetime0',     this.readDatetime0);
-            dc = mlpet.DecayCorrection(this);
-            if (length(this.component.size) == 4 && size(this.component,4) > 1)
-                this.component.img = dc.uncorrectedCounts( ...
-                    this.component.img, seconds(this.doseAdminDatetime - this.datetime0));
+            
+            dc = mlpet.DecayCorrection(this);            
+            tshift = seconds(this.doseAdminDatetime - this.datetime0);
+            if (tshift > 3600); tshift = 0; end %% KLUDGE
+            if (this.uncorrected && length(this.component.size) == 4 && size(this.component,4) > 1)
+                this.component.img = dc.uncorrectedCounts(this.component.img, tshift);
                 this.decaysPerCC_ = this.decaysPerCC;
             end
             
@@ -274,7 +283,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function this = saveas(this, fqfn)
             this.component.fqfilename = fqfn;
             this.save;
-        end     
+        end
         function this = shiftTimes(this, Dt)
             [this.times_,this.component.img] = shiftTensor(this.times_, this.component.img, Dt);
         end
