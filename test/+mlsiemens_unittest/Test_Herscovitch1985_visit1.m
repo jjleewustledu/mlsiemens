@@ -1,4 +1,4 @@
-classdef Test_Herscovitch1985 < matlab.unittest.TestCase
+classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
 	%% TEST_HERSCOVITCH1985 
 
 	%  Usage:  >> results = run(mlsiemens_unittest.Test_Herscovitch1985)
@@ -30,10 +30,10 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         ooPeakTime  = 3661  
         
         aif
-        crv = 'HYGLYL28_VISIT_2_23sep2016_D1.crv'
-        doseAdminDatetimeOC = datetime(2016,9,23,10,49-2,57-24);
-        doseAdminDatetimeOO = datetime(2016,9,23,11,15-2,29-24);
-        doseAdminDatetimeHO = datetime(2016,9,23,11,32-2,25-24);
+        crv = 'HYGLY28_9sep2016_D1.crv'
+        doseAdminDatetimeOC = datetime(2016,9,9,10,11,36) - duration(0,2,17);
+        doseAdminDatetimeOO = datetime(2016,9,9,10,27,24) - duration(0,2,17);
+        doseAdminDatetimeHO = datetime(2016,9,9,10,43,04) - duration(0,2,17);
         scanner
         sessionData 
  		testObj
@@ -121,7 +121,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         function test_buildCbvWholebrain(this)
             this = this.configTracer('OC');
             obj = this.testObj.buildCbvWholebrain;            
-            this.verifyEqual(obj.product, 7.962, 'RelTol', 0.01); % bigger mask
+            this.verifyEqual(obj.product, 7.145, 'RelTol', 0.01); % bigger mask
         end
         function test_buildCmro2Map(this)
             labs.pH = 7.36;
@@ -148,6 +148,11 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj = this.testObj.buildCmro2Wholebrain;            
             this.verifyEqual(obj.product, nan, 'RelTol', 0.01);
         end 
+        function test_buildMask(this)            
+            this = this.configTracer('OC');
+            [~,n] = this.testObj.scanner.mskt;
+            n.view;
+        end
         function test_buildOefMap(this)
             this = this.configTracer('OO');
             obj = this.testObj;
@@ -184,7 +189,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             sessp = fullfile(studyd.subjectsDir, 'HYGLY28', '');
             this.sessionData = SessionData( ...
                 'studyData', studyd, 'sessionPath', sessp, ...
-                'tracer', '', 'snumber', 1, 'vnumber', 2, 'ac', true);
+                'tracer', '', 'snumber', 1, 'vnumber', 1, 'ac', true);
             cd(this.sessionData.vLocation);
             setenv(upper('Test_Herscovitch1985'), '1');
             this.addTeardown(@this.teardownHerscovitch1985);
@@ -249,7 +254,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,8), ...
+                        'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeOC);              
                     this.scanner.time0 = 120;
                     this.scanner.timeDuration = 180;

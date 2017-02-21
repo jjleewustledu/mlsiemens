@@ -74,12 +74,16 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             g = this.timingData_.datetime0;
         end
         function this = set.datetime0(this, s)
+            assert(isa(s, 'datetime'));
+            s.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
             this.timingData_.datetime0 = s;
         end
         function g    = get.doseAdminDatetime(this)
             g = this.doseAdminDatetime_;
         end
         function this = set.doseAdminDatetime(this, s)
+            assert(isa(s, 'datetime'));
+            s.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
             this.doseAdminDatetime_ = s;
         end
         function g    = get.dt(this)
@@ -204,7 +208,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             this.(this.SPECIFIC_ACTIVITY_KIND) = s;
         end
         function w    = get.W(this)
-            w = this.efficiencyFactor;
+            w = 1;
         end
     end
 
@@ -243,6 +247,12 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 'timeMidpoints', this.tableSif_{:,'Midpoint_sec_'}, ...
                 'taus',          this.tableSif_{:,'Length_msec_'}/1000, ...
                 'datetime0',     this.readDatetime0);
+            if (length(this.times) > size(this, 4))
+                this.times = this.times(1:size(this, 4));
+            end
+            if (length(this.times) < size(this, 4))
+                this.img = this.img(:,:,:,1:length(this.times));
+            end
             
             dc = mlpet.DecayCorrection(this);            
             tshift = seconds(this.doseAdminDatetime - this.datetime0);
@@ -251,6 +261,9 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 this.component.img = dc.uncorrectedCounts(this.component.img, tshift);
                 this.decaysPerCC_ = this.decaysPerCC;
             end
+            
+            this.efficiencyFactor_ = 1; % 2.07054e-2*(1000/prod(this.mmppix));
+            this.component.img = this.component.img*this.efficiencyFactor;
             
             this = this.append_descrip('decorated by BiographMMR');
         end
@@ -316,6 +329,23 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         end
         function len  = length(this)
             len = length(this.times);
+        end        
+        function [m,n] = mskt(this)
+            import mlfourdfp.*;
+            sessd = this.sessionData;
+            f = [sessd.tracerRevision('typ','fqfp') '_sumt'];
+            f1 = mybasename(FourdfpVisitor.ensureSafeOn(f));
+            lns_4dfp(f, f1);
+            
+            ct4rb = CompositeT4ResolveBuilder('sessionData', sessd);
+            ct4rb.msktgenImg(f1);          
+            m = mlfourd.ImagingContext([f1 '_mskt.4dfp.ifh']);
+            n = m.numericalNiftid;
+            n.img = n.img/n.dipmax;
+            n.fileprefix = [f1 '_msktNorm'];
+            n.filesuffix = '.4dfp.ifh';
+            n.save;
+            n = mlfourd.ImagingContext(n);
         end
         function this = masked(this, msk)
             assert(isa(msk, 'mlfourd.INIfTI'));
@@ -356,7 +386,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         consoleClockOffset_
         decaysPerCC_ % cache
         doseAdminDatetime_
-        efficiencyFactor_ = 1
+        efficiencyFactor_
         mask_
         scannerTimeShift_
         sessionData_
