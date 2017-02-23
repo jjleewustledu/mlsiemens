@@ -6,7 +6,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
  	%  by jjlee,
  	%  last modified $LastChangedDate$
  	%  and checked into repository /Users/jjlee/Local/src/mlcvl/mlsiemens/src/+mlsiemens.
- 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.
+ 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.  Copyright 2017 John Joowon Lee.
  	
 
     properties
@@ -15,7 +15,50 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         canonFlows = 10:10:100 % mL/100 g/min
     end
     
-    methods (Static)        
+    methods (Static)
+        function [sessd,ct4rb] = resolveOpFdg(varargin)
+            ip = inputParser;
+            addRequired(ip, 'obj', @isstruct);
+            %addOptional(ip, 'tracer', 'FDG', @ischar);
+            parse(ip, varargin{:});
+            
+            try
+                sessf = ip.Results.obj.sessf;
+                v = ip.Results.obj.v;
+                
+                import mlraichle.*;
+                studyd = StudyData;
+                vloc = fullfile(studyd.subjectsDir, sessf, sprintf('V%i', v), '');
+                assert(isdir(vloc));
+                sessd = SessionData('studyData', studyd, 'sessionPath', fileparts(vloc));
+                sessd.vnumber = v;
+                sessd.attenuationCorrected = true;
+                %sessd.tracer = ip.Results.tracer;
+
+                pushd(vloc);
+                diary(sprintf('Herscovitch1985.resolveOpFdg_%s_V%i.log', sessf, v));
+                ct4rb = mlfourdfp.CompositeT4ResolveBuilder( ...
+                    'sessionData', sessd, 'theImages', mlsiemens.Herscovitch1985.theImages(sessd));
+                ct4rb.resolve;
+                ct4rb.t4img_4dfp(sessd.T1('typ','fp'), sessd.maskAparcAseg('typ','fp'));
+                popd(vloc);
+            catch ME
+                handwarning(ME);
+            end
+        end
+        function imgs = theImages(sessd)
+            assert(isa(sessd, 'mlpipeline.ISessionData'));
+            sessd.rnumber = 1;
+            sessd.tracer = 'FDG'; fdgSumt = fullfile(sessd.vLocation, sessd.tracerResolvedSumt1('typ','fp'));
+            sessd.tracer = 'HO';  hoSumt  = sessd.tracerRevisionSumt('typ','fqfp');
+            sessd.tracer = 'OO';  ooSumt  = sessd.tracerRevisionSumt('typ','fqfp');
+            sessd.tracer = 'OC';  ocSumt  = sessd.tracerRevisionSumt('typ','fqfp');
+            lns_4dfp(hoSumt);
+            lns_4dfp(ooSumt);
+            lns_4dfp(ocSumt);
+                                  T1      = sessd.T1('typ','fqfp');
+            imgs = cellfun(@(x) mybasename(x), {fdgSumt hoSumt ooSumt ocSumt T1}, 'UniformOutput', false);
+        end
         function rho    = estimatePetdyn(aif, cbf)
             assert(isa(aif, 'mlpet.IAifData'));
             assert(isnumeric(cbf));  
