@@ -10,11 +10,11 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
  	%  by jjlee,
  	%  last modified $LastChangedDate$
  	%  and checked into repository /Users/jjlee/Local/src/mlcvl/mlsiemens/test/+mlsiemens_unittest.
- 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.
+ 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.  Copyright 2017 John Joowon Lee.
  	
 
 	properties    
-        twiliteEff = 0.5654*0.487/7.775e-3
+        twiliteEff = 0.304*147.95/0.9181
         a1 = 9.732e-12 % Twilite eff. 0.5654*0.487/7.775e-3, decays/cc or Bq/cc; => CBF ~ 54
         a2 = 3.4252e-05 % "
         % a1 = 2.012469259834277e-12 % Twilite eff.  223*0.304, decays/cc or Bq/cc; => CBF ~ 25
