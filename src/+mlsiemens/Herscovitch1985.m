@@ -16,7 +16,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
     end
     
     methods (Static)
-        function [sessd,ct4rb] = resolveOpFdg(varargin)
+        function [sessd,ct4rb,aa] = resolveOpFdg(varargin)
             ip = inputParser;
             addRequired(ip, 'obj', @isstruct);
             %addOptional(ip, 'tracer', 'FDG', @ischar);
@@ -26,7 +26,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 sessf = ip.Results.obj.sessf;
                 v = ip.Results.obj.v;
                 
-                import mlraichle.*;
+                import mlraichle.* mlsiemens.*;
                 studyd = StudyData;
                 vloc = fullfile(studyd.subjectsDir, sessf, sprintf('V%i', v), '');
                 assert(isdir(vloc));
@@ -37,10 +37,14 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
 
                 pushd(vloc);
                 diary(sprintf('Herscovitch1985.resolveOpFdg_%s_V%i.log', sessf, v));
+                imgs = Herscovitch1985.theImages(sessd);
                 ct4rb = mlfourdfp.CompositeT4ResolveBuilder( ...
-                    'sessionData', sessd, 'theImages', mlsiemens.Herscovitch1985.theImages(sessd));
+                    'sessionData', sessd, 'theImages', imgs, 'NRevisions', 1);
                 ct4rb.resolve;
-                ct4rb.t4img_4dfp(sessd.T1('typ','fp'), sessd.maskAparcAseg('typ','fp'));
+                ct4rb.t4img_4dfp(imgs{2}, sessd.ho('typ','fqfp'));
+                ct4rb.t4img_4dfp(imgs{3}, sessd.oo('typ','fqfp'));
+                ct4rb.t4img_4dfp(imgs{4}, sessd.oc('typ','fqfp'));
+                aa = Herscovitch1985.aparcAseg(sessd, ct4rb);
                 popd(vloc);
             catch ME
                 handwarning(ME);
@@ -49,16 +53,42 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         function imgs = theImages(sessd)
             assert(isa(sessd, 'mlpipeline.ISessionData'));
             sessd.rnumber = 1;
-            sessd.tracer = 'FDG'; fdgSumt = fullfile(sessd.vLocation, sessd.tracerResolvedSumt1('typ','fp'));
-            sessd.tracer = 'HO';  hoSumt  = sessd.tracerRevisionSumt('typ','fqfp');
-            sessd.tracer = 'OO';  ooSumt  = sessd.tracerRevisionSumt('typ','fqfp');
-            sessd.tracer = 'OC';  ocSumt  = sessd.tracerRevisionSumt('typ','fqfp');
-            lns_4dfp(hoSumt);
-            lns_4dfp(ooSumt);
-            lns_4dfp(ocSumt);
+            sessd.tracer = 'FDG'; fdgSumt = sessd.tracerResolvedSumt1('typ','fqfp');
+            sessd.snumber = 1;
+            sessd.tracer = 'HO';  hoSumt1 = sessd.tracerRevisionSumt('typ','fqfp');
+            sessd.tracer = 'OO';  ooSumt1 = sessd.tracerRevisionSumt('typ','fqfp');
+            sessd.tracer = 'OC';  ocSumt1 = sessd.tracerRevisionSumt('typ','fqfp');
+            sessd.snumber = 2;
+            sessd.tracer = 'HO';  hoSumt2 = sessd.tracerRevisionSumt('typ','fqfp');
+            sessd.tracer = 'OO';  ooSumt2 = sessd.tracerRevisionSumt('typ','fqfp');
+            sessd.tracer = 'OC';  ocSumt2 = sessd.tracerRevisionSumt('typ','fqfp');
+            lns_4dfp(fdgSumt);
+            lns_4dfp(hoSumt1);
+            lns_4dfp(ooSumt1);
+            lns_4dfp(ocSumt1);
+            lns_4dfp(hoSumt2);
+            lns_4dfp(ooSumt2);
+            lns_4dfp(ocSumt2);
                                   T1      = sessd.T1('typ','fqfp');
-            imgs = cellfun(@(x) mybasename(x), {fdgSumt hoSumt ooSumt ocSumt T1}, 'UniformOutput', false);
+            imgs = cellfun(@(x) mybasename(x), {fdgSumt hoSumt1 ooSumt1 ocSumt1 T1}, 'UniformOutput', false);
+            %imgs = cellfun(@(x) mybasename(x), {fdgSumt hoSumt1 hoSumt2 ooSumt1 ooSumt2 ocSumt1 ocSumt2 T1}, 'UniformOutput', false);
         end
+        function aa = aparcAseg(sessd, ct4rb)
+            if (lexist(sessd.maskAparcAseg('typ','.4dfp.ifh'), 'file'))
+                aa = mlpet.PETImagingContext(sessd.maskAparcAseg('typ','.4dfp.ifh'));
+                return
+            end
+            
+            aa = sessd.aparcAseg('typ', 'mgz');
+            aa = sessd.mri_convert(aa, 'aparcAseg.nii.gz');
+            aa = mybasename(aa);
+            sessd.nifti_4dfp_4(aa);
+            aa = ct4rb.t4img_4dfp(sessd.T1('typ','fp'), aa, 'opts', '-n'); 
+            aa = mlfourd.ImagingContext([aa '.4dfp.ifh']);
+            aa.numericalNiftid;
+            aa = aa.binarized;
+            aa.saveas(['aparcAsegBinarized_' ct4rb.resolveTag '.4dfp.ifh']);
+        end 
         function rho    = estimatePetdyn(aif, cbf)
             assert(isa(aif, 'mlpet.IAifData'));
             assert(isnumeric(cbf));  
@@ -84,7 +114,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         end
         function fwhh   = petPointSpread
             fwhh = mlpet.MMRRegistry.instance.petPointSpread;
-            fwhh = mean(fwhh);
         end
     end
     
@@ -98,8 +127,9 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             sc = sc.petobs;
             sc.img = sc.img*this.MAGIC; 
             sc.img = 100*sc.img*this.aif.W/(this.RBC_FACTOR*this.BRAIN_DENSITY*this.aif.specificActivityIntegral);
-            sc.fileprefix = this.sessionData.cbv('typ','fp','suffix',this.resolveTag);
             sc = sc.blurred(this.petPointSpread);
+            sc = sc.uthresh(this.CBV_UTHRESH);
+            sc.fileprefix = this.sessionData.cbv('typ','fp','suffix',this.resolveTag);        
             this.product_ = mlpet.PETImagingContext(sc.component);
         end
         function this = buildCmro2Map(this, labs)
@@ -191,8 +221,72 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotScannerWholebrain:\n%s %s', sd.sessionPath, sd.tracer));
         end 
- 	end 
+    end 
 
+    %% PROTECTED
+    
+    methods (Access = protected)
+        
+        function this = configTracer(this, tr)
+            import mlpet.* mlsiemens.*;
+            switch (tr)
+                case 'HO'
+                    this.sessionData.tracer = 'HO';
+                    pic = this.sessionData.ho( ...
+                        'typ', 'mlpet.PETImagingContext', 'suffix', 'op_fdg');
+                    this.sessionData.attenuationCorrected = true;
+                    this.scanner = BiographMMR(pic.niftid, ...
+                        'sessionData', this.sessionData, ...
+                        'consoleClockOffset', -duration(0,0,8), ...
+                        'doseAdminDatetime', this.doseAdminDatetimeHO);
+                    this.scanner.time0 = 0;
+                    this.scanner.timeDuration = 60;
+                    this.scanner.dt = 1;
+                    this.aif = Twilite( ...
+                        'scannerData', this.scanner, ...
+                        'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
+                        'efficiencyFactor', this.twiliteEff, ...
+                        'aifTimeShift', -20);
+                case 'OO'
+                    this.sessionData.tracer = 'OO';
+                    pic = this.sessionData.oo( ...
+                        'typ', 'mlpet.PETImagingContext', 'suffix', 'op_fdg');
+                    this.sessionData.attenuationCorrected = true;
+                    this.scanner = BiographMMR(pic.niftid, ...
+                        'sessionData', this.sessionData, ...
+                        'consoleClockOffset', -duration(0,0,8), ...
+                        'doseAdminDatetime', this.doseAdminDatetimeOO);            
+                    this.scanner.time0 = 0;
+                    this.scanner.timeDuration = 60;
+                    this.scanner.dt = 1;
+                    this.aif = Twilite( ...
+                        'scannerData', this.scanner, ...
+                        'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
+                        'efficiencyFactor', this.twiliteEff, ...
+                        'aifTimeShift', -8);
+                case 'OC'
+                    this.sessionData.tracer = 'OC';
+                    pic = this.sessionData.oc( ...
+                        'typ', 'mlpet.PETImagingContext', 'suffix', 'op_fdg');
+                    this.sessionData.attenuationCorrected = true;
+                    this.scanner = BiographMMR(pic.niftid, ...
+                        'sessionData', this.sessionData, ...
+                        'consoleClockOffset', -duration(0,0,8), ...
+                        'doseAdminDatetime', this.doseAdminDatetimeOC);              
+                    this.scanner.time0 = 120;
+                    this.scanner.timeDuration = 180;
+                    this.scanner.dt = 1;
+                    this.aif = Twilite( ...
+                        'scannerData', this.scanner, ...
+                        'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
+                        'efficiencyFactor', this.twiliteEff, ...
+                        'aifTimeShift', 0);
+                otherwise
+                    error('mlpet:unsupportedSwitchCase', 'Test_Herscovitch1985.configTracer');
+            end
+        end
+    end
+    
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
  end
 

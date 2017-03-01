@@ -152,8 +152,12 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function g    = get.isotope(this)
             g = this.sessionData.isotope;
         end
-        function e    = get.efficiencyFactor(this)
-            e = this.efficiencyFactor_;
+        function g    = get.efficiencyFactor(this)
+            g = this.efficiencyFactor_;
+        end
+        function this = set.efficiencyFactor(this, s)
+            assert(isnumeric(s));
+            this.efficiencyFactor_ = s;
         end
         
         %% new
@@ -207,7 +211,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function this = set.specificActivity(this, s)
             this.(this.SPECIFIC_ACTIVITY_KIND) = s;
         end
-        function w    = get.W(this)
+        function w    = get.W(~)
             w = 1;
         end
     end
@@ -235,6 +239,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'consoleClockOffset', 0, @(x) isa(x, 'duration'));
             addParameter(ip, 'doseAdminDatetime', datetime('now'), @(x) isa(x, 'datetime'));
+            addParameter(ip, 'efficiencyFactor', 1, @isnumeric);
             parse(ip, varargin{:});
             this.sessionData_ = ip.Results.sessionData;
             this.consoleClockOffset_ = ip.Results.consoleClockOffset;
@@ -262,7 +267,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 this.decaysPerCC_ = this.decaysPerCC;
             end
             
-            this.efficiencyFactor_ = 1; % 2.07054e-2*(1000/prod(this.mmppix));
+            this.efficiencyFactor_ = ip.Results.efficiencyFactor;
             this.component.img = this.component.img*this.efficiencyFactor;
             
             this = this.append_descrip('decorated by BiographMMR');
@@ -361,10 +366,30 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             assert(idx0 < idxF);
             this.img = trapz(this.times(idx0:idxF), this.specificActivity(:,:,:,idx0:idxF), 4);
         end
+        function this = thresh(this, t)
+            nn = mlfourd.NumericalNIfTId(this.component);
+            nn = nn.thresh(t);
+            this.component = nn.component;
+        end
+        function this = threshp(this, p)
+            nn = mlfourd.NumericalNIfTId(this.component);
+            nn = nn.threshp(p);
+            this.component = nn.component;
+        end
         function this = timeSummed(this)
             dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
             dyn = dyn.timeSummed;
             this.component = dyn.component;
+        end
+        function this = uthresh(this, u)
+            nn = mlfourd.NumericalNIfTId(this.component);
+            nn = nn.uthresh(u);
+            this.component = nn.component;
+        end
+        function this = uthreshp(this, p)
+            nn = mlfourd.NumericalNIfTId(this.component);
+            nn = nn.uthreshp(p);
+            this.component = nn.component;
         end
         function this = volumeSummed(this)
             dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab

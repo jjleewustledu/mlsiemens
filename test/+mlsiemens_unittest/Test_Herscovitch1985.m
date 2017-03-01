@@ -15,16 +15,13 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
 
 	properties    
         twiliteEff = 0.304*147.95/0.9181
-        a1 = 9.732e-12 % Twilite eff. 0.5654*0.487/7.775e-3, decays/cc or Bq/cc; => CBF ~ 54
-        a2 = 3.4252e-05 % "
-        % a1 = 2.012469259834277e-12 % Twilite eff.  223*0.304, decays/cc or Bq/cc; => CBF ~ 25
-        % a2 = 1.736454658827487e-05 % "
-        % a1 = 4.5595e-12 % decay-adjusted time shifts, Twilite eff. 51.74; => CBF ~ 34
-        % a2 = 2.3444e-05 % "
-        b1 = -1.1629
-        b2 =  703.31
-        b3 = -76.244
-        b4 =  27251
+        MMREff = 1;
+        a1 = 1.0932e-11
+        a2 = 3.4579e-5
+        b1 = -0.92967
+        b2 =  539.71
+        b3 = -81.505
+        b4 =  28235
         fracHOMetab = 153/263
         ooFracTime  = 3661+120
         ooPeakTime  = 3661  
@@ -109,7 +106,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.a1 = this.a1;
             obj.a2 = this.a2;
             obj = obj.buildCbfWholebrain;
-            this.verifyEqual(obj.product, 55.7551472410379, 'RelTol', 0.01);
+            this.verifyEqual(obj.product, 59.61, 'RelTol', 0.01);
         end        
         function test_buildCbvMap(this)
             this = this.configTracer('OC');
@@ -121,7 +118,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         function test_buildCbvWholebrain(this)
             this = this.configTracer('OC');
             obj = this.testObj.buildCbvWholebrain;            
-            this.verifyEqual(obj.product, 7.962, 'RelTol', 0.01); % bigger mask
+            this.verifyEqual(obj.product, 4.148, 'RelTol', 0.01); % bigger mask
         end
         function test_buildCmro2Map(this)
             labs.pH = 7.36;
@@ -172,7 +169,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_fdg');
             obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_fdg');
             obj = obj.buildOefWholebrain;
-            this.verifyEqual(obj.product, 0.3049, 'RelTol', 0.01);
+            this.verifyEqual(obj.product, 0.2699, 'RelTol', 0.01);
         end        
 	end
 
@@ -183,10 +180,10 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             studyd = StudyData;
             sessp = fullfile(studyd.subjectsDir, 'HYGLY28', '');
             this.sessionData = SessionData( ...
-                'studyData', studyd, 'sessionPath', sessp, ...
+                'studyData', studyd, 'sessionPath', sessp, 'resolveTag', 'op_fdg', ...
                 'tracer', '', 'snumber', 1, 'vnumber', 2, 'ac', true);
             cd(this.sessionData.vLocation);
-            setenv(upper('Test_Herscovitch1985'), '1');
+            setenv('TEST_HERSCOVITCH1985', '1');
             this.addTeardown(@this.teardownHerscovitch1985);
  		end
 	end
@@ -216,7 +213,8 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
                         'consoleClockOffset', -duration(0,0,8), ...
-                        'doseAdminDatetime', this.doseAdminDatetimeHO);
+                        'doseAdminDatetime', this.doseAdminDatetimeHO, ...
+                        'efficiencyFactor', this.MMREff);
                     this.scanner.time0 = 0;
                     this.scanner.timeDuration = 60;
                     this.scanner.dt = 1;
@@ -233,7 +231,8 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
                         'consoleClockOffset', -duration(0,0,8), ...
-                        'doseAdminDatetime', this.doseAdminDatetimeOO);            
+                        'doseAdminDatetime', this.doseAdminDatetimeOO, ...
+                        'efficiencyFactor', this.MMREff);            
                     this.scanner.time0 = 0;
                     this.scanner.timeDuration = 60;
                     this.scanner.dt = 1;
@@ -250,7 +249,8 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
                         'consoleClockOffset', -duration(0,0,8), ...
-                        'doseAdminDatetime', this.doseAdminDatetimeOC);              
+                        'doseAdminDatetime', this.doseAdminDatetimeOC, ...
+                        'efficiencyFactor', this.MMREff);              
                     this.scanner.time0 = 120;
                     this.scanner.timeDuration = 180;
                     this.scanner.dt = 1;

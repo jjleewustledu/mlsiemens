@@ -14,7 +14,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
  	
 
 	properties    
-        twiliteEff = 0.5654*0.487/7.775e-3
+        twiliteEff = 2.347*147.95/0.7552
         a1 = 9.732e-12 % Twilite eff. 0.5654*0.487/7.775e-3, decays/cc or Bq/cc; => CBF ~ 54
         a2 = 3.4252e-05 % "
         % a1 = 2.012469259834277e-12 % Twilite eff.  223*0.304, decays/cc or Bq/cc; => CBF ~ 25
@@ -121,7 +121,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
         function test_buildCbvWholebrain(this)
             this = this.configTracer('OC');
             obj = this.testObj.buildCbvWholebrain;            
-            this.verifyEqual(obj.product, 7.145, 'RelTol', 0.01); % bigger mask
+            this.verifyEqual(obj.product, 1.4196, 'RelTol', 0.01); % bigger mask
         end
         function test_buildCmro2Map(this)
             labs.pH = 7.36;
@@ -220,7 +220,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,8), ...
+                        'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeHO);
                     this.scanner.time0 = 0;
                     this.scanner.timeDuration = 60;
@@ -237,7 +237,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,8), ...
+                        'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeOO);            
                     this.scanner.time0 = 0;
                     this.scanner.timeDuration = 60;
