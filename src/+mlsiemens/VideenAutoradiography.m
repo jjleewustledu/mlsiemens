@@ -13,7 +13,7 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
  	%  by jjlee,
  	%  last modified $LastChangedDate$
  	%  and checked into repository /Users/jjlee/Local/src/mlcvl/mlsiemens/src/+mlsiemens.
- 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.
+ 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.  Copyright 2016 John Joowon Lee. 
  	
 
 	properties
@@ -117,7 +117,7 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
         function ci   = pett_i(f, t, conc_a)
             import mlpet.*;
             lambda = VideenAutoradiography.LAMBDA;
-            lambda_decay = VideenAutoradiography.LAMBDA_DECAY;
+            lambda_decay = LAMBDA_DECAY;
             ci     = f * conv(conc_a, exp(-(f/lambda + lambda_decay) * t));
             ci     = ci(1:length(t));
         end

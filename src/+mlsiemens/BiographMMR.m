@@ -15,7 +15,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         SPECIFIC_ACTIVITY_KIND = 'becquerelsPerCC' %'decaysPerCC'
     end
     
-    properties         
+    properties
         uncorrected = false
     end
     
@@ -227,7 +227,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         end
     end
     
-	methods		  
+	methods
  		function this = BiographMMR(cmp, varargin)
             this = this@mlfourd.NIfTIdecoratorProperties(cmp, varargin{:});
             if (nargin == 1 && isa(cmp, 'mlsiemens.BiographMMR'))

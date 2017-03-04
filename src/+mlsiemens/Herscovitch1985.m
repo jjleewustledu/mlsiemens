@@ -74,8 +74,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             %imgs = cellfun(@(x) mybasename(x), {fdgSumt hoSumt1 hoSumt2 ooSumt1 ooSumt2 ocSumt1 ocSumt2 T1}, 'UniformOutput', false);
         end
         function aa = aparcAseg(sessd, ct4rb)
-            if (lexist(sessd.maskAparcAseg('typ','.4dfp.ifh'), 'file'))
-                aa = mlpet.PETImagingContext(sessd.maskAparcAseg('typ','.4dfp.ifh'));
+            if (lexist(sessd.aparcAsegBinarized('typ','.4dfp.ifh'), 'file'))
+                aa = mlpet.PETImagingContext(sessd.aparcAsegBinarized('typ','.4dfp.ifh'));
                 return
             end
             
@@ -96,7 +96,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             import mlpet.*;
             f     = AbstractHerscovitch1985.cbfToInvs(cbf);
             lam   = AbstractHerscovitch1985.LAMBDA;
-            lamd  = AbstractHerscovitch1985.LAMBDA_DECAY;  
+            lamd  = LAMBDA_DECAY;  
             aifti = ensureRowVector(aif.times(           aif.index0:aif.indexF) - aif.times(aif.index0));
             aifbi = ensureRowVector(aif.specificActivity(aif.index0:aif.indexF));
             rho   = zeros(length(f), length(aifti));
@@ -155,6 +155,9 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             fracVec   = zeros(size(aif.times));
             fracVec(idxP:aif.indexF) = dfrac_dt*(aif.times(idxP:aif.indexF) - aif.times(idxP));            
             aif.specificActivity = this.aif.specificActivity.*fracVec;
+            
+            import mlpet.Blood.*;
+            aif.specificActivity = aif.specificActivity*(PLASMADN/BLOODDEN);
         end
         function aifi = estimateAifOOIntegral(this)
             aifi = 0.01*this.SMALL_LARGE_HCT_RATIO*this.BRAIN_DENSITY*this.aifOO.specificActivityIntegral;

@@ -6,11 +6,10 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
  	%  by jjlee,
  	%  last modified $LastChangedDate$
  	%  and checked into repository /Users/jjlee/Local/src/mlcvl/mlsiemens/src/+mlsiemens.
- 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.
+ 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.  Copyright 2016 John Joowon Lee. 
  	
     properties (Constant)
         LAMBDA = 0.95           % brain-blood equilibrium partition coefficient, mL/mL, Herscovitch, Raichle, JCBFM (1985) 5:65
-        LAMBDA_DECAY = 0.005677 % KLUDGE:  hard-coded [15O] half-life because propagating this.decayCorrection_ to static methods is difficult
         BRAIN_DENSITY = 1.05    % assumed mean brain density, g/mL
         RBC_FACTOR = 0.766      % per Tom Videen, metproc.inc, line 193
         TIME_SUP = 120          % sec
