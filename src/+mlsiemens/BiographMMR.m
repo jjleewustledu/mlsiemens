@@ -222,8 +222,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         end
         function this = loadSession(sessd, varargin)
             assert(isa(sessd, 'mlpipeline.ISessionData'))      
-            this = mlsiemens.BiographMMR.load(varargin{:});
-            this.sessionData_ = sessd;
+            this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}), 'sessionData', sessd);
         end
     end
     
