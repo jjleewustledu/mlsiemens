@@ -176,13 +176,14 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
             addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'concAShift', 0, @isnumeric);
             addParameter(ip, 'concObsShift', 0, @isnumeric);
+            addParameter(ip, 'mask', varargin{1}.mask('typ', 'mlfourd.NIfTId'), @(x) isa(x, 'mlfourd.NIfTId'));
             parse(ip, varargin{:});                            
             [times,manifold] = interpolateData(ip.Results);
  			this = this@mlbayesian.AbstractDynamicProblem(times, manifold);
             
             this.ecat_     = ip.Results.sessionData.ecat;
             this.aif_      = mlpet.BloodSucker('scannerData', this.ecat_, 'aifTimeShift', ip.Results.concAShift);
-            this.mask_     = ip.Results.sessionData.mask('typ', 'mlfourd.NIfTId');
+            this.mask_     = ip.Results.mask;
             this.dose_     = this.itsDose;
             this.duration_ = this.itsDuration;
             this.volume_   = this.itsVolume;

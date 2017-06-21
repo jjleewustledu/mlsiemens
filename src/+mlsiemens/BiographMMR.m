@@ -338,7 +338,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             import mlfourdfp.*;
             sessd = this.sessionData;
             f = [sessd.tracerRevision('typ','fqfp') '_sumt'];
-            f1 = mybasename(FourdfpVisitor.ensureSafeOn(f));
+            f1 = mybasename(FourdfpVisitor.ensureSafeFileprefix(f));
             lns_4dfp(f, f1);
             
             ct4rb = CompositeT4ResolveBuilder('sessionData', sessd);

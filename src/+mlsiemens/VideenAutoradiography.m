@@ -153,6 +153,7 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
             addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'concAShift', 0, @isnumeric);
             addParameter(ip, 'concObsShift', 0, @isnumeric);
+            addParameter(ip, 'mask', varargin{1}.mask('typ', 'mlfourd.NIfTId'), @(x) isa(x, 'mlfourd.NIfTId'));
             parse(varargin{:});
             
             this.pie_                   = this.ecat_.pie; % caching

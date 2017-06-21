@@ -11,7 +11,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
 
     properties
         MAGIC = 1
-        TIME_DURATION = 60
         canonFlows = 10:10:100 % mL/100 g/min
     end
     
@@ -117,7 +116,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         end
     end
     
-	methods 		  
+	methods
  		function this = Herscovitch1985(varargin)
  			this = this@mlpet.AbstractHerscovitch1985(varargin{:});
         end
@@ -225,70 +224,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             title(sprintf('AbstractHerscovitch1985.plotScannerWholebrain:\n%s %s', sd.sessionPath, sd.tracer));
         end 
     end 
-
-    %% PROTECTED
-    
-    methods (Access = protected)
-        
-        function this = configTracer(this, tr)
-            import mlpet.* mlsiemens.*;
-            switch (tr)
-                case 'HO'
-                    this.sessionData.tracer = 'HO';
-                    pic = this.sessionData.ho( ...
-                        'typ', 'mlpet.PETImagingContext', 'suffix', 'op_fdg');
-                    this.sessionData.attenuationCorrected = true;
-                    this.scanner = BiographMMR(pic.niftid, ...
-                        'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,8), ...
-                        'doseAdminDatetime', this.doseAdminDatetimeHO);
-                    this.scanner.time0 = 0;
-                    this.scanner.timeDuration = 60;
-                    this.scanner.dt = 1;
-                    this.aif = Twilite( ...
-                        'scannerData', this.scanner, ...
-                        'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
-                        'efficiencyFactor', this.twiliteEff, ...
-                        'aifTimeShift', -20);
-                case 'OO'
-                    this.sessionData.tracer = 'OO';
-                    pic = this.sessionData.oo( ...
-                        'typ', 'mlpet.PETImagingContext', 'suffix', 'op_fdg');
-                    this.sessionData.attenuationCorrected = true;
-                    this.scanner = BiographMMR(pic.niftid, ...
-                        'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,8), ...
-                        'doseAdminDatetime', this.doseAdminDatetimeOO);            
-                    this.scanner.time0 = 0;
-                    this.scanner.timeDuration = 60;
-                    this.scanner.dt = 1;
-                    this.aif = Twilite( ...
-                        'scannerData', this.scanner, ...
-                        'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
-                        'efficiencyFactor', this.twiliteEff, ...
-                        'aifTimeShift', -8);
-                case 'OC'
-                    this.sessionData.tracer = 'OC';
-                    pic = this.sessionData.oc( ...
-                        'typ', 'mlpet.PETImagingContext', 'suffix', 'op_fdg');
-                    this.sessionData.attenuationCorrected = true;
-                    this.scanner = BiographMMR(pic.niftid, ...
-                        'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,8), ...
-                        'doseAdminDatetime', this.doseAdminDatetimeOC);              
-                    this.scanner.time0 = 120;
-                    this.scanner.timeDuration = 180;
-                    this.scanner.dt = 1;
-                    this.aif = Twilite( ...
-                        'scannerData', this.scanner, ...
-                        'twiliteCrv', fullfile(this.sessionData.vLocation, this.crv), ...
-                        'efficiencyFactor', this.twiliteEff, ...
-                        'aifTimeShift', 0);
-                otherwise
-                    error('mlpet:unsupportedSwitchCase', 'Test_Herscovitch1985.configTracer');
-            end
-        end
-    end
     
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
  end
