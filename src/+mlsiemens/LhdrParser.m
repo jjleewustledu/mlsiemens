@@ -10,30 +10,8 @@ classdef LhdrParser < mlsiemens.AbstractHdrParser
 	methods (Static)
         function this = load(fn)
             assert(lexist(fn, 'file'));
-            [pth, fp, fext] = fileparts(fn); 
-            if (lstrfind(fext, mlsiemens.LhdrParser.FILETYPE_EXT) || ...
-                isempty(fext))
-                this = mlsiemens.LhdrParser.loadText(fn); 
-                this.filepath_   = pth;
-                this.fileprefix_ = fp;
-                this.filesuffix_ = fext;
-                return 
-            end
-            error('mlsiemens:unsupportedParam', 'LhdrParser.load does not support file-extension .%s', fext);
-        end
-        function this = loadx(fn, ext)
-            if (~lstrfind(fn, ext))
-                if (~strcmp('.', ext(1)))
-                    ext = ['.' ext];
-                end
-                fn = [fn ext];
-            end
-            assert(lexist(fn, 'file'));
-            [pth, fp, fext] = filepartsx(fn, ext); 
-            this = mlsiemens.LhdrParser.loadText(fn);
-            this.filepath_   = pth;
-            this.fileprefix_ = fp;
-            this.filesuffix_ = fext;
+            [pth, fp] = fileparts(fn);
+            this = mlsiemens.LhdrParser('filepath', pth, 'fileprefix', fp);
         end
     end
     

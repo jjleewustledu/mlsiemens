@@ -8,12 +8,18 @@ classdef AbstractHdrParser < mlio.AbstractParser
  	
 	properties
  		
- 	end
+    end
+    
+    methods (Static)        
+        function loadx(~)
+            error('mlsiemens:notImplemented', 'LhdrParser.loadx');
+        end
+    end
 
 	methods
         function sv = parseSplitString(this, fieldName)  
             line = this.findFirstCell(fieldName);          
-            tokens = strsplit(line, ":=");
+            tokens = strsplit(line, ':=');
             if (length(tokens) < 2)
                 sv = []; 
                 return
@@ -38,6 +44,11 @@ classdef AbstractHdrParser < mlio.AbstractParser
             names = regexp(line, this.strrep(sprintf('%s\\s*:=\\s*(?<valueName>%s)', fieldName, this.ENG_PATT)), 'names');
             nv = str2num(strtrim(names.valueName)); %#ok<ST2NM>
         end  
+    end
+    
+    %% PROTECTED
+    
+    methods (Access = protected)
         function s = strrep(~, s)
             s = strrep(s, ']', '\]');
             s = strrep(s, '[', '\[');

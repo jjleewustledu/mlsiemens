@@ -1,5 +1,5 @@
-classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
-	%% BiographMMR enables polymorphism of NIfTId over PET data.  It is also a NIfTIdecorator.
+classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
+	%% BIOGRAPHMMR0 enables polymorphism of NIfTId over PET data.  It is also a NIfTIdecorator.
 
 	%  $Revision$
  	%  was created 08-Dec-2015 15:11:44
@@ -219,26 +219,26 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
 
     methods (Static) 
         function this = load(varargin)
-            this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}));
+            this = mlsiemens.BiographMMR0(mlfourd.NIfTId.load(varargin{:}));
         end
         function this = loadSession(sessd, varargin)
             assert(isa(sessd, 'mlpipeline.ISessionData'))      
-            this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}), 'sessionData', sessd);
+            this = mlsiemens.BiographMMR0(mlfourd.NIfTId.load(varargin{:}), 'sessionData', sessd);
         end
     end
     
 	methods
- 		function this = BiographMMR(cmp, varargin)
+ 		function this = BiographMMR0(cmp, varargin)
             this = this@mlfourd.NIfTIdecoratorProperties(cmp, varargin{:});
-            if (nargin == 1 && isa(cmp, 'mlsiemens.BiographMMR'))
+            if (nargin == 1 && isa(cmp, 'mlsiemens.BiographMMR0'))
                 this = this.component;
                 return
             end
             
             ip = inputParser;
             addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
-            addParameter(ip, 'consoleClockOffset', NaT, @(x) isa(x, 'duration'));
-            addParameter(ip, 'doseAdminDatetime', NaT, @(x) isa(x, 'datetime'));
+            addParameter(ip, 'consoleClockOffset', 0, @(x) isa(x, 'duration'));
+            addParameter(ip, 'doseAdminDatetime', datetime('now'), @(x) isa(x, 'datetime'));
             addParameter(ip, 'efficiencyFactor', 1, @isnumeric);
             parse(ip, varargin{:});
             this.sessionData_ = ip.Results.sessionData;
@@ -270,7 +270,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             this.efficiencyFactor_ = ip.Results.efficiencyFactor;
             this.component.img = this.component.img*this.efficiencyFactor;
             
-            this = this.append_descrip('decorated by BiographMMR');
+            this = this.append_descrip('decorated by BiographMMR0');
         end
         
         function this = crossCalibrate(this, varargin)
@@ -431,7 +431,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                     case 4
                         yi = y(:,:,:,1:lenxi);
                     otherwise
-                        error('mlsiemens:unsupportedArrayShape', 'BiographMMR.pchip');
+                        error('mlsiemens:unsupportedArrayShape', 'BiographMMR0.pchip');
                 end
                 return
             end
@@ -457,7 +457,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                     end
                 otherwise
                     error('mlsiemens:unsupportedArraySize', ...
-                          'size(BiographMMR.becquerels2petCounts.img) -> %s', mat2str(size(img)));
+                          'size(BiographMMR0.becquerels2petCounts.img) -> %s', mat2str(size(img)));
             end
         end
         function img = petCounts2becquerels(this, img)
@@ -477,7 +477,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                     end
                 otherwise
                     error('mlsiemens:unsupportedArraySize', ...
-                          'size(BiographMMR.petCounts2becquerels.img) -> %s', mat2str(size(img)));
+                          'size(BiographMMR0.petCounts2becquerels.img) -> %s', mat2str(size(img)));
             end
         end
         function dt0 = readDatetime0(this)

@@ -1,19 +1,16 @@
-classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
-	%% TEST_HERSCOVITCH1985 
+classdef Test_Herscovitch1985Bayes < matlab.unittest.TestCase
+	%% TEST_HERSCOVITCH1985BAYES 
 
-	%  Usage:  >> results = run(mlsiemens_unittest.Test_Herscovitch1985)
- 	%          >> result  = run(mlsiemens_unittest.Test_Herscovitch1985, 'test_dt')
+	%  Usage:  >> results = run(mlsiemens_unittest.Test_Herscovitch1985Bayes)
+ 	%          >> result  = run(mlsiemens_unittest.Test_Herscovitch1985Bayes, 'test_dt')
  	%  See also:  file:///Applications/Developer/MATLAB_R2014b.app/help/matlab/matlab-unit-test-framework.html
 
 	%  $Revision$
- 	%  was created 06-Feb-2017 21:46:26
- 	%  by jjlee,
- 	%  last modified $LastChangedDate$
- 	%  and checked into repository /Users/jjlee/Local/src/mlcvl/mlsiemens/test/+mlsiemens_unittest.
- 	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.  Copyright 2017 John Joowon Lee.  Copyright 2017 John Joowon Lee.
+ 	%  was created 27-Jun-2017 13:31:27 by jjlee,
+ 	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/Local/src/mlcvl/mlsiemens/test/+mlsiemens_unittest.
+ 	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
-
-	properties    
+	properties
         twiliteEff = 2.347*147.95/0.7552
         a1 = 9.732e-12 % Twilite eff. 0.5654*0.487/7.775e-3, decays/cc or Bq/cc; => CBF ~ 54
         a2 = 3.4252e-05 % "
@@ -40,32 +37,27 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
  	end
 
 	methods (Test)
-        function test_ctor(this)
+		function test_afun(this)
+ 			import mlsiemens.*;
+ 			this.assumeEqual(1,1);
+ 			this.verifyEqual(1,1);
+ 			this.assertEqual(1,1);
+        end
+        function test_ctor(this)            
             this = this.configTracer('HO');
             this.verifyClass(this.aif, 'mlpet.Twilite');
-            this.verifyClass(this.scanner, 'mlsiemens.BiographMMR0');
-            this.verifyClass(this.testObj, 'mlsiemens.Herscovitch1985');
+            this.verifyClass(this.scanner, 'mlsiemens.BiographMMR');
+            this.verifyClass(this.testObj, 'mlsiemens.Herscovitch1985Bayes');
         end
         function test_aifs(this)
-            this = this.configTracer('OC');
-            twilite.OC.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.OC.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF); 
             this = this.configTracer('HO');
             twilite.HO.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.HO.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF);          
-            this = this.configTracer('OO');
-            twilite.OO.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.OO.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF);  %#ok<STRNU>
-            save('twilite', fullfile(getenv('PPG'), 'jjlee', 'HYGLY28', 'V2', 'twilite.mat'));
+            twilite.HO.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF); 
+            %save('twilite', fullfile(this.sessionData.vLocation, 'twilite.mat'));
         end
         function test_plotAifHO(this)
             this = this.configTracer('HO');
             this.testObj.plotAif;
-        end
-        function test_plotAifOO(this)
-            this = this.configTracer('OO');
-            this.testObj.plotAifHOMetab;
-            this.testObj.plotAifOO;
         end
         function test_plotScannerWholebrain(this)
             this = this.configTracer('HO');
@@ -77,21 +69,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             obj = this.testObj.buildA1A2;
             this.verifyEqual(obj.product(1), this.a1, 'RelTol', 0.01);
             this.verifyEqual(obj.product(2), this.a2, 'RelTol', 0.01);
-        end
-        function test_buildB1B2(this)
-            this = this.configTracer('OO');
-            obj = this.testObj;
-            obj = obj.buildB1B2;
-            this.verifyEqual(obj.product(1), this.b1, 'RelTol', 0.01);
-            this.verifyEqual(obj.product(2), this.b2, 'RelTol', 0.01);
-        end
-        function test_buildB3B4(this)
-            this = this.configTracer('OO');
-            obj = this.testObj;
-            obj = obj.buildB3B4;
-            this.verifyEqual(obj.product(1), this.b3, 'RelTol', 0.01);
-            this.verifyEqual(obj.product(2), this.b4, 'RelTol', 0.01);
-        end
+        end        
         
         function test_buildCbfMap(this)
             this = this.configTracer('HO');
@@ -110,94 +88,26 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             obj.a2 = this.a2;
             obj = obj.buildCbfWholebrain;
             this.verifyEqual(obj.product, 55.7551472410379, 'RelTol', 0.01);
-        end        
-        function test_buildCbvMap(this)
-            this = this.configTracer('OC');
-            obj  = this.testObj.buildCbvMap;
-            this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
-            obj.product.view;
-            obj.product.saveas(this.sessionData.cbv('typ','fqfn','suffix','op_fdg'));
-        end
-        function test_buildCbvWholebrain(this)
-            this = this.configTracer('OC');
-            obj = this.testObj.buildCbvWholebrain;            
-            this.verifyEqual(obj.product, 1.4196, 'RelTol', 0.01); % bigger mask
-        end
-        function test_buildCmro2Map(this)
-            labs.pH = 7.36;
-            labs.pCO2 = 44;
-            labs.pO2 = 109;
-            labs.totalCO2 = 26;
-            labs.AaGradient = nan;
-            labs.pcnt_iO2Art = nan;
-            labs.vol_iO2Art = nan;
-            labs.totalHgb = 13.5;
-            labs.oxyHgb = 82.3;
-            labs.carboxyHgb = 4.7;
-            labs.metHgb = 1.4;
-            labs.o2Content = 17.7;
-            this = this.configTracer('OO');
-            obj = this.testObj;
-            obj = obj.buildCmro2Map;            
-            this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
-            obj.product.view;
-            obj.product.saveas(this.sessionData.cmro2('typ','fqfn','suffix','op_resolved'));
-        end
-        function test_buildCmro2Wholebrain(this)
-            this = this.configTracer('OO');
-            obj = this.testObj.buildCmro2Wholebrain;            
-            this.verifyEqual(obj.product, nan, 'RelTol', 0.01);
-        end 
-        function test_buildMask(this)            
-            this = this.configTracer('OC');
-            [~,n] = this.testObj.scanner.mskt;
-            n.view;
-        end
-        function test_buildOefMap(this)
-            this = this.configTracer('OO');
-            obj = this.testObj;
-            obj.b1 = this.b1;
-            obj.b2 = this.b2;
-            obj.b3 = this.b3;
-            obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_fdg');
-            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_fdg');
-            obj = obj.buildOefMap;
-            this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
-            obj.product.view;
-            obj.product.saveas(this.sessionData.oef('typ','fqfn','suffix','op_fdg'));
-        end
-        function test_buildOefWholebrain(this)
-            this = this.configTracer('OO');
-            obj = this.testObj;
-            obj.b1 = this.b1;
-            obj.b2 = this.b2;
-            obj.b3 = this.b3;
-            obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_fdg');
-            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_fdg');
-            obj = obj.buildOefWholebrain;
-            this.verifyEqual(obj.product, 0.3049, 'RelTol', 0.01);
-        end        
+        end  
 	end
 
  	methods (TestClassSetup)
-		function setupHerscovitch1985(this)
-            %setenv('PPG', '/Volumes/InnominateHD3/Local/test');
+		function setupHerscovitch1985Bayes(this)            
             import mlraichle.*;
             studyd = StudyData;
+            studyd.subjectsFolder = 'jjlee';
             sessp = fullfile(studyd.subjectsDir, 'HYGLY28', '');
             this.sessionData = SessionData( ...
                 'studyData', studyd, 'sessionPath', sessp, ...
                 'tracer', '', 'snumber', 1, 'vnumber', 1, 'ac', true);
             cd(this.sessionData.vLocation);
-            setenv(upper('Test_Herscovitch1985'), '1');
-            this.addTeardown(@this.teardownHerscovitch1985);
+            setenv(upper('Test_Herscovitch1985Bayes'), '1');
+            this.addTeardown(@this.teardownHerscovitch1985Bayes);
  		end
 	end
 
  	methods (TestMethodSetup)
-		function setupHerscovitch1985Test(this)
+		function setupHerscovitch1985BayesTest(this)
  			%this.testObj = this.testObj_;
  			%this.addTeardown(@this.cleanFiles);
  		end
@@ -218,7 +128,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     pic = this.sessionData.ho( ...
                         'typ', 'mlpet.PETImagingContext');
                     this.sessionData.attenuationCorrected = true;
-                    this.scanner = BiographMMR0(pic.niftid, ...
+                    this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
                         'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeHO);
@@ -235,7 +145,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     pic = this.sessionData.oo( ...
                         'typ', 'mlpet.PETImagingContext');
                     this.sessionData.attenuationCorrected = true;
-                    this.scanner = BiographMMR0(pic.niftid, ...
+                    this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
                         'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeOO);            
@@ -252,7 +162,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     pic = this.sessionData.oc( ...
                         'typ', 'mlpet.PETImagingContext');
                     this.sessionData.attenuationCorrected = true;
-                    this.scanner = BiographMMR0(pic.niftid, ...
+                    this.scanner = BiographMMR(pic.niftid, ...
                         'sessionData', this.sessionData, ...
                         'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeOC);              
@@ -267,7 +177,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                 otherwise
                     error('mlpet:unsupportedSwitchCase', 'Test_Herscovitch1985.configTracer');
             end
- 			this.testObj = mlsiemens.Herscovitch1985( ...
+ 			this.testObj = mlsiemens.Herscovitch1985Bayes( ...
                 'sessionData', this.sessionData, ...
                 'scanner', this.scanner, ...
                 'aif', this.aif, ...
@@ -276,8 +186,8 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             this.testObj.ooFracTime  = this.ooFracTime;
             this.testObj.fracHOMetab = this.fracHOMetab;
         end
-        function teardownHerscovitch1985(this)
-            setenv(upper('Test_Herscovitch1985'), '0');
+        function teardownHerscovitch1985Bayes(this)
+            setenv(upper('Test_Herscovitch1985Bayes'), '0');
         end
 	end
 
