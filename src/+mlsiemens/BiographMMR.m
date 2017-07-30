@@ -52,11 +52,22 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         specificActivity
         W
     end    
+
+    methods (Static) 
+        function this = load(varargin)
+            this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}));
+        end
+        function this = loadSession(sessd, varargin)
+            assert(isa(sessd, 'mlpipeline.ISessionData'))      
+            this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}), 'sessionData', sessd);
+        end
+    end
     
-    methods %% GET, SET
+    methods 
         
-        %% IScannerData
+        %% GET, SET
         
+        % IScannerData        
         function g    = get.sessionData(this)
             g = this.sessionData_;
         end
@@ -161,8 +172,7 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             this.efficiencyFactor_ = s;
         end
         
-        %% new
-        
+        % new        
         function g    = get.becquerelsPerCC(this)
             assert(~isempty(this.component.img));
             g = this.component.img;
@@ -215,63 +225,8 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function w    = get.W(~)
             w = 1;
         end
-    end
-
-    methods (Static) 
-        function this = load(varargin)
-            this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}));
-        end
-        function this = loadSession(sessd, varargin)
-            assert(isa(sessd, 'mlpipeline.ISessionData'))      
-            this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}), 'sessionData', sessd);
-        end
-    end
-    
-	methods
- 		function this = BiographMMR(cmp, varargin)
-            this = this@mlfourd.NIfTIdecoratorProperties(cmp, varargin{:});
-            if (nargin == 1 && isa(cmp, 'mlsiemens.BiographMMR'))
-                this = this.component;
-                return
-            end
-            
-            ip = inputParser;
-            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
-            addParameter(ip, 'consoleClockOffset', NaT, @(x) isa(x, 'duration'));
-            addParameter(ip, 'doseAdminDatetime', NaT, @(x) isa(x, 'datetime'));
-            addParameter(ip, 'efficiencyFactor', 1, @isnumeric);
-            parse(ip, varargin{:});
-            this.sessionData_ = ip.Results.sessionData;
-            this.consoleClockOffset_ = ip.Results.consoleClockOffset;
-            this.doseAdminDatetime_ = ip.Results.doseAdminDatetime;
-            this.doseAdminDatetime_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            
-            this.tableSif_    = this.readtable;
-            this.timingData_  = mldata.TimingData( ...
-                'times',         this.tableSif_{:,'Start_msec_'}/1000, ...
-                'timeMidpoints', this.tableSif_{:,'Midpoint_sec_'}, ...
-                'taus',          this.tableSif_{:,'Length_msec_'}/1000, ...
-                'datetime0',     this.readDatetime0);
-            if (length(this.times) > size(this, 4))
-                this.times = this.times(1:size(this, 4));
-            end
-            if (length(this.times) < size(this, 4))
-                this.img = this.img(:,:,:,1:length(this.times));
-            end
-            
-            dc = mlpet.DecayCorrection(this);            
-            tshift = seconds(this.doseAdminDatetime - this.datetime0);
-            if (tshift > 3600); tshift = 0; end %% KLUDGE
-            if (this.uncorrected && length(this.component.size) == 4 && size(this.component,4) > 1)
-                this.component.img = dc.uncorrectedCounts(this.component.img, tshift);
-                this.decaysPerCC_ = this.decaysPerCC;
-            end
-            
-            this.efficiencyFactor_ = ip.Results.efficiencyFactor;
-            this.component.img = this.component.img*this.efficiencyFactor;
-            
-            this = this.append_descrip('decorated by BiographMMR');
-        end
+        
+        %%
         
         function this = crossCalibrate(this, varargin)
             ip = inputParser;
@@ -303,7 +258,23 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             this.save;
         end
         function this = shiftTimes(this, Dt)
+            %% SHIFTTIMES provides time-coordinate transformation
+            
+            if (0 == Dt); return; end
+            if (2 == length(this.component.size))                
+                [this.times_,this.component.img] = shiftVector(this.times_, this.component.img, Dt);
+                return
+            end
             [this.times_,this.component.img] = shiftTensor(this.times_, this.component.img, Dt);
+        end
+        function this     = shiftWorldlines(this, Dt)    
+            
+            if (0 == Dt); return; end        
+            this = this.shiftTimes(Dt);
+            if (~isempty(this.component.img))
+                this.component.img = this.decayCorrection_.adjustCounts(this.component.img, -sign(Dt), Dt);
+            end
+            error('mlsiemens:incompletelyImplemented', 'BiographMMR:shiftWorldlines');
         end
         function [t,this] = timeInterpolants(this, varargin)
             [t,this] = this.timingData_.timeInterpolants(varargin{:});
@@ -403,6 +374,51 @@ classdef BiographMMR < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function dt   = sec2datetime(this, s)
             dt = this.timingData_.sec2datetime(s);
         end
+        
+ 		function this = BiographMMR(cmp, varargin)
+            this = this@mlfourd.NIfTIdecoratorProperties(cmp, varargin{:});
+            if (nargin == 1 && isa(cmp, 'mlsiemens.BiographMMR'))
+                this = this.component;
+                return
+            end
+            
+            ip = inputParser;
+            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
+            addParameter(ip, 'consoleClockOffset', NaT, @(x) isa(x, 'duration'));
+            addParameter(ip, 'doseAdminDatetime', NaT, @(x) isa(x, 'datetime'));
+            addParameter(ip, 'efficiencyFactor', 1, @isnumeric);
+            parse(ip, varargin{:});
+            this.sessionData_ = ip.Results.sessionData;
+            this.consoleClockOffset_ = ip.Results.consoleClockOffset;
+            this.doseAdminDatetime_ = ip.Results.doseAdminDatetime;
+            this.doseAdminDatetime_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+            
+            this.tableSif_    = this.readtable;
+            this.timingData_  = mldata.TimingData( ...
+                'times',         this.tableSif_{:,'Start_msec_'}/1000, ...
+                'timeMidpoints', this.tableSif_{:,'Midpoint_sec_'}, ...
+                'taus',          this.tableSif_{:,'Length_msec_'}/1000, ...
+                'datetime0',     this.readDatetime0);
+            if (length(this.times) > size(this, 4))
+                this.times = this.times(1:size(this, 4));
+            end
+            if (length(this.times) < size(this, 4))
+                this.img = this.img(:,:,:,1:length(this.times));
+            end
+            
+            dc = mlpet.DecayCorrection(this);            
+            tshift = seconds(this.doseAdminDatetime - this.datetime0);
+            if (tshift > 3600); tshift = 0; end %% KLUDGE
+            if (this.uncorrected && length(this.component.size) == 4 && size(this.component,4) > 1)
+                this.component.img = dc.uncorrectedCounts(this.component.img, tshift);
+                this.decaysPerCC_ = this.decaysPerCC;
+            end
+            
+            this.efficiencyFactor_ = ip.Results.efficiencyFactor;
+            this.component.img = this.component.img*this.efficiencyFactor;
+            
+            this = this.append_descrip('decorated by BiographMMR');
+        end        
     end 
     
     %% PROTECTED

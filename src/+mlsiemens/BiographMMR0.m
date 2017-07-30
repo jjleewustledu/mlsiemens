@@ -499,5 +499,15 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
+    
+    %% HIDDEN
+    
+    methods (Hidden)
+        
+        function this = shiftWorldlines(this, ~)
+        end
+        function m = calibrationMeasurement(~, m)
+        end
+    end
  end
 

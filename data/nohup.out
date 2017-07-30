@@ -1,0 +1,9 @@
+2017-07-19 17:36:13.261 MATLAB_maci64[1422:16654] _initWithWindowNumber: error creating graphics ctxt object for ctxt:0x10e6b, window:0x1a7
+2017-07-19 17:45:39.340 MATLAB_maci64[1422:16654] _initWithWindowNumber: error creating graphics ctxt object for ctxt:0x10e6b, window:0x1a7
+2017-07-19 18:03:51.352 MATLAB_maci64[1422:16654] _initWithWindowNumber: error creating graphics ctxt object for ctxt:0x10e6b, window:0x1a7
+2017-07-19 19:36:31.613 MATLAB_maci64[1422:16654] _initWithWindowNumber: error creating graphics ctxt object for ctxt:0x10e6b, window:0x1a7
+2017-07-19 19:43:26.147 MATLAB_maci64[1422:16654] _initWithWindowNumber: error creating graphics ctxt object for ctxt:0x10e6b, window:0x1a7
+2017-07-19 19:44:33.233 MATLAB_maci64[1422:16654] IMKInputSession presentFunctionRowItemTextInputViewWithEndpoint:completionHandler: : [self textInputContext]=0x7f80f1fb42d0 *NO* NSRemoteViewController to client, NSError=Error Domain=NSCocoaErrorDomain Code=4099 "The connection from pid 0 was invalidated from this process." UserInfo={NSDebugDescription=The connection from pid 0 was invalidated from this process.}, com.apple.inputmethod.EmojiFunctionRowItem
+2017-07-19 19:53:29.075 MATLAB_maci64[1422:16654] _initWithWindowNumber: error creating graphics ctxt object for ctxt:0x10e6b, window:0x1a7
+2017-07-19 19:54:23.233 MATLAB_maci64[1422:16654] _initWithWindowNumber: error creating graphics ctxt object for ctxt:0x10e6b, window:0x1a7
+2017-07-19 22:37:59.290 MATLAB_maci64[1422:16654] IMKInputSession presentFunctionRowItemTextInputViewWithEndpoint:completionHandler: : [self textInputContext]=0x7f80f1fb42d0 *NO* NSRemoteViewController to client, NSError=Error Domain=NSCocoaErrorDomain Code=4099 "The connection from pid 0 was invalidated from this process." UserInfo={NSDebugDescription=The connection from pid 0 was invalidated from this process.}, com.apple.inputmethod.EmojiFunctionRowItem

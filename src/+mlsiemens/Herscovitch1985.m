@@ -155,8 +155,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             fracVec(idxP:aif.indexF) = dfrac_dt*(aif.times(idxP:aif.indexF) - aif.times(idxP));            
             aif.specificActivity = this.aif.specificActivity.*fracVec;
             
-            import mlpet.Blood.*;
-            aif.specificActivity = aif.specificActivity*(PLASMADN/BLOODDEN);
+            import mlpet.*;
+            aif.specificActivity = aif.specificActivity*(Blood.PLASMADN/Blood.BLOODDEN);
         end
         function aifi = estimateAifOOIntegral(this)
             aifi = 0.01*this.SMALL_LARGE_HCT_RATIO*this.BRAIN_DENSITY*this.aifOO.specificActivityIntegral;

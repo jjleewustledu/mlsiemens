@@ -95,7 +95,7 @@ classdef Test_Herscovitch1985Bayes < matlab.unittest.TestCase
 		function setupHerscovitch1985Bayes(this)            
             import mlraichle.*;
             studyd = StudyData;
-            studyd.subjectsFolder = 'jjlee';
+            studyd.subjectsFolder = mlraichle.RaichleRegistry.instance.subjectsFolder;
             sessp = fullfile(studyd.subjectsDir, 'HYGLY28', '');
             this.sessionData = SessionData( ...
                 'studyData', studyd, 'sessionPath', sessp, ...

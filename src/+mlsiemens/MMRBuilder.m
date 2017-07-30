@@ -59,7 +59,7 @@ classdef MMRBuilder
             end
         end
         function incomplete = scanForIncompleteE7tools
-            pthPPG0 = pushd(fullfile(getenv('PPG'), 'jjlee', ''));
+            pthPPG0 = pushd(mlraichle.RaichleRegistry.instance.subjectsDir);
             incomplete = {};
             
             import mlsystem.* mlfourdfp.* mlsiemens.*;
