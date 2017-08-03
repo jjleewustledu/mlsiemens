@@ -170,7 +170,7 @@ classdef MMRBuilder
             addOptional(ip, 'fqfp0', sd.tracerListmodeSif('typ', 'fqfp'), @mlfourdfp.FourdfpVisitor.lexist_4dfp);
             parse(ip, varargin{:});
             
-            fqfp = sd.tracerVisit('typ', 'fqfp');
+            fqfp = sd.tracerRevision('typ', 'fqfp');
             if (lexist([fqfp '.4dfp.ifh']))
                 return
             end            
@@ -205,7 +205,7 @@ classdef MMRBuilder
             end
             
             this.ensureTracerLocation;
-            pwd0 = push(sd.tracerLocation);
+            pwd0 = pushd(sd.tracerLocation);
             if (~lexist(sd.T1('typ', 'fn')))
                 assert(bv.lexist_4dfp(sd.T1( 'typ', 'fqfp')));
                 bv.lns_4dfp(sd.T1('typ', 'fqfp'));
