@@ -112,7 +112,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             petobs = aif.dt*trapz(rho, 2);
         end
         function fwhh   = petPointSpread
-            fwhh = mlpet.MMRRegistry.instance.petPointSpread;
+            fwhh = mlsiemens.MMRRegistry.instance.petPointSpread;
         end
     end
     
