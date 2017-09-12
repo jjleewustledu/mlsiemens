@@ -1,4 +1,4 @@
-classdef MMRBuilder
+classdef MMRBuilder < mlpipeline.VendorBuilder
 	%% MMRBUILDER  
 
 	%  $Revision$
@@ -157,6 +157,11 @@ classdef MMRBuilder
             g = this.sessionData_;
         end
         
+        function this = set.sessionData(this, s)
+            assert(isa(s, 'mlpipeline.SessionData'));
+            this.sessionData_ = s;
+        end
+        
         %%
         
  		function this = MMRBuilder(varargin)
@@ -180,24 +185,22 @@ classdef MMRBuilder
             sd = this.sessionData;
             ip = inputParser;
             addOptional(ip, 'fqfp0', sd.tracerListmodeSif('typ', 'fqfp'), @mlfourdfp.FourdfpVisitor.lexist_4dfp);
+            addOptional(ip, 'fqfp',  sd.tracerRevision('typ', 'fqfp', 'frame', sd.frame), @ischar);
             parse(ip, varargin{:});
             
-            fqfp = sd.tracerRevision('typ', 'fqfp');
-            if (lexist([fqfp '.4dfp.ifh']))
+            if (lexist([ip.Results.fqfp '.4dfp.ifh']))
+                fqfp = ip.Results.fqfp;
                 return
             end            
             bv = this.buildVisitor_;
-            bv.cropfrac_4dfp(this.firstCrop, ip.Results.fqfp0, fqfp);
+            bv.cropfrac_4dfp(this.firstCrop, ip.Results.fqfp0, ip.Results.fqfp);
+            fqfp = ip.Results.fqfp;
         end
-        function        ensureTracerLocation(this)
+        function [stat,msg,msgid] = ensureTracerLocation(this)
             %% ENSURETRACERLOCATION 
             %  @return creates this.sessionData.tracerLocation as needed.
             
-            sd = this.sessionData;
-            if (isdir(sd.tracerLocation))
-                return
-            end
-            mkdir(sd.tracerLocation);
+            [stat,msg,msgid] = ensuredir(this.sessionData.tracerLocation);
         end         
         function        ensureTracerSymlinks(this)
             %% ENSURETRACERSYMLINKS operates in this.sessionData.tracerLocation, 
@@ -219,23 +222,29 @@ classdef MMRBuilder
             end
             
             this.ensureTracerLocation;
-            pwd0 = pushd(sd.tracerLocation);
+            pwd0 = pushd(ensureFolderExists(sd.tracerLocation));
             if (~lexist(sd.T1('typ', 'fn')))
                 assert(bv.lexist_4dfp(sd.T1( 'typ', 'fqfp')));
                 bv.lns_4dfp(sd.T1('typ', 'fqfp'));
             end
-            if (~lexist(sd.t2('typ', 'fn')))
-                assert(bv.lexist_4dfp(sd.t2( 'typ', 'fqfp')));
-                bv.lns_4dfp(sd.t2('typ', 'fqfp'));
+            if (~bv.lexist_4dfp('t2'))
+                
+                % KLUDGE
+                pwd0 = pushd(sd.vLocation);
+                dt = mlsystem.DirTool('t2*');
+                assert(~isempty(dt.fqfns));
+                bv.lns_4dfp(myfileprefix(dt.fqfns{1}), 't2');
+                popd(pwd0);
+                bv.lns_4dfp(fullfile(sd.vLocation, 't2'));
             end
-            if (~lexist(sd.tof('typ', 'fn')))
-                assert(bv.lexist_4dfp(sd.tof('typ', 'fqfp')));
-                bv.lns_4dfp(sd.tof('typ', 'fqfp'));
-            end
-            if (~lexist(sd.ct('typ', 'fn')))
-                assert(bv.lexist_4dfp(sd.ct( 'typ', 'fqfp')));
-                bv.lns_4dfp(sd.ct('typ', 'fqfp'));
-            end
+%             if (~lexist(sd.tof('typ', 'fn')))
+%                 assert(bv.lexist_4dfp(sd.tof('typ', 'fqfp')));
+%                 bv.lns_4dfp(sd.tof('typ', 'fqfp'));
+%             end
+%             if (~lexist(sd.ct('typ', 'fn')))
+%                 assert(bv.lexist_4dfp(sd.ct( 'typ', 'fqfp')));
+%                 bv.lns_4dfp(sd.ct('typ', 'fqfp'));
+%             end
             popd(pwd0);
         end    
         function ps   = petPointSpread(this, varargin)
@@ -257,7 +266,7 @@ classdef MMRBuilder
                 popd(pwd0);                    
             end
             if (~isdir(sd.tracerSif('typ', 'path')))
-                mkdir( sd.tracerSif('typ', 'path'));
+                mlfourdfp.FourdfpVisitor.mkdir( sd.tracerSif('typ', 'path'));
             end
             if (~lexist(sd.tracerSif('typ', 'fqfn'), 'file'))
                 pwd0 = pushd(sd.tracerSif('typ', 'path'));
