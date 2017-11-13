@@ -40,13 +40,13 @@ classdef ScanData < mlpipeline.ScanData
                 sessDataLabel, this.sessionData.(sessDataLabel));
         end
         function this = propagateMetadata(this)
-            this.scannerData_.consoleClockOffset = ;
-            this.scannerData_.doseAdminDatetime = ;
-            this.scannerData_.time0 = ;
-            this.scannerData_.timeDuration = ;
-            this.scannerData_.dt = ;
-            this.aifData_.efficiencyFactor = ;
-            this.aifData_.aifTimeShift = ;
+%             this.scannerData_.consoleClockOffset = ;
+%             this.scannerData_.doseAdminDatetime = ;
+%             this.scannerData_.time0 = ;
+%             this.scannerData_.timeDuration = ;
+%             this.scannerData_.dt = ;
+%             this.aifData_.efficiencyFactor = ;
+%             this.aifData_.aifTimeShift = ;
             
                         
             
