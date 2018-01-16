@@ -52,7 +52,7 @@ classdef Test_Herscovitch1985Bayes < matlab.unittest.TestCase
         function test_aifs(this)
             this = this.configTracer('HO');
             twilite.HO.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.HO.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF); 
+            twilite.HO.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF); 
             %save('twilite', fullfile(this.sessionData.vLocation, 'twilite.mat'));
         end
         function test_plotAifHO(this)

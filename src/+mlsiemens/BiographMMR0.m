@@ -12,7 +12,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     properties (Constant)
         HOUR_KLUDGE = -1
         READTABLE_HEADERLINES = 0
-        SPECIFIC_ACTIVITY_KIND = 'becquerelsPerCC' %'decaysPerCC'
+        SPECIFIC_ACTIVITY_KIND = 'activityPerCC' %'decaysPerCC'
     end
     
     properties
@@ -38,13 +38,13 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         timeMidpoints
         taus        
         counts
-        becquerels
+        activity
         isotope
         efficiencyFactor
         
         %% new
         
-        becquerelsPerCC
+        activityPerCC
         decaysPerCC
         mask
         nPixels
@@ -136,19 +136,19 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             g = this.timingData_.taus;
         end
         function g    = get.counts(this)
-            g = this.becquerels2petCounts(this.becquerels);
+            g = this.activity2petCounts(this.activity);
         end
         function this = set.counts(this, s)
             assert(isnumeric(s));
-            this.component.img = this.petCounts2becquerels(s)/prod(this.mmppix/10);
+            this.component.img = this.petCounts2activity(s)/prod(this.mmppix/10);
         end
-        function g    = get.becquerels(this)
+        function g    = get.activity(this)
             assert(~isempty(this.component.img));
-            g = this.becquerelsPerCC*prod(this.mmppix/10);
+            g = this.activityPerCC*prod(this.mmppix/10);
         end
-        function this = set.becquerels(this, s)
+        function this = set.activity(this, s)
             assert(isnumeric(s));
-            this.becquerelsPerCC = double(s)/prod(this.mmppix/10);
+            this.activityPerCC = double(s)/prod(this.mmppix/10);
         end
         function g    = get.isotope(this)
             g = this.sessionData.isotope;
@@ -163,13 +163,13 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         
         %% new
         
-        function g    = get.becquerelsPerCC(this)
+        function g    = get.activityPerCC(this)
             assert(~isempty(this.component.img));
             g = this.component.img;
             g = double(g);
             g = squeeze(g);
         end
-        function this = set.becquerelsPerCC(this, s)
+        function this = set.activityPerCC(this, s)
             assert(isnumeric(s));
             this.component.img = double(s);
         end
@@ -178,7 +178,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 g = this.decaysPerCC_;
                 return
             end
-            g = this.becquerelsPerCC;
+            g = this.activityPerCC;
             for t = 1:length(this.taus)
                 g(:,:,:,t) = g(:,:,:,t)*this.taus(t);
             end
@@ -310,18 +310,15 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         end
         function [t,this] = timeMidpointInterpolants(this, varargin)
             [t,this] = this.timingData_.timeMidpointInterpolants(varargin{:});
-        end
-        function [t,this] = tauInterpolants(this, varargin)
-            [t,this] = this.timingData_.tauInterpolants(varargin{:});
-        end        
+        end  
         function c = countInterpolants(this, varargin)
             c = this.counts;
             c = this.pchip(this.times, c, this.timeInterpolants);            
             if (~isempty(varargin))
                 c = c(varargin{:}); end
         end
-        function b = becquerelInterpolants(this, varargin)
-            b = this.becquerels;
+        function b = activityInterpolants(this, varargin)
+            b = this.activity;
             b = this.pchip(this.times, b, this.timeInterpolants);            
             if (~isempty(varargin))
                 b = b(varargin{:}); end
@@ -440,7 +437,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     end
     
     methods (Access = protected)
-        function img = becquerels2petCounts(this, img)
+        function img = activity2petCounts(this, img)
             %% BECQUERELS2PETCOUNTS; does not divide out number of pixels.
             
             img = double(img);
@@ -457,10 +454,10 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                     end
                 otherwise
                     error('mlsiemens:unsupportedArraySize', ...
-                          'size(BiographMMR0.becquerels2petCounts.img) -> %s', mat2str(size(img)));
+                          'size(BiographMMR0.activity2petCounts.img) -> %s', mat2str(size(img)));
             end
         end
-        function img = petCounts2becquerels(this, img)
+        function img = petCounts2activity(this, img)
             %% BECQUERELS2PETCOUNTS; does not divide out number of pixels.
             
             img = double(img);
@@ -477,7 +474,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                     end
                 otherwise
                     error('mlsiemens:unsupportedArraySize', ...
-                          'size(BiographMMR0.petCounts2becquerels.img) -> %s', mat2str(size(img)));
+                          'size(BiographMMR0.petCounts2activity.img) -> %s', mat2str(size(img)));
             end
         end
         function dt0 = readDatetime0(this)

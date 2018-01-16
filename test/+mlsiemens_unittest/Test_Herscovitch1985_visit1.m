@@ -49,13 +49,13 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
         function test_aifs(this)
             this = this.configTracer('OC');
             twilite.OC.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.OC.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF); 
+            twilite.OC.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF); 
             this = this.configTracer('HO');
             twilite.HO.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.HO.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF);          
+            twilite.HO.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF);          
             this = this.configTracer('OO');
             twilite.OO.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.OO.becquerelsPerCC = this.aif.becquerelsPerCC(this.aif.index0:this.aif.indexF);  %#ok<STRNU>
+            twilite.OO.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF);  %#ok<STRNU>
             save(fullfile(mlraichle.RaichleRegistry.instance.subjectsDir, 'HYGLY28', 'V1', 'twilite.mat'), 'twilite');
         end
         function test_plotAifHO(this)

@@ -126,7 +126,7 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
             ecat = ecat.volumeSummed;   
             import mlpet.*;
             [t_a,c_a] = VideenAutoradiography.shiftData( aif.times,  aif.wellCounts,               aifShift);
-            [t_i,c_i] = VideenAutoradiography.shiftData(ecat.times, ecat.becquerels/ecat.nPixels, ecatShift); % well-counts/cc/s     
+            [t_i,c_i] = VideenAutoradiography.shiftData(ecat.times, ecat.activity/ecat.numelMasked, ecatShift); % well-counts/cc/s     
             dt  = min(min(aif.taus), min(ecat.taus));
             t   = min(t_a(1), t_i(1)):dt:min(t_a(end), t_i(end));
             c_a = pchip(t_a, c_a, t);

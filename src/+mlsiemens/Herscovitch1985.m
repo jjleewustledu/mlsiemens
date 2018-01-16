@@ -182,7 +182,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             figure;
             a = this.aif;
             idxF = a.indexF + 40;
-            plot(a.times(a.index0:idxF), a.becquerelsPerCC(a.index0:idxF)/10e3);
+            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF)/10e3);
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAif:\n%s %s', sd.sessionPath, sd.tracer));
         end
@@ -191,7 +191,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             figure;
             a = this.aifHOMetab;
             idxF = a.indexF + 40;
-            plot(a.times(a.index0:idxF), a.becquerelsPerCC(a.index0:idxF)/10e3);
+            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF)/10e3);
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAifHOMetab:\n%s %s', sd.sessionPath, sd.tracer));
         end
@@ -200,7 +200,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             figure;
             a = this.aifOO;
             idxF = a.indexF + 40;
-            plot(a.times(a.index0:idxF), a.becquerelsPerCC(a.index0:idxF)/10e3);
+            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF)/10e3);
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAifOO:\n%s %s', sd.sessionPath, sd.tracer));
         end
@@ -213,13 +213,13 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             wc   = zeros(1, lent);
             for ti = s.index0:s.indexF
                 wc(ti) = squeeze( ...
-                    sum(sum(sum(s.becquerelsPerCC(:,:,:,ti).*this.mask.niftid.img))))/ ...
+                    sum(sum(sum(s.specificActivity(:,:,:,ti).*this.mask.niftid.img))))/ ...
                     this.MAGIC/mskvs.double;
             end
             plot(s.times(s.index0:s.indexF)-s.times(s.index0), wc/10e3);
             hold on   
             a = this.aif;
-            plot(a.times(a.index0:a.indexF)-a.times(a.index0), a.becquerelsPerCC(a.index0:a.indexF)/10e3);
+            plot(a.times(a.index0:a.indexF)-a.times(a.index0), a.specificActivity(a.index0:a.indexF)/10e3);
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotScannerWholebrain:\n%s %s', sd.sessionPath, sd.tracer));
         end 

@@ -53,13 +53,12 @@ classdef AbstractHdrParser < mlio.AbstractParser
             s = strrep(s, ']', '\]');
             s = strrep(s, '[', '\[');
         end
-        function s = strrep2(~, s)            
+        function s = strrep2(~, s)
             s = strrep(s, ')', '_');
             s = strrep(s, '(', '_');
             s = strrep(s, '+', '');
             s = strrep(s, '%', '%%');
-        end
-        
+        end        
  	end 
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

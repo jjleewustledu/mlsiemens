@@ -14,9 +14,20 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
  	
 
 	properties
+        sessPath = '/data/nil-bluearc/raichle/PPGdata/jjlee2/HYGLY28'
  		registry
  		testObj
- 	end
+    end
+    
+    properties (Dependent)
+        ifhFile
+    end
+    
+    methods %% GET
+        function g = get.ifhFile(this)
+            g = fullfile(this.sessPath, 'V1/FDG_V1-NAC/fdgv1r1.4dfp.ifh');
+        end
+    end
 
 	methods (Test)
 		function test_afun(this)
@@ -24,13 +35,20 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
  			this.assumeEqual(1,1);
  			this.verifyEqual(1,1);
  			this.assertEqual(1,1);
- 		end
+        end
+        function test_view(this)
+            this.testObj.viewer = '/usr/local/fsl/bin/fsleyes';
+            this.testObj.view;
+        end
 	end
 
  	methods (TestClassSetup)
 		function setupBiographMMR(this)
- 			import mlsiemens.*;
- 			this.testObj_ = BiographMMR;
+            import mlsiemens.* mlraichle.*;
+            sessd = SessionData( ...
+                'studyData', StudyData, 'sessionPath', this.sessPath); % 'ac', false, 'tracer', 'FDG'
+ 			this.testObj_ = BiographMMR( ...
+                mlfourd.NIfTId.load(this.ifhFile), 'sessionData', sessd);
  		end
 	end
 

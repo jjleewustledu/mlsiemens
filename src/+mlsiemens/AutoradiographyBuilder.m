@@ -103,7 +103,7 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
             ecat = ecat.volumeSummed;   
             import mlpet.*;
             [t_a,c_a] = AutoradiographyBuilder.shiftData( aif.times,  aif.wellCounts,               aifShift);
-            [t_i,c_i] = AutoradiographyBuilder.shiftData(ecat.times, ecat.becquerels/ecat.nPixels, ecatShift); % well-counts/cc/s     
+            [t_i,c_i] = AutoradiographyBuilder.shiftData(ecat.times, ecat.activity/ecat.numelMasked, ecatShift); % well-counts/cc/s     
             dt  = min(min(aif.taus), min(ecat.taus));
             t   = min(t_a(1), t_i(1)):dt:min(t_a(end), t_i(end));
             c_a = pchip(t_a, c_a, t);
@@ -132,11 +132,11 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
         function ecat = loadEcat(varargin)
             p = inputParser;
             addOptional(p, 'fqfn', [],  @(x) lexist(x, 'file'));
-            addOptional(p, 'ecat', [],  @(x) isa(x, 'mlpet.EcatExactHRPlus'));
+            addOptional(p, 'ecat', [],  @(x) isa(x, 'mlsiemens.EcatExactHRPlus'));
             parse(p, varargin{:});
             
             if (~isempty(p.Results.fqfn))
-                ecat = mlpet.EcatExactHRPlus.load(p.Results.fqfn);
+                ecat = mlsiemens.EcatExactHRPlus.load(p.Results.fqfn);
                 return
             end
             if (~isempty(p.Results.ecat))
@@ -148,18 +148,18 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
         function ecat = loadDecayCorrectedEcat(varargin)
             p = inputParser;
             addOptional(p, 'fqfn', [],  @(x) lexist(x, 'file'));
-            addOptional(p, 'ecat', [],  @(x) isa(x, 'mlpet.DecayCorrectedEcat'));
+            addOptional(p, 'ecat', [],  @(x) isa(x, 'mlsiemens.DecayCorrectedEcat'));
             parse(p, varargin{:});
             
             if (~isempty(p.Results.fqfn))
-                ecat = mlpet.DecayCorrectedEcat.load(p.Results.fqfn);
+                ecat = mlsiemens.DecayCorrectedEcat.load(p.Results.fqfn);
                 return
             end
             if (~isempty(p.Results.ecat))
                 ecat = p.Results.ecat;
                 return
             end
-            error('mlpet:requiredObjectNotFound', 'AutoradiographyBuilder.loadDecayCorrectedEcat');
+            error('mlsiemens:requiredObjectNotFound', 'AutoradiographyBuilder.loadDecayCorrectedEcat');
         end
         
         function f = invs_to_mLmin100g(f)
