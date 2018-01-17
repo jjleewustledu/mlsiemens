@@ -196,11 +196,11 @@ classdef MMRBuilder < mlpipeline.VendorBuilder
             bv.cropfrac_4dfp(this.firstCrop, ip.Results.fqfp0, ip.Results.fqfp);
             fqfp = ip.Results.fqfp;
         end
-        function [stat,msg,msgid] = ensureTracerLocation(this)
+        function loc = ensureTracerLocation(this)
             %% ENSURETRACERLOCATION 
-            %  @return creates this.sessionData.tracerLocation as needed.
+            %  @return this.sessionData.tracerLocation, creating the location as needed.
             
-            [stat,msg,msgid] = ensuredir(this.sessionData.tracerLocation);
+            loc = ensuredir(this.sessionData.tracerLocation);
         end         
         function        ensureTracerSymlinks(this)
             %% ENSURETRACERSYMLINKS operates in this.sessionData.tracerLocation, 
@@ -222,7 +222,7 @@ classdef MMRBuilder < mlpipeline.VendorBuilder
             end
             
             this.ensureTracerLocation;
-            pwd0 = pushd(ensureFolderExists(sd.tracerLocation));
+            pwd0 = pushd(ensuredir(sd.tracerLocation));
             if (~lexist(sd.T1('typ', 'fn')))
                 assert(bv.lexist_4dfp(sd.T1( 'typ', 'fqfp')));
                 bv.lns_4dfp(sd.T1('typ', 'fqfp'));
