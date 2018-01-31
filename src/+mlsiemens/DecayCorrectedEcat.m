@@ -27,18 +27,14 @@ classdef DecayCorrectedEcat < mlsiemens.EcatExactHRPlus
             assert( isa(cmp, 'mlfourd.INIfTI'));
             assert(~isa(cmp, 'mlsiemens.DecayCorrectedEcat'));
             
-            this.decayCorrection_ = mlpet.DecayCorrection(this);
-            this.counts = this.decayCorrection_.correctedCounts(this.counts, this.times(1));
+            this.decayCorrection_ = mlpet.DecayCorrection.factoryFor(this);
+            this.counts = this.decayCorrection_.correctedActivities(this.counts, this.times(1));
             this = this.updateFileprefix;
             this = this.setTimeMidpoints_dc;
         end 
     end 
     
     %% PROTECTED
-    
-    properties (Access = 'protected')
-        decayCorrection_
-    end
     
     methods (Access = 'protected')
         function this = updateFileprefix(this)

@@ -11,34 +11,84 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
 	properties
+        fqfilename = '/data/nil-bluearc/raichle/PPGdata/jjlee2/Documents/CCIRRadMeasurements 2016sep9.xlsx'
  		registry
+        subjectsDir = '/data/nil-bluearc/raichle/PPGdata/jjlee2'
  		testObj
  	end
 
 	methods (Test)
-		function test_afun(this)
- 			import mlsiemens.*;
- 			this.assumeEqual(1,1);
- 			this.verifyEqual(1,1);
- 			this.assertEqual(1,1);
+        function test_capracHeader(this)
+            this.verifyClass(this.testObj.capracHeader, 'table');
+            datecell = this.testObj.capracHeader{1,2};
+            this.verifyEqual(datecell{1}, '09-Sep-2016');
         end
-        function test_ctor(this)
+        function test_fdg(this)
+            import mldata.TimingData.*;
+            this.verifyClass(this.testObj.fdg, 'table');
+            this.verifyEqual( ...
+                this.testObj.fdg.TIMEDRAWN_Hh_mm_ss(1), datetime(2016,9,9,12,01,02));
+            this.verifyEqual( ...
+                this.testObj.fdg.Ge_68_Kdpm(1), 0);
+        end
+        function test_oo(this)
+            import mldata.TimingData.*;
+            this.verifyClass(this.testObj.oo, 'table');
+            this.verifyEqual( ...
+                this.testObj.oo.TIMEDRAWN_Hh_mm_ss(1), datetime(2016,9,9,10,23,08));
+            this.verifyEqual( ...
+                this.testObj.oo.Ge_68_Kdpm(1), 442.8);
+        end
+        function test_tracerAdmin(this)
+            import mldata.TimingData.*;
+            this.verifyClass(this.testObj.tracerAdmin, 'table');
+            this.verifyEqual( ...
+                this.testObj.tracerAdmin.ADMINistrationTime_Hh_mm_ss('C[15O]'), ...
+                datetime(2016,9,9,10,09,19));
+            this.verifyEqual( ...
+                this.testObj.tracerAdmin.TrueAdmin_Time_Hh_mm_ss('C[15O]'), ...
+                datetime(2016,9,9,10,09,19));
+            this.verifyEqual( ...
+                this.testObj.tracerAdmin.dose_MCi('C[15O]'), 21);
+        end
+        function test_clocks(this)
             this.verifyClass(this.testObj.clocks, 'table');
+            this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('mMR console'), 7);
+            this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('PMOD workstation'), 0);
             this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'), -118);
-            this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('hand timers'),  137);
+            this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('CT radiation lab'), 0);
+            this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('hand timers'), 137);
+            this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('2nd PEVCO lab'), 0);
+        end
+        function test_referenceDate(this)
+            this.verifyEqual(this.testObj.referenceDate, datetime(this.testObj.capracHeader{1,2}));
+        end
+        function test_datetime(this)
+        end
+        function test_fdgTimesDrawn(this)
+            this.verifyEqual(this.testObj.fdgTimesDrawn(1), datetime(2016,9,9,12,01,02));
+        end
+        function test_ooTimesDrawn(this)
+            this.verifyEqual(this.testObj.ooTimesDrawn(1), datetime(2016,9,9,10,23,08));
+        end
+        function test_referenceDatetime(this)
+            this.verifyEqual(this.testObj.referenceDatetime, datetime(2016,9,9,12,00,43));
+        end
+        function test_fqfilename(this)
+            this.verifyEqual(this.testObj.fqfilename, this.fqfilename)
         end
 	end
 
  	methods (TestClassSetup)
 		function setupXlsxObjScanData(this)
-            dataDir = fullfile(getenv('HOME'), 'Local', 'src', 'mlcvl', 'mlsiemens', 'data', '');
-            studyd = mlraichle.StudyData;
-            sessd  = mlraichle.SessionData( ...
-                'studyData', studyd, ...
-                'subjectsDir', dataDir, ...
-                'sessionPath', fullfile(dataDir, 'HYGLY28', ''));
- 			import mlsiemens.*;
- 			this.testObj_ = XlsxObjScanData('sessionData', sessd);
+ 			import mlsiemens.* mlraichle.*;
+            sessd = SessionData( ...
+                'studyData', StudyData, ...
+                'sessionPath', fullfile(this.subjectsDir, 'HYGLY28', ''), ...
+                'sessionDate', datetime('9-Sep-2016'));
+ 			this.testObj_ = XlsxObjScanData( ...
+                'sessionData', sessd, ...
+                'fqfilename', this.fqfilename);
  		end
 	end
 

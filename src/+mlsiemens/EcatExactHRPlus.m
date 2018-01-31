@@ -74,6 +74,9 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         % mlpet.IWellData        
         function idx  = get.scanIndex(this)
             names = regexp(this.component.fileprefix, mlpet.PETIO.SCAN_INDEX_EXPR, 'names');
+            if (length(names) > 1)
+                names = names(1);
+            end
             idx = str2double(names.idx);
         end
         function t    = get.tracer(this)
@@ -364,10 +367,14 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             addParameter(ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'scannerTimeShift', 0, @isnumeric);
             addParameter(ip, 'pie', [], @isnumeric);
+            addParameter(ip, 'dt', [], @isnumeric);
             parse(ip, varargin{:});
             this.sessionData_ = ip.Results.sessionData;
             this.scannerTimeShift_ = ip.Results.scannerTimeShift;
             this.pie_ = ip.Results.pie;
+            if (~isempty(ip.Results.dt))
+                this.dt_ = ip.Results.dt;
+            end
             
             this = this.append_descrip('decorated by EcatExactHRPlus');   
             this = this.readRec;
@@ -380,16 +387,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
     
     %% PROTECTED
     
-    properties (Access = 'protected')        
-        dt_
-        time0_
-        timeF_
-        times_
-        timeMidpoints_
-        taus_
-        timeInterpolants_
-        timeMidpointInterpolants_
-        
+    properties (Access = 'protected')
         header_
         pie_
         scannerTimeShift_

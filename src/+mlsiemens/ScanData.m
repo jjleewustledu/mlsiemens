@@ -22,13 +22,13 @@ classdef ScanData < mlpipeline.ScanData
                 this.assertSessionData('tracerRevision');
                 this.scannerData_ = BiographMMR.loadSession(this.sessionData, this.sessionData.tracerRevision);
             end
-            if (isempty(this.xlsxObj_) && ...
+            if (isempty(this.manualData_) && ...
                 lexist(this.sessionData.arterialSamplerCrv, 'file'))
                 this.aifData_ = mlpet.Twilite('twiliteCrv', this.sessionData.arterialSamplerCrv);
             end
-            if (isempty(this.xlsxObj_))
+            if (isempty(this.manualData_))
                 this.assertSessionData('CCIRRadMeasurements');
-                this.xlsxObj_ = XlsxObjScanData('filename', this.sessionData.CCIRRadMeasurements);
+                this.manualData_ = XlsxObjScanData('filename', this.sessionData.CCIRRadMeasurements);
             end
  		end
     end 

@@ -1,8 +1,8 @@
 classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
 	%% TEST_HERSCOVITCH1985 
 
-	%  Usage:  >> results = run(mlsiemens_unittest.Test_Herscovitch1985)
- 	%          >> result  = run(mlsiemens_unittest.Test_Herscovitch1985, 'test_dt')
+	%  Usage:  >> results = run(mlsiemens_unittest.Test_Herscovitch1985_visit1)
+ 	%          >> result  = run(mlsiemens_unittest.Test_Herscovitch1985_visit1, 'test_dt')
  	%  See also:  file:///Applications/Developer/MATLAB_R2014b.app/help/matlab/matlab-unit-test-framework.html
 
 	%  $Revision$
@@ -230,7 +230,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                         'filename', this.sessionData.arterialSamplerCrv, ...
                         'efficiencyFactor', this.twiliteEff, ...
                         'aifTimeShift', -20, ...
-                        'xlsxObj', XlsxObjScanData('sessionData', this.sessionData));
+                        'manualData', XlsxObjScanData('sessionData', this.sessionData));
                 case 'OO'
                     this.sessionData.tracer = 'OO';
                     pic = this.sessionData.oo( ...
@@ -248,7 +248,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                         'filename', this.sessionData.arterialSamplerCrv, ...
                         'efficiencyFactor', this.twiliteEff, ...
                         'aifTimeShift', -8, ...
-                        'xlsxObj', XlsxObjScanData('sessionData', this.sessionData));
+                        'manualData', XlsxObjScanData('sessionData', this.sessionData));
                 case 'OC'
                     this.sessionData.tracer = 'OC';
                     pic = this.sessionData.oc( ...
@@ -266,7 +266,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                         'filename', this.sessionData.arterialSamplerCrv, ...
                         'efficiencyFactor', this.twiliteEff, ...
                         'aifTimeShift', 0, ...
-                        'xlsxObj', XlsxObjScanData('sessionData', this.sessionData));
+                        'manualData', XlsxObjScanData('sessionData', this.sessionData));
                 otherwise
                     error('mlpet:unsupportedSwitchCase', 'Test_Herscovitch1985.configTracer');
             end

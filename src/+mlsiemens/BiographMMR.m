@@ -164,12 +164,12 @@ classdef BiographMMR < mlpet.AbstractScannerData
         end
         function this = set.isDecayCorrected(this, s)
             assert(islogical(s));            
-            dc = mlpet.DecayCorrection(this);   
+            dc = mlpet.DecayCorrection.factoryFor(this);   
             this.isDecayCorrected_ = s;
             if (~this.isDecayCorrected_ && length(this.component.size) == 4 && size(this.component,4) > 1)
                 tshift = seconds(this.doseAdminDatetime - this.datetime0);
                 if (tshift > 3600); tshift = 0; end %% KLUDGE
-                this.component.img = dc.uncorrectedCounts(this.component.img, tshift);
+                this.component.img = dc.uncorrectedActivities(this.component.img, tshift);
                 this.specificDecays_ = this.specificDecays;
             end            
         end
@@ -417,12 +417,12 @@ classdef BiographMMR < mlpet.AbstractScannerData
         end
         function tbl = readtable(this, varargin)
             ip = inputParser;
-            addOptional(ip, 'timingData', this.sessionData.timingData('typ', 'fqfn'), @(x) lexist(x, 'file'));
+            addOptional(ip, 'adhocTimings', this.sessionData.adhocTimings('typ', 'fqfn'), @(x) lexist(x, 'file'));
             parse(ip, varargin{:});
             
             warning('off', 'MATLAB:table:ModifiedVarnames');
             tbl = readtable(...
-                ip.Results.timingData, ...
+                ip.Results.adhocTimings, ...
                 'FileType', 'text', 'HeaderLines', this.READTABLE_HEADERLINES, 'ReadVariableNames', true, 'ReadRowNames', true);
             warning('on', 'MATLAB:table:ModifiedVarnames');
         end

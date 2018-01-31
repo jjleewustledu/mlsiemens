@@ -18,6 +18,10 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     properties
         isPlasma
         uncorrected = false
+        
+        % unused
+        decays
+        isDecayCorrected
     end
     
     properties (Dependent)
@@ -259,11 +263,11 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 this.img = this.img(:,:,:,1:length(this.times));
             end
             
-            dc = mlpet.DecayCorrection(this);            
+            dc = mlpet.DecayCorrection.factoryFor(this);            
             tshift = seconds(this.doseAdminDatetime - this.datetime0);
             if (tshift > 3600); tshift = 0; end %% KLUDGE
             if (this.uncorrected && length(this.component.size) == 4 && size(this.component,4) > 1)
-                this.component.img = dc.uncorrectedCounts(this.component.img, tshift);
+                this.component.img = dc.uncorrectedActivities(this.component.img, tshift);
                 this.decaysPerCC_ = this.decaysPerCC;
             end
             
@@ -285,12 +289,12 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         end
         function tbl  = readtable(this, varargin)
             ip = inputParser;
-            addOptional(ip, 'timingData', this.sessionData.timingData('typ', 'fqfn'), @(x) lexist(x, 'file'));
+            addOptional(ip, 'adhocTimings', this.sessionData.adhocTimings('typ', 'fqfn'), @(x) lexist(x, 'file'));
             parse(ip, varargin{:});
             
             warning('off', 'MATLAB:table:ModifiedVarnames');
             tbl = readtable(...
-                ip.Results.timingData, ...
+                ip.Results.adhocTimings, ...
                 'FileType', 'text', 'HeaderLines', this.READTABLE_HEADERLINES, 'ReadVariableNames', true, 'ReadRowNames', true);
             warning('on', 'MATLAB:table:ModifiedVarnames');
         end
@@ -400,6 +404,20 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function dt   = sec2datetime(this, s)
             dt = this.timingData_.sec2datetime(s);
         end
+        
+        % unused
+        function this = volumeContracted(this)
+        end
+        function this = timeContracted(this)
+        end
+        function this = specificActivityInterpolants(this)
+        end
+        function this = numelMasked(this)
+        end
+        function this = numel(this)
+        end
+        function this = decayInterpolants(this)
+        end
     end 
     
     %% PROTECTED
@@ -500,9 +518,6 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     %% HIDDEN
     
     methods (Hidden)
-        
-        function this = shiftWorldlines(this, ~)
-        end
         function m = calibrationMeasurement(~, m)
         end
     end
