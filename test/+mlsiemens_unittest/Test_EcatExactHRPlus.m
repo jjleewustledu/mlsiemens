@@ -40,7 +40,7 @@ classdef Test_EcatExactHRPlus < matlab.unittest.TestCase
         end
         function test_pie(this)
             this.verifyEqual(this.testObj.pie, this.pie);
-            this.verifyEqual(this.testObj.efficiencyFactor, 60*this.pie*this.testObj.dt);
+            this.verifyEqual(this.testObj.invEfficiency, 60*this.pie*this.testObj.dt);
         end
         function test_times(this)
             this.verifyEqual(this.testObj.times(4), 49.332999999999998);

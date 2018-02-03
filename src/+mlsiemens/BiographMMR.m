@@ -30,7 +30,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
         counts
         decays
         doseAdminDatetime  
-        efficiencyFactor
+        invEfficiency
         isDecayCorrected 
         isotope
         specificActivity
@@ -128,15 +128,15 @@ classdef BiographMMR < mlpet.AbstractScannerData
         function g    = get.isotope(this)
             g = this.sessionData.isotope;
         end
-        function g    = get.efficiencyFactor(this)
-            g = this.efficiencyFactor_;
+        function g    = get.invEfficiency(this)
+            g = this.invEfficiency_;
         end
         function g    = get.decays(this)
             g = this.activity.*this.taus;
         end
-        function this = set.efficiencyFactor(this, s)
+        function this = set.invEfficiency(this, s)
             assert(isnumeric(s));
-            this.efficiencyFactor_ = s;
+            this.invEfficiency_ = s;
         end
         
         % new        
@@ -316,7 +316,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
             addParameter(ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'consoleClockOffset', duration(0,0,0), @(x) isa(x, 'duration'));
             addParameter(ip, 'doseAdminDatetime', NaT, @(x) isa(x, 'datetime'));
-            addParameter(ip, 'efficiencyFactor', 1, @isnumeric);
+            addParameter(ip, 'invEfficiency', 1, @isnumeric);
             addParameter(ip, 'timingData', [], @(x) isa(x, 'mldata.ITimingData'));
             parse(ip, varargin{:});
             this.sessionData_ = ip.Results.sessionData;
@@ -340,8 +340,8 @@ classdef BiographMMR < mlpet.AbstractScannerData
                 this.img = this.img(:,:,:,1:length(this.times));
             end                     
             
-            this.efficiencyFactor_ = ip.Results.efficiencyFactor;
-            this.component.img = this.component.img*this.efficiencyFactor;
+            this.invEfficiency_ = ip.Results.invEfficiency;
+            this.component.img = this.component.img*this.invEfficiency;
             
             this = this.append_descrip('decorated by BiographMMR');
         end        
@@ -352,7 +352,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
     properties (Access = protected)
         consoleClockOffset_
         doseAdminDatetime_
-        efficiencyFactor_
+        invEfficiency_
         isDecayCorrected_ = true;
         specificDecays_ % cache
         tableSif_

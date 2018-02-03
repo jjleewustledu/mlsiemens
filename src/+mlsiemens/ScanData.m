@@ -45,7 +45,7 @@ classdef ScanData < mlpipeline.ScanData
 %             this.scannerData_.time0 = ;
 %             this.scannerData_.timeDuration = ;
 %             this.scannerData_.dt = ;
-%             this.aifData_.efficiencyFactor = ;
+%             this.aifData_.invEfficiency = ;
 %             this.aifData_.aifTimeShift = ;
             
                         

@@ -44,7 +44,7 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
             this.verifyClass(this.testObj.tracerAdmin, 'table');
             this.verifyEqual( ...
                 this.testObj.tracerAdmin.ADMINistrationTime_Hh_mm_ss('C[15O]'), ...
-                datetime(2016,9,9,10,09,19));
+                datetime(2016,9,9,10,11,36));
             this.verifyEqual( ...
                 this.testObj.tracerAdmin.TrueAdmin_Time_Hh_mm_ss('C[15O]'), ...
                 datetime(2016,9,9,10,09,19));
@@ -76,6 +76,22 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
         end
         function test_fqfilename(this)
             this.verifyEqual(this.testObj.fqfilename, this.fqfilename)
+        end
+        function test_mMR(this)
+            disp(this.testObj.mMR);
+        end
+        
+        function test_capracInvEfficiency(this)
+            import mlsiemens.*;
+            masses0 = CalibrationVisitor.aperture_mass_;
+            masses  = linspace(0.01, 3 - 0.01, 100);
+            invEff0 = CalibrationVisitor.aperture_pred_ ./ mlsiemens.CalibrationVisitor.aperture_meas_;
+            invEff  = this.testObj.capracInvEfficiency(1, masses);
+            figure;
+            plot(masses0, invEff0, 'o', masses, invEff, '-');
+            title(sprintf('%s:  test_capracInvEfficiency', class(this)), 'Interpreter', 'none');
+            xlabel('mass / g');
+            ylabel('Caprac efficiency^{-1}');
         end
 	end
 

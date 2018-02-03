@@ -41,7 +41,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         counts 
         activity
         isotope
-        efficiencyFactor
+        invEfficiency
         
         % new        
         hdrinfoFqfilename
@@ -200,7 +200,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             error('mlsiemens:indeterminatePropertyValue', ...
                 'EcatExactHRPlus.guessIsotope could not recognize the isotope of %s', this.tracer);
         end  
-        function e    = get.efficiencyFactor(this)
+        function e    = get.invEfficiency(this)
             e = this.W;
         end
         

@@ -16,6 +16,7 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         phantom
         capracCalibration
         twilite
+        mMR
         
         referenceDate
         sessionData
@@ -55,6 +56,9 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         function g = get.twilite(this)
             g = this.twilite_;
         end
+        function g = get.mMR(this)
+            g = this.mMR_;
+        end
         
         function g = get.referenceDate(this)
             if (isempty(this.capracHeader))
@@ -69,22 +73,20 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         
         %%
         
-        function sa   = correctFillingFactor(~, sa, m)
+        function sa   = capracInvEfficiency(this, sa, m)
             % @param sa is specific activity.
             % @param m is sample mass /g.
             
-            sa = 1592.7*sa ./ (53.495*m.^4 - 298.43*m.^3 + 191.17*m.^2 + 1592.7*m);
+            sa = this.calibrationVisitor_.capracInvEfficiency(sa, m);
         end
-        function sa   = capracCalibrationSpecificActivity(this)
-            sa = this.capracCalibration_.Ge_68_Kdpm;
-            sa = dt_(~isnan(sa));
+        function sa   = capracCalibrationSpecificActivity(this, varargin)
+            sa = this.calibrationVisitor_.capracCalibrationSpecificActivity(varargin{:}); 
         end
-        function dt_  = capracCalibrationDatetime(this)
-            dt_ = this.capracCalibration_.TIMEDRAWN_Hh_mm_ss;
-            dt_ = dt_(~isnat(dt_));
+        function dt_  = capracCalibrationTimesDrawn(this, varargin)
+            dt_ = this.calibrationVisitor_.capracCalibrationTimesDrawn;
         end
         function sa   = fdgGe68(this, varargin)
-            sa = this.correctFillingFactor(this.fdg_.Ge_68_Kdpm, this.fdg_.MASSSAMPLE_G);
+            sa = this.capracInvEfficiency(this.fdg_.Ge_68_Kdpm, this.fdg_.MASSSAMPLE_G);
             sa = sa(this.fdgValid_);
             if (~isempty(varargin))
                 sa = sa(varargin{:});
@@ -98,7 +100,7 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             end
         end % DRAWN
         function sa   = ooGe68(this, varargin)
-            sa = this.correctFillingFactor(this.oo_.Ge_68_Kdpm, this.oo_.MASSSAMPLE_G);
+            sa = this.capracInvEfficiency(this.oo_.Ge_68_Kdpm, this.oo_.MASSSAMPLE_G);
             sa = sa(this.ooValid_);
             if (~isempty(varargin))
                 sa = sa(varargin{:});
@@ -111,12 +113,19 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
                 dt_ = dt_(varargin{:});
             end
         end % DRAWN
+        function sa   = mMRSpecificActivity(this)
+            sa = this.mMR_.ROIMean_KBq_mL('ROI1');
+        end
+        function dt_  = mMRDatetime(this)
+            dt_ = this.mMR_.scanStartTime_Hh_mm_ss('ROI1') - ...
+                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR console'));
+        end
         function sa   = phantomSpecificActivity(this)
             sa = this.phantom_.DECAYCorrSpecificActivity_KBq_mL;
         end
         function dt_  = phantomDatetime(this)
-            dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose');
-            dt_ = dt_{1};
+            dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
+                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
         end
         function this = readtable(this, varargin)
             ip = inputParser;
@@ -151,7 +160,8 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             this.cyclotron_ = this.correctDates2( ...
                 readtable(ip.Results.fqfnXlsx, ...
                 'Sheet', 'Twilite Calibration - Runs-2', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true));
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true), ...
+                'mMR PEVCO lab');
             this.phantom_ = ...
                 readtable(ip.Results.fqfnXlsx, ...
                 'Sheet', 'Twilite Calibration - Runs-2-1', ...
@@ -164,6 +174,10 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
                 readtable(ip.Results.fqfnXlsx, ...
                 'Sheet', 'Twilite Calibration - Runs-2-1-', ...
                 'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
+            this.mMR_ = this.correctDates2( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Twilite Calibration - Runs-2-11', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true, 'DatetimeType', 'exceldatenum'));
             
             warning('on', 'MATLAB:table:ModifiedVarnames');
             warning('on', 'MATLAB:table:ModifiedAndSavedVarnames'); 
@@ -222,6 +236,7 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             this.timingData_               = ip.Results.timingData;
             this.forceDateToReferenceDate_ = ip.Results.forceDateToReferenceDate;
  			this = this.readtable;        
+            this.calibrationVisitor_       = mlsiemens.CalibrationVisitor(this);
  		end
     end 
     
@@ -238,11 +253,13 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         phantom_
         capracCalibration_
         twilite_
+        mMR_
         
         sessionData_
         timingData_
         fdgValid_
         ooValid_
+        calibrationVisitor_
     end
     
     methods (Static, Access = private)
@@ -282,7 +299,7 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             %dt.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
             s   = pm*seconds(dt_ - datetime(dt_.Year, dt_.Month, dt_.Day));
         end
-        function tbl  = correctDates2(this, tbl)
+        function tbl  = correctDates2(this, tbl, varargin)
             vars = tbl.Properties.VariableNames;
             for v = 1:length(vars)
                 col = tbl.(vars{v});
@@ -293,7 +310,7 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
                         if (~this.isTrueTiming(vars{v}))
                             col(lrows) = ...
                                 this.datetimeConvertFromExcel2(tbl{lrows,v}) - ...
-                                seconds(this.clocks.TimeOffsetWrtNTS____s('hand timers'));
+                                this.adjustClock4(vars{v}, varargin{:});
                         else
                             col(lrows) = ...
                                 this.datetimeConvertFromExcel2(tbl{lrows,v});
@@ -306,6 +323,28 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
                 end
                 tbl.(vars{v}) = col;
             end
+        end
+        function dt_  = adjustClock4(this, varargin)
+            ip = inputParser;
+            addRequired(ip, 'varName', @ischar);
+            addOptional(ip, 'wallClockName', '', @ischar);
+            parse(ip, varargin{:});            
+            vN = lower(ip.Results.varName);
+            wCN = ip.Results.wallClockName;
+            
+            if (~isempty(wCN))
+                dt_ = seconds(this.clocks.TimeOffsetWrtNTS____s(wCN));
+                return
+            end
+            if (lstrfind(vN, 'drawn'))
+                dt_ = seconds(this.clocks.TimeOffsetWrtNTS____s('hand timers')); 
+                return
+            end
+            if (lstrfind(vN, 'counted'))
+                dt_ = seconds(this.clocks.TimeOffsetWrtNTS____s('CT radiation lab'));
+                return
+            end
+            dt_ = seconds(0);
         end
         function tf   = hasTimings(~, var)
             tf = lstrfind(lower(var), 'time') | lstrfind(lower(var), 'hh_mm_ss');

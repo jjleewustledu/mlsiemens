@@ -9,18 +9,50 @@ classdef CalibrationBuilder < mlpet.ICalibrationBuilder
 	properties 		
         consoleClockOffset
         doseAdminDatetime
-        efficiencyFactor
- 	end
+        invEfficiency
+    end
+    
+    properties (Dependent)
+        product
+    end
 
 	methods 
+        function this = buildCounts(this)
+        end
+        function this = buildSpecificActivity(this)
+            import mlswisstrace.*;
+            twil = Twilite( ...
+                'fqfilename', '', ...
+                'sessionData', this.sessionData_, ...
+                'scannerData', this.scannerData_, ...
+                'doseAdminDatetime', this.doseAdminDatetime_);
+            twilCal = TwiliteCalibration( ...
+                'fqfilename', '', ...
+                'sessionData', this.sessionData_, ...
+                'scannerData', this.scannerData_, ...
+                'doseAdminDatetime', this.doseAdminDatetime_);
+            specEff = this.manMeasures_.phantomSpecificActivity / ...
+                      twilCal.coincidenceAtDatetime(this.manMeasures_.phantomDatetime);
+            this.product_ = twil.coincidence * specEff;
+        end
 		  
  		function this = CalibrationBuilder(varargin)
  			%% CALIBRATIONBUILDER
- 			%  Usage:  this = CalibrationBuilder()
-
- 			this = this@mlpet.ICalibrationBuilder(varargin{:});
+            %  @param named manMeasures is an mldata.IManualMeasurements.
+            
+            
  		end
- 	end 
+    end 
+    
+    %% PRIVATE
+    
+    properties (Access = private)
+        doseAdminDatetime_
+        manMeasures_
+        product_
+        scannerData_
+        sessionData_
+    end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
  end

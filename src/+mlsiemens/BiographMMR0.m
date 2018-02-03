@@ -44,7 +44,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         counts
         activity
         isotope
-        efficiencyFactor
+        invEfficiency
         
         %% new
         
@@ -157,12 +157,12 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         function g    = get.isotope(this)
             g = this.sessionData.isotope;
         end
-        function g    = get.efficiencyFactor(this)
-            g = this.efficiencyFactor_;
+        function g    = get.invEfficiency(this)
+            g = this.invEfficiency_;
         end
-        function this = set.efficiencyFactor(this, s)
+        function this = set.invEfficiency(this, s)
             assert(isnumeric(s));
-            this.efficiencyFactor_ = s;
+            this.invEfficiency_ = s;
         end
         
         %% new
@@ -243,7 +243,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'consoleClockOffset', 0, @(x) isa(x, 'duration'));
             addParameter(ip, 'doseAdminDatetime', datetime('now'), @(x) isa(x, 'datetime'));
-            addParameter(ip, 'efficiencyFactor', 1, @isnumeric);
+            addParameter(ip, 'invEfficiency', 1, @isnumeric);
             parse(ip, varargin{:});
             this.sessionData_ = ip.Results.sessionData;
             this.consoleClockOffset_ = ip.Results.consoleClockOffset;
@@ -271,8 +271,8 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 this.decaysPerCC_ = this.decaysPerCC;
             end
             
-            this.efficiencyFactor_ = ip.Results.efficiencyFactor;
-            this.component.img = this.component.img*this.efficiencyFactor;
+            this.invEfficiency_ = ip.Results.invEfficiency;
+            this.component.img = this.component.img*this.invEfficiency;
             
             this = this.append_descrip('decorated by BiographMMR0');
         end
@@ -285,7 +285,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             parse(ip, varargin{:});
             
             cc = mlpet.CrossCalibrator(varargin{:});
-            this.efficiencyFactor_ = cc.scannerEfficiency;
+            this.invEfficiency_ = cc.scannerEfficiency;
         end
         function tbl  = readtable(this, varargin)
             ip = inputParser;
@@ -426,7 +426,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         consoleClockOffset_
         decaysPerCC_ % cache
         doseAdminDatetime_
-        efficiencyFactor_
+        invEfficiency_
         mask_
         scannerTimeShift_
         sessionData_
