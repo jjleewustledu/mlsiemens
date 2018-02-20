@@ -11,8 +11,9 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
 	properties
-        fqfilename = '/data/nil-bluearc/raichle/PPGdata/jjlee2/Documents/CCIRRadMeasurements 2016sep9.xlsx'
+        fqfilename = fullfile(getenv('HOME'), 'Documents/private/CCIRRadMeasurements 2016sep9.xlsx')
  		registry
+        sessd
         subjectsDir = '/data/nil-bluearc/raichle/PPGdata/jjlee2'
  		testObj
  	end
@@ -21,13 +22,18 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
         function test_capracHeader(this)
             this.verifyClass(this.testObj.capracHeader, 'table');
             datecell = this.testObj.capracHeader{1,2};
-            this.verifyEqual(datecell{1}, '09-Sep-2016');
+            [~,d] = version;
+            if (datetime(d) >= datetime(2016,9,7))
+                this.verifyEqual(datecell{1}, '09-Sep-2016');
+                return
+            end
+            this.verifyEqual(datecell{1}, '41160');
         end
         function test_fdg(this)
             import mldata.TimingData.*;
             this.verifyClass(this.testObj.fdg, 'table');
             this.verifyEqual( ...
-                this.testObj.fdg.TIMEDRAWN_Hh_mm_ss(1), datetime(2016,9,9,12,01,02));
+                this.testObj.fdg.TIMEDRAWN_Hh_mm_ss(1), setPreferredTimeZone(datetime(2016,9,9,12,01,02)));
             this.verifyEqual( ...
                 this.testObj.fdg.Ge_68_Kdpm(1), 0);
         end
@@ -35,7 +41,7 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
             import mldata.TimingData.*;
             this.verifyClass(this.testObj.oo, 'table');
             this.verifyEqual( ...
-                this.testObj.oo.TIMEDRAWN_Hh_mm_ss(1), datetime(2016,9,9,10,23,08));
+                this.testObj.oo.TIMEDRAWN_Hh_mm_ss(1), setPreferredTimeZone(datetime(2016,9,9,10,23,08)));
             this.verifyEqual( ...
                 this.testObj.oo.Ge_68_Kdpm(1), 442.8);
         end
@@ -44,10 +50,10 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
             this.verifyClass(this.testObj.tracerAdmin, 'table');
             this.verifyEqual( ...
                 this.testObj.tracerAdmin.ADMINistrationTime_Hh_mm_ss('C[15O]'), ...
-                datetime(2016,9,9,10,11,36));
+                setPreferredTimeZone(datetime(2016,9,9,10,11,36)));
             this.verifyEqual( ...
                 this.testObj.tracerAdmin.TrueAdmin_Time_Hh_mm_ss('C[15O]'), ...
-                datetime(2016,9,9,10,09,19));
+                setPreferredTimeZone(datetime(2016,9,9,10,09,19)));
             this.verifyEqual( ...
                 this.testObj.tracerAdmin.dose_MCi('C[15O]'), 21);
         end
@@ -61,21 +67,26 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
             this.verifyEqual(this.testObj.clocks.TimeOffsetWrtNTS____s('2nd PEVCO lab'), 0);
         end
         function test_referenceDate(this)
-            this.verifyEqual(this.testObj.referenceDate, datetime(this.testObj.capracHeader{1,2}));
+            this.verifyEqual(this.testObj.referenceDate, datetime(2016,9,9, 'TimeZone', 'America/Chicago'));
         end
         function test_datetime(this)
         end
-        function test_fdgTimesDrawn(this)
-            this.verifyEqual(this.testObj.fdgTimesDrawn(1), datetime(2016,9,9,12,01,02));
-        end
-        function test_ooTimesDrawn(this)
-            this.verifyEqual(this.testObj.ooTimesDrawn(1), datetime(2016,9,9,10,23,08));
-        end
         function test_referenceDatetime(this)
-            this.verifyEqual(this.testObj.referenceDatetime, datetime(2016,9,9,12,00,43));
+            this.verifyEqual(this.testObj.referenceDatetime, setPreferredTimeZone(datetime(2016,9,9,12,00,43)));
         end
         function test_fqfilename(this)
+            import mlsiemens.*;
             this.verifyEqual(this.testObj.fqfilename, this.fqfilename)
+            obj = XlsxObjScanData('sessionData', this.sessd);
+            this.verifyEqual(obj.fqfilename, this.fqfilename);
+        end
+        function test_fqfilename2(this)
+            import mlsiemens.*;
+            sessd_ = this.sessd;
+            sessd_.sessionDate = datetime(2016, 9, 23);
+            obj = XlsxObjScanData('sessionData', sessd_);
+            this.verifyEqual(obj.fqfilename, ...
+                fullfile(getenv('HOME'), 'Documents/private/CCIRRadMeasurements 2016sep23.xlsx'));
         end
         function test_mMR(this)
             disp(this.testObj.mMR);
@@ -98,12 +109,12 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
  	methods (TestClassSetup)
 		function setupXlsxObjScanData(this)
  			import mlsiemens.* mlraichle.*;
-            sessd = SessionData( ...
+            this.sessd = SessionData( ...
                 'studyData', StudyData, ...
                 'sessionPath', fullfile(this.subjectsDir, 'HYGLY28', ''), ...
                 'sessionDate', datetime('9-Sep-2016'));
  			this.testObj_ = XlsxObjScanData( ...
-                'sessionData', sessd, ...
+                'sessionData', this.sessd, ...
                 'fqfilename', this.fqfilename);
  		end
 	end

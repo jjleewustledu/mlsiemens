@@ -16,12 +16,12 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     end
     
     properties
-        isPlasma
+        isPlasma = false
         uncorrected = false
         
         % unused
         decays
-        isDecayCorrected
+        isDecayCorrected = true
     end
     
     properties (Dependent)
@@ -69,11 +69,11 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             this.sessionData_ = s;
         end
         function g    = get.consoleClockOffset(this)
-            g = this.consoleClockOffset_;
+            g = this.sessionData.consoleClockOffset;
         end
         function this = set.consoleClockOffset(this, s)
             assert(isa(s, 'duration'));
-            this.consoleClockOffset_ = s;
+            this.sessionData.consoleClockOffset = s;
         end
         function g    = get.datetime0(this)
             g = this.timingData_.datetime0;
@@ -241,21 +241,21 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             
             ip = inputParser;
             addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
-            addParameter(ip, 'consoleClockOffset', 0, @(x) isa(x, 'duration'));
+            addParameter(ip, 'consoleClockOffset', seconds(8), @(x) isa(x, 'duration'));
             addParameter(ip, 'doseAdminDatetime', datetime('now'), @(x) isa(x, 'datetime'));
-            addParameter(ip, 'invEfficiency', 1, @isnumeric);
+            addParameter(ip, 'invEfficiency', 1.155, @isnumeric); % from HYGLY28/V2
+            addParameter(ip, 'manualData', [],  @(x) isa(x, 'mldata.IManualMeasurements'));
             parse(ip, varargin{:});
             this.sessionData_ = ip.Results.sessionData;
-            this.consoleClockOffset_ = ip.Results.consoleClockOffset;
+            this.sessionData_.consoleClockOffset = ip.Results.consoleClockOffset;
             this.doseAdminDatetime_ = ip.Results.doseAdminDatetime;
             this.doseAdminDatetime_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+            this.manualData_ = ip.Results.manualData;
             
-            this.tableSif_    = this.readtable;
-            this.timingData_  = mldata.TimingData( ...
-                'times',         this.tableSif_{:,'Start_msec_'}/1000, ...
-                'timeMidpoints', this.tableSif_{:,'Midpoint_sec_'}, ...
-                'taus',          this.tableSif_{:,'Length_msec_'}/1000, ...
-                'datetime0',     this.readDatetime0);
+            %this.tableSif_    = this.readtable;
+            this.timingData_ = mldata.TimingData( ...
+                'times',     this.sessionData.times, ...
+                'datetime0', this.sessionData.readDatetime0);
             if (length(this.times) > size(this, 4))
                 this.times = this.times(1:size(this, 4));
             end
@@ -263,11 +263,9 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 this.img = this.img(:,:,:,1:length(this.times));
             end
             
-            dc = mlpet.DecayCorrection.factoryFor(this);            
-            tshift = seconds(this.doseAdminDatetime - this.datetime0);
-            if (tshift > 3600); tshift = 0; end %% KLUDGE
+            dc = mlpet.DecayCorrection.factoryFor(this);
             if (this.uncorrected && length(this.component.size) == 4 && size(this.component,4) > 1)
-                this.component.img = dc.uncorrectedActivities(this.component.img, tshift);
+                this.component.img = dc.uncorrectedActivities(this.component.img, 0);
                 this.decaysPerCC_ = this.decaysPerCC;
             end
             
@@ -277,15 +275,8 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             this = this.append_descrip('decorated by BiographMMR0');
         end
         
-        function this = crossCalibrate(this, varargin)
-            ip = inputParser;
-            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.IScanner'));
-            addParameter(ip, 'wellCounter', [], @(x) isa(x, 'mlpet.IBloodData'));
-            addParameter(ip, 'aifSampler', this, @(x) isa(x, 'mlpet.IAifData'));
-            parse(ip, varargin{:});
-            
-            cc = mlpet.CrossCalibrator(varargin{:});
-            this.invEfficiency_ = cc.scannerEfficiency;
+        function this = buildCalibrated(this)
+            this.invEfficiency_ = this.invEfficiency_;
         end
         function tbl  = readtable(this, varargin)
             ip = inputParser;
@@ -308,6 +299,8 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         end
         function this = shiftTimes(this, Dt)
             [this.times_,this.component.img] = shiftTensor(this.times_, this.component.img, Dt);
+        end
+        function this = shiftWorldlines(this)
         end
         function [t,this] = timeInterpolants(this, varargin)
             [t,this] = this.timingData_.timeInterpolants(varargin{:});
@@ -359,6 +352,18 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
             dyn = dyn.masked(msk);
             this.component = dyn.component;
+        end
+        function        plot(this)
+            if (isscalar(this.img))
+                fprintf(this.img);
+            end
+            if (isvector(this.img))
+                plot(this.times, this.img);
+                xlabel('BiographMMR0.times');
+                ylabel('BiographMMR0.img');
+                return
+            end
+            this.view;
         end
         function this = petobs(this)
             this.fileprefix = [this.fileprefix '_obs'];
@@ -423,21 +428,22 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     %% PROTECTED
     
     properties (Access = protected)
-        consoleClockOffset_
         decaysPerCC_ % cache
         doseAdminDatetime_
         invEfficiency_
+        manualData_
         mask_
         scannerTimeShift_
         sessionData_
-        tableSif_
+        %tableSif_
         timingData_        
     end
     
     methods (Static, Access = protected)
         function yi = pchip(x, y, xi)
             lenxi = length(xi);
-            if (xi(end) < x(end) && all(x(1:lenxi) == xi))
+            if (xi(end) < x(end) && all(xi == x(1:lenxi))) % xi \subset x
+                % yi := truncated y
                 switch (length(size(y)))
                     case 2
                         yi = y(:,1:lenxi);
@@ -450,7 +456,8 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 end
                 return
             end
-            yi = pchip(x, y, xi);
+            
+            yi = pchip(x, y, xi); % understands x = xi
         end
     end
     
@@ -461,7 +468,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             img = double(img);
             switch (length(size(img))) 
                 case 2
-                    img = img .* this.taus';
+                    img = ensureRowVector(img) .* ensureRowVector(this.taus);
                 case 3
                     for t = 1:size(img, 3)
                         img(:,:,t) = img(:,:,t) * this.taus(t);
@@ -481,7 +488,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
             img = double(img);
             switch (length(size(img))) 
                 case 2
-                    img = img ./ this.taus';
+                    img = ensureRowVector(img) ./ ensureRowVector(this.taus);
                 case 3
                     for t = 1:size(img, 3)
                         img(:,:,t) = img(:,:,t) / this.taus(t);
@@ -494,22 +501,6 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                     error('mlsiemens:unsupportedArraySize', ...
                           'size(BiographMMR0.petCounts2activity.img) -> %s', mat2str(size(img)));
             end
-        end
-        function dt0 = readDatetime0(this)
-            mhdr = this.sessionData.tracerListmodeMhdr;
-            lp = mlio.LogParser.load(mhdr);
-            [dateStr,idx] = lp.findNextCell('%study date (yyyy:mm:dd):=', 1);
-             timeStr      = lp.findNextCell('%study time (hh:mm:ss GMT+00:00):=', idx);
-            dateNames = regexp(dateStr, '%study date \(yyyy\:mm\:dd\)\:=(?<Y>\d\d\d\d)\:(?<M>\d+)\:(?<D>\d+)', 'names');
-            timeNames = regexp(timeStr, '%study time \(hh\:mm\:ss GMT\+00\:00\)\:=(?<H>\d+)\:(?<MI>\d+)\:(?<S>\d+)', 'names');
-            Y  = str2double(dateNames.Y);
-            M  = str2double(dateNames.M);
-            D  = str2double(dateNames.D);
-            H  = str2double(timeNames.H) + this.HOUR_KLUDGE;
-            MI = str2double(timeNames.MI);
-            S  = str2double(timeNames.S);
-            dt0 = datetime(Y,M,D,H,MI,S,'TimeZone','UTC') + this.consoleClockOffset;
-            dt0.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
         end
     end
 

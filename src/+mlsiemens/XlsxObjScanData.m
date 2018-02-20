@@ -8,21 +8,94 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
     
 	properties (Dependent)
         capracHeader
-        fdg
-        oo
-        tracerAdmin
-        clocks
-        cyclotron
-        phantom
-        capracCalibration
-        twilite
-        mMR
+        % this.capracHeader -> 4×4 table
+        %     Var1             Var2                   Var3                   Var4    
+        % _____________    _____________    _________________________    ____________
+        % 'DATE:'          '09-Sep-2016'    'PROJECT ID:'                'CCIR_00754'
+        % 'SUBJECT ID:'    'HYGLY28'        'PRINCIPLE INVESTIGATOR:'    'Arbelaez'  
+        % 'ISOTOPES:'      ''               'DOSES DELIVERED / mCi:'     '115.9'     
+        % ''               ''               'OPERATOR:'                  'JJL'   
         
+        fdg
+        % this.fdg -> 38×17 table
+        % TUBE       Time_Hh_mm_ss        COUNTS_Cpm    countsS_E__Cpm    ENTERED     TRACER       TIMEDRAWN_Hh_mm_ss     TIMECOUNTED_Hh_mm_ss    W_01_Kcpm    CF_Kdpm    Ge_68_Kdpm    MASSDRY_G    MASSWET_G      MASSSAMPLE_G       apertureCorrGe_68_Kdpm_G    TRUEDECAY_APERTURECORRGe_68_Kdpm_G          COMMENTS      
+        % ____    ____________________    __________    ______________    _______    _________    ____________________    ____________________    _________    _______    __________    _________    _________    _________________    ________________________    __________________________________    ____________________
+        % 26      09-Sep-2016 11:37:00    '813'         NaN               false      '[18F]DG'    09-Sep-2016 12:01:02    09-Sep-2016 12:09:18      NaN          NaN           0        3.7736       4.3328                  0.5592                    0                           0                     ''                  
+        % ...
+        
+        oo
+        % this.oo -> 4×17 table
+        % TUBE       Time_Hh_mm_ss        COUNTS_Cpm    countsS_E__Cpm    ENTERED     TRACER      TIMEDRAWN_Hh_mm_ss     TIMECOUNTED_Hh_mm_ss    W_01_Kcpm    CF_Kdpm    Ge_68_Kdpm    MASSDRY_G    MASSWET_G    MassSample_G    apertureCorrGe_68_Kdpm_G    DECAY_APERTURECORRGe_68_Kdpm_G    COMMENTS
+        % ____    ____________________    __________    ______________    _______    ________    ____________________    ____________________    _________    _______    __________    _________    _________    ____________    ________________________    ______________________________    ________
+        % '1'     09-Sep-2016 09:12:00    189           NaN               true       'O[15O]'    09-Sep-2016 10:23:08    09-Sep-2016 10:29:57    NaN          NaN        442.8         3.7859       5.5693       1.7834          307.050645885317            1589.89417549421                  ''      
+        % 'P1'    09-Sep-2016 10:14:00    210           NaN               true       'O[15O]'    09-Sep-2016 10:23:08    09-Sep-2016 10:34:37    NaN          NaN        21.07         3.8478       4.5595       0.7117          29.5276730836604            748.030808434861                  'Plasma'
+        % '2'     09-Sep-2016 10:44:00    224           NaN               true       'O[15O]'    09-Sep-2016 11:23:45    09-Sep-2016 11:32:10    NaN          NaN        126.3         3.8263       5.3021       1.4758          97.5833310265788            734.626175043027                  ''      
+        % 'P2'    NaT                     NaN           NaN               false      'O[15O]'    09-Sep-2016 11:23:45    09-Sep-2016 11:34:52    NaN          NaN        21.98         3.7965       4.4618       0.6653            32.81426432084             619.00902301696                  'Plasma'
+        
+        tracerAdmin       
+        % this.tracerAdmin -> 7×4 table
+        %              ADMINistrationTime_Hh_mm_ss    TrueAdmin_Time_Hh_mm_ss    dose_MCi    COMMENTS
+        %              ___________________________    _______________________    ________    ________
+        % C[15O]       09-Sep-2016 10:11:36           09-Sep-2016 10:09:19         21        NaN     
+        % O[15O]       09-Sep-2016 10:27:24           09-Sep-2016 10:25:07         18        NaN     
+        % H2[15O]      09-Sep-2016 10:43:04           09-Sep-2016 10:40:47       20.7        NaN     
+        % C[15O]_1     09-Sep-2016 10:59:56           09-Sep-2016 10:57:39         15        NaN     
+        % O[15O]_1     09-Sep-2016 11:28:31           09-Sep-2016 11:26:14         16        NaN     
+        % H2[15O]_1    09-Sep-2016 11:43:35           09-Sep-2016 11:41:18       20.3        NaN     
+        % [18F]DG      09-Sep-2016 12:03:00           09-Sep-2016 12:00:43        4.9        NaN      
+        
+        clocks        
+        % this.clocks -> 6×1 table
+        %                     TimeOffsetWrtNTS____s
+        %                     _____________________
+        % mMR console            7                 
+        % PMOD workstation       0                 
+        % mMR PEVCO lab       -118                 
+        % CT radiation lab       0                 
+        % hand timers          137                 
+        % 2nd PEVCO lab          0  
+        
+        cyclotron
+        % this.cyclotron -> 3×8 table
+        %                           time_Hh_mm_ss             dose_MCi        CYCLOTRONLOTID       CYCLOTRONTIME        CyclotronActivity_MCi_ML    CyclotronVolume_ML    ExpectedDose_MCi            COMMENTS        
+        %                       ______________________    ________________    ______________    ____________________    ________________________    __________________    ________________    ________________________
+        % syringe + cap dose    '09-Sep-2016 12:33:30'                3.02    'F1-090916'       09-Sep-2016 06:12:00    69.2                        0.4                   2.51974444007394    ''                      
+        % residual dose         '09-Sep-2016 12:33:30'                 0.5    ''                NaT                      NaN                        NaN                                NaN    'guessing residual dose'
+        % net dose              ''                        2.48889898928836    ''                NaT                      NaN                        NaN                                NaN    ''                      
+
+        phantom
+        % this.phantom -> 1×5 table
+        % PHANTOM    OriginalVolume_ML    NetVolume_phantom_Dose__ML    DECAYCorrSpecificActivity_KBq_mL    COMMENTS
+        % _______    _________________    __________________________    ________________________________    ________
+        % NaN        500                  500                           136.810825779928                    NaN     
+        
+        capracCalibration
+        % this.capracCalibration -> 3×19 table
+        % WELLCOUNTER       Time_Hh_mm_ss        COUNTS_Cpm    countsS_E__Cpm    ENTERED     TRACER       TIMEDRAWN_Hh_mm_ss     TIMECOUNTED_Hh_mm_ss    W_01_Kcpm    CF_Kdpm    Ge_68_Kdpm    MASSDRY_G    MASSWET_G    MassSample_G    apertureCorrGe_68_Kdpm_G    DECAY_APERTURECORRGe_68_Kdpm_G    DECAYCorrSpecificActivity_KBq_mL    S_A__S_A_OFDOSECALIB_        COMMENTS    
+        % ___________    ____________________    __________    ______________    _______    _________    ____________________    ____________________    _________    _______    __________    _________    _________    ____________    ________________________    ______________________________    ________________________________    _____________________    ________________
+        % NaN            09-Sep-2016 12:45:45    266           NaN               true       '[18F]DG'    09-Sep-2016 12:31:13    09-Sep-2016 12:43:09    NaN          NaN        2977          3.8113       5.8967       2.0854          1928.97650059354            1504.106976004                    25.0684496000667                    0.183234400181105        'failed mixing?'
+        % NaN            NaT                     NaN           NaN               false      '[18F]DG'    NaT                     NaT                     NaN          NaN         NaN             NaN          NaN            0                       NaN                       NaN                                 NaN                                  NaN        ''              
+        % NaN            NaT                     NaN           NaN               false      '[18F]DG'    NaT                     NaT                     NaN          NaN         NaN             NaN          NaN            0                       NaN                       NaN                                 NaN                                  NaN        ''              
+        
+        twilite
+        % this.twilite -> 3×11 table
+        %                            TWILITE                               CathPlace_mentTime_Hh_mm_ss    EnclosedCatheterLength_Cm    VISIBLEVolume_ML     TwiliteBaseline_CoincidentCps    TwiliteLoaded_CoincidentCps    SpecificCountRate_Kcps_mL    SpecificACtivity_KBq_mL    DECAYCORRSpecificActivity_KBq_mL    S_A__S_A_OFDOSECALIB_    COMMENTS
+        % _____________________________________________________________    ___________________________    _________________________    _________________    _____________________________    ___________________________    _________________________    _______________________    ________________________________    _____________________    ________
+        % 'Medex REF 536035, 152.4 cm  Ext. W/M/FLL Clamp APV = 1.1 mL'    08-Sep-2012 13:22:33           20                           0.144356955380577    91.3                             148.3                          0.394854545454546            116.60378508               116.60378508                        0.852299402589435        NaN     
+        % 'Medex'                                                          08-Sep-2012 13:22:33           20                           0.144356955380577     NaN                               NaN                                          0                       0                        NaN                                      NaN        NaN     
+        % 'Medex'                                                          08-Sep-2012 13:22:33           20                           0.144356955380577     NaN                               NaN                                          0                       0                        NaN                                      NaN        NaN     
+
+        mMR
+        % this.mMR -> 3×9 table
+        %         scanStartTime_Hh_mm_ss    ROIMean_KBq_mL    ROIS_d__KBq_mL    ROIVol_Cm3    ROIPIXELS    ROIMin_KBq_mL    ROIMax_KBq_mL    DECAYCorrSpecificActivity_KBq_mL    S_A__S_A_OFDOSECALIB_
+        %         ______________________    ______________    ______________    __________    _________    _____________    _____________    ________________________________    _____________________
+        % ROI1    09-Sep-2016 13:22:40      103.61            22.81             518           129746       41.14            134.8            103.533699821761                    0.756765403845334    
+        % ROI2    NaT                          NaN              NaN             NaN              NaN         NaN              NaN                           0                                    0    
+        % ROI3    NaT                          NaN              NaN             NaN              NaN         NaN              NaN                           0                                    0    
+
         referenceDate
         sessionData
-    end
-    
-    methods (Static)
+        timingData
     end
     
 	methods 
@@ -63,12 +136,31 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         function g = get.referenceDate(this)
             if (isempty(this.capracHeader))
                 error('mlsiemens:variableReferencedBeforeAssigned', 'XlsxObjScanData.get.referenceDate');
+            end           
+            if (~strcmp(computer, 'MACI64'))
+                g = this.sessionData.sessionDate;
+%                 g.Hour = 0;
+%                 g.Minute = 0;
+%                 g.Second = 0;
+                return
             end
-            g = datetime(this.capracHeader_.Var2(1));
-            %g.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+            g = this.capracHeader_.Var2(1);
+            if (iscell(g))
+                g = g{1};
+            end
+            if (isnumeric(g))
+                g = datetime(g, 'ConvertFrom', 'excel');
+                g = g + mldata.TimingData.SERIAL_DAYS_1900_TO_1904;
+            else
+                g = datetime(g);
+            end
+            g.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
         end
         function g = get.sessionData(this)
             g = this.sessionData_;
+        end
+        function g = get.timingData(this)
+            g = this.timingData_;
         end
         
         %%
@@ -81,125 +173,15 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         end
         function sa   = capracCalibrationSpecificActivity(this, varargin)
             sa = this.calibrationVisitor_.capracCalibrationSpecificActivity(varargin{:}); 
-        end
-        function dt_  = capracCalibrationTimesDrawn(this, varargin)
-            dt_ = this.calibrationVisitor_.capracCalibrationTimesDrawn;
-        end
-        function sa   = fdgGe68(this, varargin)
-            sa = this.capracInvEfficiency(this.fdg_.Ge_68_Kdpm, this.fdg_.MASSSAMPLE_G);
-            sa = sa(this.fdgValid_);
             if (~isempty(varargin))
                 sa = sa(varargin{:});
             end
         end
-        function dt_  = fdgTimesDrawn(this, varargin)
-            dt_ = this.fdg.TIMEDRAWN_Hh_mm_ss;
-            dt_ = dt_(this.fdgValid_);
+        function dt_  = capracCalibrationTimesCounted(this, varargin)
+            dt_ = this.calibrationVisitor_.capracCalibrationTimesCounted;
             if (~isempty(varargin))
                 dt_ = dt_(varargin{:});
             end
-        end % DRAWN
-        function sa   = ooGe68(this, varargin)
-            sa = this.capracInvEfficiency(this.oo_.Ge_68_Kdpm, this.oo_.MASSSAMPLE_G);
-            sa = sa(this.ooValid_);
-            if (~isempty(varargin))
-                sa = sa(varargin{:});
-            end
-        end
-        function dt_  = ooTimesDrawn(this, varargin)
-            dt_ = this.oo.TIMEDRAWN_Hh_mm_ss;
-            dt_ = dt_(this.ooValid_);
-            if (~isempty(varargin))
-                dt_ = dt_(varargin{:});
-            end
-        end % DRAWN
-        function sa   = mMRSpecificActivity(this)
-            sa = this.mMR_.ROIMean_KBq_mL('ROI1');
-        end
-        function dt_  = mMRDatetime(this)
-            dt_ = this.mMR_.scanStartTime_Hh_mm_ss('ROI1') - ...
-                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR console'));
-        end
-        function sa   = phantomSpecificActivity(this)
-            sa = this.phantom_.DECAYCorrSpecificActivity_KBq_mL;
-        end
-        function dt_  = phantomDatetime(this)
-            dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
-                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
-        end
-        function this = readtable(this, varargin)
-            ip = inputParser;
-            addOptional(ip, 'fqfnXlsx', this.fqfilename, @(x) lexist(x, 'file'));
-            parse(ip, varargin{:});            
-            
-            warning('off', 'MATLAB:table:ModifiedVarnames');   
-            warning('off', 'MATLAB:table:ModifiedAndSavedVarnames');  
-            warning('off', 'MATLAB:table:ModifiedDimnames');  
-
-            this.capracHeader_ = ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Table 1', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', false, 'ReadRowNames', false);
-            this.clocks_ = this.convertClocks2sec( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true));
-            
-            this.fdg_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Runs', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false, 'DatetimeType', 'exceldatenum'));
-            this.oo_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Runs-1', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false, 'DatetimeType', 'exceldatenum'));
-            this.tracerAdmin_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Runs-2', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true, 'DatetimeType', 'exceldatenum'));
-            this.cyclotron_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true), ...
-                'mMR PEVCO lab');
-            this.phantom_ = ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-1', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
-            this.capracCalibration_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-2', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false, 'DatetimeType', 'exceldatenum'));
-            this.twilite_ = ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-1-', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
-            this.mMR_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-11', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true, 'DatetimeType', 'exceldatenum'));
-            
-            warning('on', 'MATLAB:table:ModifiedVarnames');
-            warning('on', 'MATLAB:table:ModifiedAndSavedVarnames'); 
-            warning('on', 'MATLAB:table:ModifiedDimnames');  
-            
-            % only the dates in tradmin are assumed correct;
-            % spreadsheets auto-fill datetime cells with the date of data entry
-            % which is typically not the date of measurement
-            
-            this.timingData_.datetime0 = this.referenceDatetime;
-            this.fdgValid_ = ~isnat(this.fdg_.TIMEDRAWN_Hh_mm_ss) & ~isempty(this.fdg_.Ge_68_Kdpm) & strcmp(this.fdg_.TRACER, '[18F]DG');
-            this.ooValid_  = ~isnat(this.oo_.TIMEDRAWN_Hh_mm_ss)  & ~isempty(this.oo_.Ge_68_Kdpm)  & strcmp(this.oo_.TRACER,  'O[15O]'); 
-            this = this.updateTimingData;
-        end
-        function dt_  = referenceDatetime(this, varargin)
-            ip = inputParser;
-            addParameter(ip, 'tracer',  this.sessionData.tracer, @ischar);
-            addParameter(ip, 'snumber', this.sessionData.snumber, @isnumeric);
-            parse(ip, varargin{:});
-            
-            dt_ = this.tracerAdmin_.TrueAdmin_Time_Hh_mm_ss( ...
-                this.tracerCode(ip.Results.tracer, ip.Results.snumber));
         end
         function cath = catheterInfo(this)
             switch (this.twilite_{1,1})
@@ -219,6 +201,93 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
                     error('mlsiemens:unsupportedSwitchcase', 'XlsxObjScanData.catheterInfo');
             end
         end
+        function sa   = mMRSpecificActivity(this)
+            sa = this.mMR_.ROIMean_KBq_mL('ROI1');
+        end
+        function dt_  = mMRDatetime(this)
+            dt_ = this.mMR_.scanStartTime_Hh_mm_ss('ROI1') - ...
+                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR console'));
+        end
+        function sa   = phantomSpecificActivity(this)
+            sa = this.phantom_.DECAYCorrSpecificActivity_KBq_mL;
+        end
+        function dt_  = phantomDatetime(this)
+            dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
+                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
+        end
+        function this = readtable(this, varargin)
+            ip = inputParser;
+            addOptional(ip, 'fqfnXlsx', this.fqfilename, @(x) lexist(x, 'file'));
+            parse(ip, varargin{:});         
+            
+            warning('off', 'MATLAB:table:ModifiedVarnames');   
+            warning('off', 'MATLAB:table:ModifiedAndSavedVarnames');  
+            warning('off', 'MATLAB:table:ModifiedDimnames');  
+
+            this.capracHeader_ = ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Radiation Counts Log - Table 1', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', false, 'ReadRowNames', false);
+            this.clocks_ = this.convertClocks2sec( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Twilite Calibration - Runs', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true));
+            
+            this.fdg_ = this.correctDates2( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Radiation Counts Log - Runs', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
+            this.oo_ = this.correctDates2( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Radiation Counts Log - Runs-1', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
+            this.tracerAdmin_ = this.correctDates2( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Radiation Counts Log - Runs-2', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true)); %, 'DatetimeType', 'exceldatenum'));
+            this.cyclotron_ = this.correctDates2( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Twilite Calibration - Runs-2', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true), ...
+                'mMR PEVCO lab');
+            this.phantom_ = ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Twilite Calibration - Runs-2-1', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
+            this.capracCalibration_ = this.correctDates2( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Twilite Calibration - Runs-2-2', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
+            this.twilite_ = ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Twilite Calibration - Runs-2-1-', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
+            this.mMR_ = this.correctDates2( ...
+                readtable(ip.Results.fqfnXlsx, ...
+                'Sheet', 'Twilite Calibration - Runs-2-11', ...
+                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true)); %, 'DatetimeType', 'exceldatenum'));
+            
+            warning('on', 'MATLAB:table:ModifiedVarnames');
+            warning('on', 'MATLAB:table:ModifiedAndSavedVarnames'); 
+            warning('on', 'MATLAB:table:ModifiedDimnames');  
+            
+            % only the dates in tradmin are assumed correct;
+            % spreadsheets auto-fill datetime cells with the date of data entry
+            % which is typically not the date of measurement
+            
+            this.timingData_.datetime0 = this.referenceDatetime;
+            this = this.updateTimingData;
+        end
+        function dt_  = referenceDatetime(this, varargin)
+            ip = inputParser;
+            addParameter(ip, 'tracer',  this.sessionData.tracer, @ischar);
+            addParameter(ip, 'snumber', this.sessionData.snumber, @isnumeric);
+            parse(ip, varargin{:});
+            
+            dt_ = this.tracerAdmin_.TrueAdmin_Time_Hh_mm_ss( ...
+                this.tracerCode(ip.Results.tracer, ip.Results.snumber));
+            dt_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+        end
         
  		function this = XlsxObjScanData(varargin)
  			%% XLSXOBJSCANDATA
@@ -232,7 +301,9 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             
             this.sessionData_              = ip.Results.sessionData;
             this.fqfilename                = ip.Results.fqfilename;
-            if (isempty(this.fqfilename)); this.fqfilename = this.sessionData_.CCIRRadMeasurements; end
+            if (isempty(ip.Results.fqfilename))
+                this.fqfilename = this.sessionData_.CCIRRadMeasurements; 
+            end
             this.timingData_               = ip.Results.timingData;
             this.forceDateToReferenceDate_ = ip.Results.forceDateToReferenceDate;
  			this = this.readtable;        
@@ -257,8 +328,6 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         
         sessionData_
         timingData_
-        fdgValid_
-        ooValid_
         calibrationVisitor_
     end
     
@@ -266,7 +335,9 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         function tc = tracerCode(tr, snumber)
             assert(ischar(tr));
             assert(isnumeric(snumber));
-            if (lstrfind(upper(tr), 'FDG'))
+            if (lstrfind(upper(tr), 'FDG') || ...
+                strcmp(tr(1:2), '18') || ...
+                strcmp(tr(1), '['))
                 tc = '[18F]DG';
                 return
             end
@@ -294,10 +365,12 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         end
         function s    = excelNum2sec(~, excelnum)
             
-            pm  = sign(excelnum);
-            dt_ = datetime(abs(excelnum), 'ConvertFrom', 'excel');
-            %dt.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            s   = pm*seconds(dt_ - datetime(dt_.Year, dt_.Month, dt_.Day));
+            pm            = sign(excelnum);
+            dt_           = datetime(abs(excelnum), 'ConvertFrom', 'excel');
+            dt_.TimeZone  = mldata.TimingData.PREFERRED_TIMEZONE;
+            dt__          = datetime(dt_.Year, dt_.Month, dt_.Day);
+            dt__.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+            s             = pm*seconds(dt_ - dt__);
         end
         function tbl  = correctDates2(this, tbl, varargin)
             vars = tbl.Properties.VariableNames;
@@ -306,25 +379,27 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
                 if (this.hasTimings(vars{v}))
                     if (any(isnumeric(col)))                        
                         lrows = logical(~isnan(col) & ~isempty(col));
-                        col = NaT(size(col));
+                        dt_   = this.datetimeConvertFromExcel2(tbl{lrows,v});
+                        col   = NaT(size(col));
+                        col.TimeZone = dt_.TimeZone;
+                        col(lrows) = dt_;
                         if (~this.isTrueTiming(vars{v}))
-                            col(lrows) = ...
-                                this.datetimeConvertFromExcel2(tbl{lrows,v}) - ...
-                                this.adjustClock4(vars{v}, varargin{:});
-                        else
-                            col(lrows) = ...
-                                this.datetimeConvertFromExcel2(tbl{lrows,v});
+                            col(lrows) = col(lrows) - this.adjustClock4(vars{v}, varargin{:});
                         end
                     end
                     if (any(isdatetime(col)))
+                        col.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
                         lrows = logical(~isnat(col));
                         col(lrows) = this.correctDateToReferenceDate(col(lrows));
+                        if (~this.isTrueTiming(vars{v}))
+                            col(lrows) = col(lrows) - this.adjustClock4(vars{v}, varargin{:});
+                        end
                     end
                 end
                 tbl.(vars{v}) = col;
             end
         end
-        function dt_  = adjustClock4(this, varargin)
+        function dur  = adjustClock4(this, varargin)
             ip = inputParser;
             addRequired(ip, 'varName', @ischar);
             addOptional(ip, 'wallClockName', '', @ischar);
@@ -333,18 +408,18 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             wCN = ip.Results.wallClockName;
             
             if (~isempty(wCN))
-                dt_ = seconds(this.clocks.TimeOffsetWrtNTS____s(wCN));
+                dur = seconds(this.clocks.TimeOffsetWrtNTS____s(wCN));
                 return
             end
             if (lstrfind(vN, 'drawn'))
-                dt_ = seconds(this.clocks.TimeOffsetWrtNTS____s('hand timers')); 
+                dur = seconds(this.clocks.TimeOffsetWrtNTS____s('hand timers')); 
                 return
             end
             if (lstrfind(vN, 'counted'))
-                dt_ = seconds(this.clocks.TimeOffsetWrtNTS____s('CT radiation lab'));
+                dur = seconds(this.clocks.TimeOffsetWrtNTS____s('CT radiation lab'));
                 return
             end
-            dt_ = seconds(0);
+            dur = seconds(0);
         end
         function tf   = hasTimings(~, var)
             tf = lstrfind(lower(var), 'time') | lstrfind(lower(var), 'hh_mm_ss');
@@ -360,10 +435,11 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             if (~isa(dt_, 'datetime'))
                 dt_ = this.datetime(dt_);
             end
-            dtRef     = this.referenceDate;
-            dt_.Year  = dtRef.Year;
-            dt_.Month = dtRef.Month;
-            dt_.Day   = dtRef.Day;
+            dtRef        = this.referenceDate;
+            dt_.Year     = dtRef.Year;
+            dt_.Month    = dtRef.Month;
+            dt_.Day      = dtRef.Day;
+            dt_.TimeZone = dtRef.TimeZone;
         end
         function dt_  = datetimeConvertFromExcel2(~, varargin)
             % addresses what may be an artefact of linking cells across sheets in Numbers/Excel on MacOS
@@ -387,20 +463,19 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             dt_.Year  = d.Year;
             dt_.Month = d.Month;
             dt_.Day   = d.Day;
-            dt_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+            dt_.TimeZone = d.TimeZone;
         end
         function this = updateTimingData(this)
             if (~lstrcmp(upper(this.sessionData.tracer), 'FDG'))
                 return
             end
             td       = this.timingData_;
-            td.times = this.tableCaprac2times;
-            td.dt    = min(td.taus)/2;
-            
+            t        = this.measurementsTable2timesDrawn;
+            td.times = double(t - t(1));      
             this.timingData_ = td;
         end
-        function t    = tableCaprac2times(this)
-            t = seconds(this.fdgTimesDrawn - this.fdgTimesDrawn(1));
+        function t    = measurementsTable2timesDrawn(this)
+            t = seconds(this.fdg.TIMEDRAWN_Hh_mm_ss - this.fdg.TIMEDRAWN_Hh_mm_ss(1));
             t = ensureRowVector(t);
         end
     end

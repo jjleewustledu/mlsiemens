@@ -32,7 +32,7 @@ classdef CalibrationVisitor
             %  @param m is sample mass /g; m < 3 g.
             
             assert(all(m < 3));
-            a = a*ppval(this.aperture_spline_, m);
+            a = a .* ppval(this.aperture_spline_, m);
         end
         function a    = capracInvEfficiency0(~, a, m)
             %% CORRECTFILLINGFACTOR0 is a polynomial regression on prefilled, separately weighed calibration samples;
@@ -56,7 +56,7 @@ classdef CalibrationVisitor
                 sa = sa(varargin{:});
             end
         end
-        function dt_  = capracCalibrationTimesDrawn(this, varargin)
+        function dt_  = capracCalibrationTimesCounted(this, varargin)
             %  @param optional array indices.
             %  @return datetime(array indices) excluding NaT.
             
