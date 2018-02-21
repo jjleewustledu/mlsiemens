@@ -24,7 +24,7 @@ classdef ScanData < mlpipeline.ScanData
             end
             if (isempty(this.manualData_) && ...
                 lexist(this.sessionData.arterialSamplerCrv, 'file'))
-                this.aifData_ = mlpet.Twilite('twiliteCrv', this.sessionData.arterialSamplerCrv);
+                this.aifData_ = mlswisstrace.Twilite('twiliteCrv', this.sessionData.arterialSamplerCrv);
             end
             if (isempty(this.manualData_))
                 this.assertSessionData('CCIRRadMeasurements');

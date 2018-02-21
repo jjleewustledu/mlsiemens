@@ -119,8 +119,12 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
 	methods
  		function this = Herscovitch1985(varargin)
  			this = this@mlpet.AbstractHerscovitch1985(varargin{:});
+        end        
+         
+        function this = buildCalibrated(this)
+            this.aif_ = this.aif.buildCalibrated;
+            this.scanner_ = this.scanner.buildCalibrated;
         end
-        
         function this = buildCbvMap(this)
             sc = this.scanner;
             sc = sc.petobs;

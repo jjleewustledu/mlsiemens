@@ -42,7 +42,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
 	methods (Test)
         function test_ctor(this)
             this = this.configTracer('HO');
-            this.verifyClass(this.aif, 'mlpet.Twilite');
+            this.verifyClass(this.aif, 'mlswisstrace.Twilite');
             this.verifyClass(this.scanner, 'mlsiemens.BiographMMR0');
             this.verifyClass(this.testObj, 'mlsiemens.Herscovitch1985');
         end
@@ -220,7 +220,6 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR0(pic.niftid, ...
                         'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeHO);
                     this.scanner.time0 = 0;
                     this.scanner.timeDuration = 60;
@@ -238,7 +237,6 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR0(pic.niftid, ...
                         'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeOO);            
                     this.scanner.time0 = 0;
                     this.scanner.timeDuration = 60;
@@ -256,7 +254,6 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
                     this.sessionData.attenuationCorrected = true;
                     this.scanner = BiographMMR0(pic.niftid, ...
                         'sessionData', this.sessionData, ...
-                        'consoleClockOffset', -duration(0,0,7), ...
                         'doseAdminDatetime', this.doseAdminDatetimeOC);              
                     this.scanner.time0 = 120;
                     this.scanner.timeDuration = 180;

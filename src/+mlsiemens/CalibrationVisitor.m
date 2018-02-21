@@ -24,8 +24,8 @@ classdef CalibrationVisitor
     end
 
 	methods
-        function a    = capracInvEfficiency(this, a, m)
-            %% capracInvEfficiency is a spline extrapolation of calibration syringe with homogeneous tracer;
+        function a    = capracInvEfficiency1(this, a, m)
+            %% CAPRACINVEFFICIENCY1 is a spline extrapolation of calibration syringe with homogeneous tracer;
             %  it includes filling factor effects.
             %  incrementally ejected from the syringe.
             %  @param a is activity.
@@ -34,14 +34,17 @@ classdef CalibrationVisitor
             assert(all(m < 3));
             a = a .* ppval(this.aperture_spline_, m);
         end
-        function a    = capracInvEfficiency0(~, a, m)
-            %% CORRECTFILLINGFACTOR0 is a polynomial regression on prefilled, separately weighed calibration samples;
+        function a    = capracInvEfficiency(~, a, m)
+            %% CORRECTFILLINGFACTOR is a polynomial regression on prefilled, separately weighed calibration samples;
             %  it includes filling factor effects.
             %  @param a is activity.
             %  @param m is sample mass /g; m < 3 g.
             
-            assert(all(m < 3));
-            a = 1592.7*a ./ (53.495*m.^3 - 298.43*m.^2 + 191.17*m + 1592.7);
+            assert(all(m < 2.5));
+            %a = 1592.7*a ./ (53.495*m.^3 - 298.43*m.^2 + 191.17*m + 1592.7); % from CCIRRadMeasurements.numbers
+            % from polyfitting this.aperture_mass -> this.aperture_pred_ ./ this.aperture_meas_
+            
+            a = a.*(0.11429*m.^5 - 0.74109*m.^4 + 1.7927*m.^3 - 1.8759*m.^2 + 0.96511*m + 0.7927); 
         end
         function sa   = capracCalibrationSpecificActivity(this, varargin)
             %  @param optional array indices.

@@ -40,6 +40,28 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
             this.testObj.viewer = '/usr/local/fsl/bin/fsleyes';
             this.testObj.view;
         end
+        function test_volumeSummed(this)
+            nn = mlfourd.NumericalNIfTId(this.testObj);
+            nn = nn.volumeSummed;
+            this.testObj.img = nn.img;
+            img = this.testObj.img;
+            cnts = this.testObj.counts;
+            sa = this.testObj.specificActivity;
+            this.verifyTrue(size(img,2)  > size(img,1));
+            this.verifyTrue(size(cnts,2) > size(cnts,1));
+            this.verifyTrue(size(sa,2)   > size(sa,1));
+        end
+        function test_volumeContracted(this)
+            nn = mlfourd.NumericalNIfTId(this.testObj);
+            nn = nn.volumeContracted;
+            this.testObj.img = nn.img;
+            img = this.testObj.img;
+            cnts = this.testObj.counts;
+            sa = this.testObj.specificActivity;
+            this.verifyTrue(size(img,2)  > size(img,1));
+            this.verifyTrue(size(cnts,2) > size(cnts,1));
+            this.verifyTrue(size(sa,2)   > size(sa,1));
+        end
 	end
 
  	methods (TestClassSetup)

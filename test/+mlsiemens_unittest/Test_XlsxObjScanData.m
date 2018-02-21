@@ -95,7 +95,7 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
         function test_capracInvEfficiency(this)
             import mlsiemens.*;
             masses0 = CalibrationVisitor.aperture_mass_;
-            masses  = linspace(0.01, 3 - 0.01, 100);
+            masses  = linspace(0.01, 2.5 - 0.01, 100);
             invEff0 = CalibrationVisitor.aperture_pred_ ./ mlsiemens.CalibrationVisitor.aperture_meas_;
             invEff  = this.testObj.capracInvEfficiency(1, masses);
             figure;

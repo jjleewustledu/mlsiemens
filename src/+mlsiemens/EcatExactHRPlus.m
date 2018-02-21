@@ -28,23 +28,22 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         scanIndex % integer, e.g., last char in 'p1234ho1'
         tracer % char, e.g., 'ho'
         
-        % mlpet.IScannerData, mldata.ITimingData
-        datetime0
-        doseAdminDatetime  
- 		dt
-        time0
-        timeF
-        timeDuration
+        % mldata.ITimingData 
         times
         timeMidpoints % cf. man petproc
         taus
-        counts 
-        activity
-        isotope
-        invEfficiency
+        time0
+        timeF
+        timeDuration
+        datetime0
+ 		dt
         
-        % new        
+        activity
+        counts 
+        doseAdminDatetime  
         hdrinfoFqfilename
+        isotope
+        invEfficiency              
         pie
         recFqfilename
         scannerTimeShift
@@ -96,23 +95,22 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
                 this.header_ = h; end            
         end        
         
-        % mlpet.IScannerData, mldata.ITimingData
-        function t    = get.datetime0(~)
-            t = [];
+        % mldata.ITimingData
+        function t    = get.times(this)
+            assert(~isempty(this.times_));
+            t = this.times_;
         end
-        function t    = get.doseAdminDatetime(this)
-            t = this.header.doseAdminDatetime;
+        function this = set.times(this, t)
+            assert(isnumeric(t));
+            this.times_ = t;
         end
-        function g    = get.dt(this)
-            if (~isempty(this.dt_))
-                g = this.dt_;
-                return
-            end            
-            g = min(this.taus);
+        function tmp  = get.timeMidpoints(this)
+            assert(~isempty(this.timeMidpoints_));
+            tmp = this.timeMidpoints_;
         end
-        function this = set.dt(this, s)
-            assert(isnumeric(s));
-            this.dt_ = s;
+        function t    = get.taus(this)
+            assert(~isempty(this.taus_));
+            t = this.taus_;
         end
         function g    = get.time0(this)
             if (~isempty(this.time0_))
@@ -146,21 +144,23 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             end
             warning('mlsiemens:setPropertyIgnored', 'EcatExactHRPlus.set.timeDuration');
         end
-        function t    = get.times(this)
-            assert(~isempty(this.times_));
-            t = this.times_;
+        function t    = get.datetime0(~)
+            t = [];
         end
-        function this = set.times(this, t)
-            assert(isnumeric(t));
-            this.times_ = t;
+        function g    = get.dt(this)
+            if (~isempty(this.dt_))
+                g = this.dt_;
+                return
+            end            
+            g = min(this.taus);
         end
-        function tmp  = get.timeMidpoints(this)
-            assert(~isempty(this.timeMidpoints_));
-            tmp = this.timeMidpoints_;
+        function this = set.dt(this, s)
+            assert(isnumeric(s));
+            this.dt_ = s;
         end
-        function t    = get.taus(this)
-            assert(~isempty(this.taus_));
-            t = this.taus_;
+        
+        function b    = get.activity(this)
+            b = this.petCounts2activity(this.counts);
         end
         function c    = get.counts(this)
             assert(~isempty(this.component.img));
@@ -178,9 +178,19 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             assert(isnumeric(c));
             this.component.img = double(c);
         end
-        function b    = get.activity(this)
-            b = this.petCounts2activity(this.counts);
+        function t    = get.doseAdminDatetime(this)
+            t = this.header.doseAdminDatetime;
         end
+        function fn   = get.hdrinfoFqfilename(this)
+            pnum = str2pnum(this.component.fileprefix);
+            dtl  = mlsystem.DirTool( ...
+                   fullfile(this.component.filepath, '..', '..', 'hdr_backup', sprintf('%sho*.hdrinfo', pnum)));
+            if (0 == length(dtl))  %#ok<ISMT>
+                dtl  = mlsystem.DirTool( ...
+                    fullfile(this.component.filepath, '..', 'hdr_backup', sprintf('%sho*.hdrinfo', pnum)));
+            end
+            fn   = dtl.fqfns{1};
+        end  
         function i    = get.isotope(this)
             tr = lower(this.tracer);
             
@@ -202,24 +212,12 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         end  
         function e    = get.invEfficiency(this)
             e = this.W;
-        end
-        
-        % new        
-        function fn  = get.hdrinfoFqfilename(this)
-            pnum = str2pnum(this.component.fileprefix);
-            dtl  = mlsystem.DirTool( ...
-                   fullfile(this.component.filepath, '..', '..', 'hdr_backup', sprintf('%sho*.hdrinfo', pnum)));
-            if (0 == length(dtl))  %#ok<ISMT>
-                dtl  = mlsystem.DirTool( ...
-                    fullfile(this.component.filepath, '..', 'hdr_backup', sprintf('%sho*.hdrinfo', pnum)));
-            end
-            fn   = dtl.fqfns{1};
-        end   
-        function p   = get.pie(this)
+        end         
+        function p    = get.pie(this)
             assert(isnumeric(this.pie_) && ~isempty(this.pie_));
             p = this.pie_;
         end
-        function f   = get.recFqfilename(this)
+        function f    = get.recFqfilename(this)
             f = sprintf('%s.img.rec', this.component.fqfileprefix);
             if (~lexist(f)) %%% KLUDGE
                 mlbash(sprintf( ...
@@ -227,25 +225,25 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
                     this.component.filepath, str2pnum(this.component.fileprefix), this.tracer, this.scanIndex, f));
             end
         end
-        function t   = get.scannerTimeShift(this)
+        function t    = get.scannerTimeShift(this)
             t = this.scannerTimeShift_;
         end
-        function fp  = get.textParserRec(this)
+        function fp   = get.textParserRec(this)
             fp = this.textParserRec_;
             assert(isa(fp, 'mlio.TextParser'));
         end
-        function wc  = get.tscCounts(this)
+        function wc   = get.tscCounts(this)
             wc = this.petCounts2tscCounts(this.counts);
         end
-        function wc  = get.wellCounts(this)
+        function wc   = get.wellCounts(this)
             wc = this.petCounts2wellCounts(this.counts);
         end
-        function w   = get.wellFactor(this)
+        function w    = get.wellFactor(this)
             assert(~isempty(this.wellMatrix_), ...
                 'DecayCorrection.get.wellFactor:  this.wellMatrix_ was empty');
             w = this.wellMatrix_(5,1); 
         end
-        function f   = get.wellFqfilename(this)
+        function f    = get.wellFqfilename(this)
             w = sprintf('%s.wel', str2pnum(this.component.fileprefix));
             f = fullfile(this.component.filepath, w);
             g = 0;
@@ -257,7 +255,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
                 end
             end
         end      
-        function w   = get.W(this)
+        function w    = get.W(this)
             w = 60*this.dt*this.pie;
         end
         
