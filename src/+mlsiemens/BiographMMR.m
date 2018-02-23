@@ -1,5 +1,5 @@
 classdef BiographMMR < mlpet.AbstractScannerData
-	%% BiographMMR enables polymorphism of NIfTId over PET data.  It is also a NIfTIdecorator.
+	%% BiographMMR enables polymorphism of NIfTId for PET data.  It is also a NIfTIdecorator.
 
 	%  $Revision$
  	%  was created 08-Dec-2015 15:11:44
@@ -15,28 +15,17 @@ classdef BiographMMR < mlpet.AbstractScannerData
     end
     
     properties (Dependent)
-        activity
-        counts
-        datetime0 % used with mlpet.DecayCorrection, determines datetime of this.times(1)         
-        decays
-        doseAdminDatetime  
-        dt
-        index0
-        indexF 
+        activity % in Bq := specificActivity*voxelVolume
+        counts   % in Bq/mL := specificActivity without efficiency adjustments; native to scanner     
+        decays   % in Bq*s := specificActivity*voxelVolume*tau
         invEfficiency
         isDecayCorrected 
         isotope
-        mask
-        sessionData    
-        specificActivity
-        specificDecays
-        taus  
-        time0
-        timeMidpoints
-        timeDuration
-        timeF
-        times
-        W
+        specificActivity % activity/volume in Bq/mL
+        specificDecays   % decays/volume in Bq*s/mL := specificActivity*tau
+        
+        mask  
+        
     end    
 
     methods (Static) 
@@ -54,56 +43,13 @@ classdef BiographMMR < mlpet.AbstractScannerData
         %% GET, SET
         
         function g    = get.activity(this)
-            assert(~isempty(this.component.img));
-            g = this.specificActivity*prod(this.mmppix/10);
-        end
-        function this = set.activity(this, s)
-            assert(isnumeric(s));
-            this.specificActivity = double(s)/prod(this.mmppix/10);
+            g = this.specificActivity*this.voxelVolume;
         end
         function g    = get.counts(this)
-            g = this.activity2counts(this.activity);
-        end
-        function this = set.counts(this, s)
-            assert(isnumeric(s));
-            this.component.img = this.counts2activity(s)/prod(this.mmppix/10);
-        end
-        function g    = get.datetime0(this)
-            g = this.timingData_.datetime0;
-        end
-        function this = set.datetime0(this, s)
-            assert(isa(s, 'datetime'));
-            s.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            this.timingData_.datetime0 = s;
+            g = this.img;
         end
         function g    = get.decays(this)
-            g = this.activity.*this.taus;
-        end
-        function g    = get.doseAdminDatetime(this)
-            g = this.doseAdminDatetime_;
-        end
-        function this = set.doseAdminDatetime(this, s)
-            assert(isa(s, 'datetime'));
-            s.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            this.doseAdminDatetime_ = s;
-        end
-        function g    = get.dt(this)
-            g = this.timingData_.dt;
-        end
-        function this = set.dt(this, s)
-            this.timingData_.dt = s;
-        end
-        function g    = get.index0(this)
-            g = this.timingData_.index0;
-        end
-        function this = set.index0(this, s)
-            this.timingData_.index0 = s;
-        end
-        function g    = get.indexF(this)
-            g = this.timingData_.indexF;
-        end
-        function this = set.indexF(this, s)
-            this.timingData_.indexF = s;
+            g = this.specificActivity.*this.taus*this.voxelVolume;
         end
         function g    = get.invEfficiency(this)
             g = this.invEfficiency_;
@@ -116,13 +62,16 @@ classdef BiographMMR < mlpet.AbstractScannerData
             g = this.isDecayCorrected_;
         end
         function this = set.isDecayCorrected(this, s)
-            assert(islogical(s));            
-            dc = mlpet.DecayCorrection.factoryFor(this);   
+            assert(islogical(s));
+            if (this.isDecayCorrected_ == s)
+                return
+            end
+            if (this.isDecayCorrected_)  
+                this.img = this.decayCorrection_.uncorrectedActivities(this.img, this.time0);
+            else
+                this.img = this.decayCorrection_.correctedActivities(this.img, this.time0);
+            end     
             this.isDecayCorrected_ = s;
-            if (~this.isDecayCorrected_ && length(this.component.size) == 4 && size(this.component,4) > 1)
-                this.component.img = dc.uncorrectedActivities(this.component.img, 0);
-                this.specificDecays_ = this.specificDecays;
-            end            
         end
         function g    = get.isotope(this)
             g = this.sessionData.isotope;
@@ -130,76 +79,17 @@ classdef BiographMMR < mlpet.AbstractScannerData
         function g    = get.mask(this)
             g = this.mask_;
         end
-        function g    = get.sessionData(this)
-            g = this.sessionData_;
-        end
-        function this = set.sessionData(this, s)
-            assert(isa(s, 'mlpipeline.SessionData'));
-            this.sessionData_ = s;
-        end
         function g    = get.specificActivity(this)
-            assert(~isempty(this.component.img));
-            g = this.component.img;
-            g = double(g);
-            g = squeeze(g);
-        end
-        function this = set.specificActivity(this, s)
-            assert(isnumeric(s));
-            this.component.img = double(s);
+            g = double(this.invEfficiency*this.img);
         end
         function g    = get.specificDecays(this)
-            if (~isempty(this.specificDecays_))
-                g = this.specificDecays_;
-                return
-            end
             g = this.specificActivity;
             for t = 1:length(this.taus)
                 g(:,:,:,t) = g(:,:,:,t)*this.taus(t);
             end
         end
-        function this = set.specificDecays(this, s)
-            assert(isnumeric(s) && size(s) == this.component.size);
-            s = double(s);
-            for t = 1:length(this.taus)
-               s(:,:,:,t) = s(:,:,:,t)/this.taus(t);
-            end
-            this.component.img = s;
-        end   
-        function g    = get.taus(this)
-            g = this.timingData_.taus;
-        end 
-        function g    = get.time0(this)
-            g = this.timingData_.time0;
-        end
-        function this = set.time0(this, s)
-            this.timingData_.time0 = s;
-        end
-        function g    = get.timeDuration(this)
-            g = this.timingData_.timeDuration;
-        end
-        function this = set.timeDuration(this, s)
-            this.timingData_.timeDuration = s;
-        end
-        function g    = get.timeF(this)
-            g = this.timingData_.timeF;
-        end
-        function this = set.timeF(this, s)
-            this.timingData_.timeF = s;
-        end
-        function g    = get.timeMidpoints(this)
-            g = this.timingData_.timeMidpoints;
-        end
-        function g    = get.times(this)
-            g = this.timingData_.times;
-        end
-        function this = set.times(this, s)
-            this.timingData_.times = s;
-        end
-        function w    = get.W(~)
-            w = 1;
-        end
         
-        %%           
+        %%
         
         function ai   = activityInterpolants(this, varargin)
             ai = this.interpolateMetric(this.activity, varargin{:});
@@ -210,8 +100,8 @@ classdef BiographMMR < mlpet.AbstractScannerData
         function ci   = countInterpolants(this, varargin)
             ci = this.interpolateMetric(this.counts, varargin{:});
         end
-        function s    = datetime2sec(this, dt)
-            s = this.timingData_.datetime2sec(dt);
+        function dt_  = datetime(this)
+            dt_ = this.timingData_.datetime;
         end
         function di   = decayInterpolants(this, varargin)
             di = this.interpolateMetric(this.decays, varargin{:});
@@ -227,23 +117,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
             end
             popd(pwd0);
         end
-        function [m,n] = mskt(this)
-            import mlfourdfp.*;
-            sessd = this.sessionData;
-            f = [sessd.tracerRevision('typ','fqfp') '_sumt'];
-            f1 = mybasename(FourdfpVisitor.ensureSafeFileprefix(f));
-            lns_4dfp(f, f1);
-            
-            ct4rb = CompositeT4ResolveBuilder('sessionData', sessd);
-            ct4rb.msktgenImg(f1);          
-            m = mlfourd.ImagingContext([f1 '_mskt.4dfp.ifh']);
-            n = m.numericalNiftid;
-            n.img = n.img/n.dipmax;
-            n.fileprefix = [f1 '_msktNorm'];
-            n.filesuffix = '.4dfp.ifh';
-            n.save;
-            n = mlfourd.ImagingContext(n);
-        end
         function n    = numel(this)
             n = numel(this.img);
         end
@@ -256,7 +129,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
                 this.mask_ = this.mask_.niftid;
             end
             assert(isa(this.mask_, 'mlfourd.INIfTI'));
-            n = double(sum(sum(sum(this.mask_.img)))); % sum_{x,y,z}, returning nonsingleton t in mask               
+            n = double(sum(sum(sum(this.mask_.img))));            
         end
         function this = petobs(this)
             this.fileprefix = [this.fileprefix '_obs'];
@@ -267,19 +140,29 @@ classdef BiographMMR < mlpet.AbstractScannerData
                 return
             end
             this.img = trapz(this.times(idx0:idxF), this.specificActivity(:,:,:,idx0:idxF), 4);
-        end        
-        function dt   = sec2datetime(this, s)
-            dt = this.timingData_.sec2datetime(s);
+        end    
+        function        plot(this)
+            if (isscalar(this.img))
+                fprintf(this.img);
+                return
+            end
+            if (isvector(this.img))
+                plot(this.times, this.img);
+                xlabel(sprintf('%s.times', class(this)));
+                ylabel(sprintf('%s.img',   class(this)));
+                return
+            end
+            this.view;
         end
         function this = shiftTimes(this, Dt)
             if (0 == Dt)
                 return; 
             end
-            if (2 == length(this.component.size))                
-                [this.times_,this.component.img] = shiftVector(this.times_, this.component.img, Dt);
+            if (2 == length(this.size))                
+                [this.timingData_.times,this.img] = shiftVector(this.timingData_.times, this.img, Dt);
                 return
             end
-            [this.times_,this.component.img] = shiftTensor(this.times_, this.component.img, Dt);
+            [this.timingData_.times,this.img] = shiftTensor(this.timingData_.times, this.img, Dt);
         end
         function this = shiftWorldlines(this, Dt, varargin)
             %% SHIFTWORLDLINES
@@ -295,9 +178,15 @@ classdef BiographMMR < mlpet.AbstractScannerData
             if (0 == Dt)
                 return; 
             end
-            this.component.img = this.decayCorrection_.correctedActivities(this.component.img, ip.Results.tzero);
+            this.img = this.decayCorrection_.correctedActivities(this.img, ip.Results.tzero);
             this = this.shiftTimes(Dt);            
-            this.component.img = this.decayCorrection_.uncorrectedActivities(this.component.img, ip.Results.tzero);
+            this.img = this.decayCorrection_.uncorrectedActivities(this.img, ip.Results.tzero);
+        end
+        function sai  = specificActivityInterpolants(this, varargin)
+            sai = this.interpolateMetric(this.specificActivity);
+        end
+        function sdi  = specificDecayInterpolants(this, varargin)
+            sdi = this.interpolateMetric(this.specificDecays);
         end
         function [t,this] = timeInterpolants(this, varargin)
             [t,this] = this.timingData_.timeInterpolants(varargin{:});
@@ -315,9 +204,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
             asd = this.masked@mlpet.AbstractScannerData(msk);
             this = mlsiemens.BiographMMR(asd.component, 'mask', msk);
         end   
-        function sai  = specificActivityInterpolants(this, varargin)
-            sai = this.interpolateMetric(this.specificActivity);
-        end
         function this = thresh(this, varargin)
             asd = this.thresh@mlpet.AbstractScannerData(varargin{:});
             this = mlsiemens.BiographMMR(asd.component);
@@ -342,13 +228,12 @@ classdef BiographMMR < mlpet.AbstractScannerData
             asd = this.uthreshp@mlpet.AbstractScannerData(varargin{:});
             this = mlsiemens.BiographMMR(asd.component);
         end
-        function this = volumeContracted(this, varargin)
-            asd = this.volumeContracted@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
-        end
-        function this = volumeSummed(this)
-            asd = this.volumeSummed@mlpet.AbstractScannerData;
-            this = mlsiemens.BiographMMR(asd.component);
+        function v    = voxelVolume(this)
+            %  @param this.img is at least 3D
+            %  @return voxel volume in mL
+            
+            assert(length(size(this)) >= 3);
+            v = prod(this.mmppix/10);
         end
         
  		function this = BiographMMR(cmp, varargin)
@@ -359,17 +244,15 @@ classdef BiographMMR < mlpet.AbstractScannerData
                 this = this.component;
                 return
             end
-            
+                     
+            this.isDecayCorrected_ = true;     
+            this = this.append_descrip('decorated by BiographMMR');
         end        
     end 
     
     %% PROTECTED
     
     properties (Access = protected)
-        doseAdminDatetime_
-        invEfficiency_
-        isDecayCorrected_ = true;
-        specificDecays_ % cache
     end
     
     methods (Access = protected)
