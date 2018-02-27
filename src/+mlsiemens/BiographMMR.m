@@ -19,12 +19,8 @@ classdef BiographMMR < mlpet.AbstractScannerData
         counts   % in Bq/mL := specificActivity without efficiency adjustments; native to scanner     
         decays   % in Bq*s := specificActivity*voxelVolume*tau
         invEfficiency
-        isDecayCorrected 
-        isotope
         specificActivity % activity/volume in Bq/mL
-        specificDecays   % decays/volume in Bq*s/mL := specificActivity*tau
-        
-        mask  
+        specificDecays   % decays/volume in Bq*s/mL := specificActivity*tau    
         
     end    
 
@@ -57,28 +53,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
         function this = set.invEfficiency(this, s)
             assert(isnumeric(s));
             this.invEfficiency_ = s;
-        end              
-        function g    = get.isDecayCorrected(this)
-            g = this.isDecayCorrected_;
-        end
-        function this = set.isDecayCorrected(this, s)
-            assert(islogical(s));
-            if (this.isDecayCorrected_ == s)
-                return
-            end
-            if (this.isDecayCorrected_)  
-                this.img = this.decayCorrection_.uncorrectedActivities(this.img, this.time0);
-            else
-                this.img = this.decayCorrection_.correctedActivities(this.img, this.time0);
-            end     
-            this.isDecayCorrected_ = s;
-        end
-        function g    = get.isotope(this)
-            g = this.sessionData.isotope;
-        end
-        function g    = get.mask(this)
-            g = this.mask_;
-        end
+        end  
         function g    = get.specificActivity(this)
             g = double(this.invEfficiency*this.img);
         end
@@ -100,9 +75,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
         function ci   = countInterpolants(this, varargin)
             ci = this.interpolateMetric(this.counts, varargin{:});
         end
-        function dt_  = datetime(this)
-            dt_ = this.timingData_.datetime;
-        end
         function di   = decayInterpolants(this, varargin)
             di = this.interpolateMetric(this.decays, varargin{:});
         end
@@ -117,20 +89,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
             end
             popd(pwd0);
         end
-        function n    = numel(this)
-            n = numel(this.img);
-        end
-        function n    = numelMasked(this)
-            if (isempty(this.mask_))
-                n = this.numel;
-                return
-            end
-            if (isa(this.mask_, 'mlfourd.ImagingContext'))
-                this.mask_ = this.mask_.niftid;
-            end
-            assert(isa(this.mask_, 'mlfourd.INIfTI'));
-            n = double(sum(sum(sum(this.mask_.img))));            
-        end
         function this = petobs(this)
             this.fileprefix = [this.fileprefix '_obs'];
             idx0 = this.index0;
@@ -141,47 +99,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
             end
             this.img = trapz(this.times(idx0:idxF), this.specificActivity(:,:,:,idx0:idxF), 4);
         end    
-        function        plot(this)
-            if (isscalar(this.img))
-                fprintf(this.img);
-                return
-            end
-            if (isvector(this.img))
-                plot(this.times, this.img);
-                xlabel(sprintf('%s.times', class(this)));
-                ylabel(sprintf('%s.img',   class(this)));
-                return
-            end
-            this.view;
-        end
-        function this = shiftTimes(this, Dt)
-            if (0 == Dt)
-                return; 
-            end
-            if (2 == length(this.size))                
-                [this.timingData_.times,this.img] = shiftVector(this.timingData_.times, this.img, Dt);
-                return
-            end
-            [this.timingData_.times,this.img] = shiftTensor(this.timingData_.times, this.img, Dt);
-        end
-        function this = shiftWorldlines(this, Dt, varargin)
-            %% SHIFTWORLDLINES
-            %  @param required Dt, or \Delta t of worldline. 
-            %  Dt > 0 => event occurs at later time and further away in space; boluses are smaller and arrive later.
-            %  Dt < 0 => event occurs at earlier time and closer in space; boluses are larger and arrive earlier.
-            %  @param optional tzero sets the Lorentz coord for decay-correction and uncorrection.
-            
-            ip = inputParser;
-            addParameter(ip, 'tzero', this.time0, @isnumeric);
-            parse(ip, varargin{:});
-            
-            if (0 == Dt)
-                return; 
-            end
-            this.img = this.decayCorrection_.correctedActivities(this.img, ip.Results.tzero);
-            this = this.shiftTimes(Dt);            
-            this.img = this.decayCorrection_.uncorrectedActivities(this.img, ip.Results.tzero);
-        end
         function sai  = specificActivityInterpolants(this, varargin)
             sai = this.interpolateMetric(this.specificActivity);
         end
@@ -193,40 +110,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
         end
         function [t,this] = timeMidpointInterpolants(this, varargin)
             [t,this] = this.timingData_.timeMidpointInterpolants(varargin{:});
-        end
-        
-        % borrowed from mlfourd.NumericalNIfTId
-        function this = blurred(this, varargin)
-            asd = this.blurred@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
-        end
-        function this = masked(this, msk)
-            asd = this.masked@mlpet.AbstractScannerData(msk);
-            this = mlsiemens.BiographMMR(asd.component, 'mask', msk);
-        end   
-        function this = thresh(this, varargin)
-            asd = this.thresh@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
-        end
-        function this = threshp(this, varargin)
-            asd = this.threshp@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
-        end
-        function this = timeContracted(this, varargin)
-            asd = this.timeContracted@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
-        end
-        function this = timeSummed(this, varargin)
-            asd = this.timeSummed@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
-        end
-        function this = uthresh(this, varargin)
-            asd = this.uthresh@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
-        end
-        function this = uthreshp(this, varargin)
-            asd = this.uthreshp@mlpet.AbstractScannerData(varargin{:});
-            this = mlsiemens.BiographMMR(asd.component);
         end
         function v    = voxelVolume(this)
             %  @param this.img is at least 3D
@@ -244,7 +127,12 @@ classdef BiographMMR < mlpet.AbstractScannerData
                 this = this.component;
                 return
             end
-                     
+                
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'invEfficiency', 1.155, @isnumeric); % from HYGLY28/V2
+            parse(ip, varargin{:});    
+            this.invEfficiency_ = ip.Results.invEfficiency; 
             this.isDecayCorrected_ = true;     
             this = this.append_descrip('decorated by BiographMMR');
         end        
@@ -253,6 +141,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
     %% PROTECTED
     
     properties (Access = protected)
+        invEfficiency_
     end
     
     methods (Access = protected)

@@ -1,4 +1,4 @@
-classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
+classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties
 	%% BIOGRAPHMMR0 enables polymorphism of NIfTId over PET data.  It is also a NIfTIdecorator.
 
 	%  $Revision$
@@ -12,7 +12,6 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     properties (Constant)
         HOUR_KLUDGE = -1
         READTABLE_HEADERLINES = 0
-        SPECIFIC_ACTIVITY_KIND = 'activityPerCC' %'decaysPerCC'
     end
     
     properties
@@ -22,19 +21,16 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     
     properties (Dependent)   
         activity
-        activityPerCC     
-        decaysPerCC
         datetime0 % used with mlpet.DecayCorrection, determines datetime of this.times(1)
         doseAdminDatetime      
         counts
         dt
         index0
         indexF
-        invEfficiency  
+        invEfficiency
         isDecayCorrected
         isotope    
         mask 
-        nPixels
         scannerTimeShift
         sessionData
         specificActivity
@@ -62,295 +58,171 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
         %% GET, SET
         
         function g    = get.activity(this)
-            assert(~isempty(this.component.img));
-            g = this.activityPerCC*prod(this.mmppix/10);
-        end
-        function this = set.activity(this, s)
-            assert(isnumeric(s));
-            this.activityPerCC = double(s)/prod(this.mmppix/10);
-        end
-        function g    = get.activityPerCC(this)
-            assert(~isempty(this.component.img));
-            g = this.component.img;
-            g = double(g);
-            g = squeeze(g);
-        end
-        function this = set.activityPerCC(this, s)
-            assert(isnumeric(s));
-            this.component.img = double(s);
+            g = this.bmmr_.activity;
         end
         function g    = get.counts(this)
-            g = this.activity2petCounts(this.activity);
-        end
-        function this = set.counts(this, s)
-            assert(isnumeric(s));
-            this.component.img = this.petCounts2activity(s)/prod(this.mmppix/10);
+            g = this.bmmr_.counts;
         end
         function g    = get.datetime0(this)
-            g = this.timingData_.datetime0;
+            g = this.bmmr_.datetime0;
         end
         function this = set.datetime0(this, s)
-            assert(isa(s, 'datetime'));
-            s.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            this.timingData_.datetime0 = s;
-        end
-        function g    = get.decaysPerCC(this)
-            if (~isempty(this.decaysPerCC_))
-                g = this.decaysPerCC_;
-                return
-            end
-            g = this.activityPerCC;
-            for t = 1:length(this.taus)
-                g(:,:,:,t) = g(:,:,:,t)*this.taus(t);
-            end
-        end
-        function this = set.decaysPerCC(this, s)
-            assert(isnumeric(s) && size(s) == this.component.size);
-            s = double(s);
-            for t = 1:length(this.taus)
-               s(:,:,:,t) = s(:,:,:,t)/this.taus(t);
-            end
-            this.component.img = s;
+            this.bmmr_.datetime0 = s;
         end
         function g    = get.doseAdminDatetime(this)
-            g = this.doseAdminDatetime_;
+            g = this.bmmr_.doseAdminDatetime;
         end
         function this = set.doseAdminDatetime(this, s)
-            assert(isa(s, 'datetime'));
-            s.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            this.doseAdminDatetime_ = s;
+            this.bmmr_.doseAdminDatetime = s;
         end
         function g    = get.dt(this)
-            g = this.timingData_.dt;
+            g = this.bmmr_.dt;
         end
         function this = set.dt(this, s)
-            this.timingData_.dt = s;
+            this.bmmr_.dt = s;
         end
         function g    = get.index0(this)
-            g = this.timingData_.index0;
+            g = this.bmmr_.index0;
         end
         function this = set.index0(this, s)
-            this.timingData_.index0 = s;
+            this.bmmr_.index0 = s;
         end
         function g    = get.indexF(this)
-            g = this.timingData_.indexF;
+            g = this.bmmr_.indexF;
         end
         function this = set.indexF(this, s)
-            this.timingData_.indexF = s;
-        end
+            this.bmmr_.indexF = s;
+        end     
         function g    = get.invEfficiency(this)
-            g = this.invEfficiency_;
+            g = this.bmmr_.invEfficiency;
         end
-        function this = set.invEfficiency(this, s)
-            assert(isnumeric(s));
-            this.invEfficiency_ = s;
-        end        
         function g    = get.isDecayCorrected(this)
-            g = this.isDecayCorrected_;
+            g = this.bmmr_.isDecayCorrected;
+        end
+        function this = set.isDecayCorrected(this, s)
+            this.bmmr_.isDecayCorrected = s;
+            this.img = this.bmmr_.img;
         end
         function g    = get.isotope(this)
-            g = this.sessionData.isotope;
+            g = this.bmmr_.isotope;
         end
         function g    = get.mask(this)
-            g = this.mask_;
-        end
-        function g    = get.nPixels(this)
-            if (isempty(this.mask_))
-                g = prod(this.component.size(1:3));
-            else
-                assert(1 == max(max(max(this.mask_.img))));
-                assert(0 == min(min(min(this.mask_.img))));
-                g = sum(sum(sum(this.mask_.img)));
-            end
-        end  
-        function g    = get.scannerTimeShift(this)
-            g = this.scannerTimeShift_;
+            g = this.bmrr_.mask;
         end
         function g    = get.sessionData(this)
-            g = this.sessionData_;
-        end
-        function this = set.sessionData(this, s)
-            assert(isa(s, 'mlpipeline.SessionData'));
-            this.sessionData_ = s;
+            g = this.bmmr_.sessionData;
         end
         function g    = get.specificActivity(this)
-            g = this.(this.SPECIFIC_ACTIVITY_KIND);
-        end
-        function this = set.specificActivity(this, s)
-            this.(this.SPECIFIC_ACTIVITY_KIND) = s;
+            g = this.bmmr_.specificActivity;
         end
         function g    = get.taus(this)
-            g = this.timingData_.taus;
+            g = this.bmmr_.taus;
         end
         function g    = get.time0(this)
-            g = this.timingData_.time0;
+            g = this.bmmr_.time0;
         end
         function this = set.time0(this, s)
-            this.timingData_.time0 = s;
+            this.bmmr_.time0 = s;
         end
         function g    = get.timeDuration(this)
-            g = this.timingData_.timeDuration;
+            g = this.bmmr_.timeDuration;
         end
         function this = set.timeDuration(this, s)
-            this.timingData_.timeDuration = s;
+            this.bmmr_.timeDuration = s;
         end
         function g    = get.timeF(this)
-            g = this.timingData_.timeF;
+            g = this.bmmr_.timeF;
         end
         function this = set.timeF(this, s)
-            this.timingData_.timeF = s;
+            this.bmmr_.timeF = s;
         end
         function g    = get.timeMidpoints(this)
-            g = this.timingData_.timeMidpoints;
+            g = this.bmmr_.timeMidpoints;
         end
         function g    = get.times(this)
-            g = this.timingData_.times;
-        end
-        function this = set.times(this, s)
-            this.timingData_.times = s;
+            g = this.bmmr_.times;
         end
         function w    = get.W(~)
-            w = 1;
+            w = this.bmmr_.W;
         end
 
         %%
         
         function b = activityInterpolants(this, varargin)
-            b = this.activity;
-            b = this.pchip(this.times, b, this.timeInterpolants);            
-            if (~isempty(varargin))
-                b = b(varargin{:}); end
+            b = this.bmmr_.activityInterpolants;
         end
         function c = countInterpolants(this, varargin)
-            c = this.counts;
-            c = this.pchip(this.times, c, this.timeInterpolants);            
-            if (~isempty(varargin))
-                c = c(varargin{:}); end
+            c = this.bmmr_.countInterpolants;
         end
         function this = buildCalibrated(this)
-            this.invEfficiency_ = this.invEfficiency_;
         end
-        function s    = datetime2sec(this, dt)
-            s = this.timingData_.datetime2sec(dt);
+        function dt_ = datetime(this)
+            dt_ = this.bmmr_.datetime;
         end
-        function this = decayInterpolants(this)
-        end
-        function len  = length(this)
-            len = length(this.times);
-        end        
-        function [m,n] = mskt(this)
-            import mlfourdfp.*;
-            sessd = this.sessionData;
-            f = [sessd.tracerRevision('typ','fqfp') '_sumt'];
-            f1 = mybasename(FourdfpVisitor.ensureSafeFileprefix(f));
-            lns_4dfp(f, f1);
-            
-            ct4rb = CompositeT4ResolveBuilder('sessionData', sessd);
-            ct4rb.msktgenImg(f1);          
-            m = mlfourd.ImagingContext([f1 '_mskt.4dfp.ifh']);
-            n = m.numericalNiftid;
-            n.img = n.img/n.dipmax;
-            n.fileprefix = [f1 '_msktNorm'];
-            n.filesuffix = '.4dfp.ifh';
-            n.save;
-            n = mlfourd.ImagingContext(n);
-        end
-        function this = numel(this)
-        end
-        function this = numelMasked(this)
+        function d = decayInterpolants(this)
+            d = this.bmmr_.decayInterpolants;
         end
         function this = petobs(this)
-            this.fileprefix = [this.fileprefix '_obs'];
-            idx0 = this.index0;
-            idxF = this.indexF;
-            assert(idx0 < idxF);
-            this.img = trapz(this.times(idx0:idxF), this.specificActivity(:,:,:,idx0:idxF), 4);
+            this.bmmr_ = this.bmmr_.petobs;
         end
         function        plot(this)
-            if (isscalar(this.img))
-                fprintf(this.img);
-            end
-            if (isvector(this.img))
-                plot(this.times, this.img);
-                xlabel('BiographMMR0.times');
-                ylabel('BiographMMR0.img');
-                return
-            end
-            this.view;
-        end
-        function this = save(this)
-            this.component.fqfileprefix = sprintf('%s_%s', this.component.fqfileprefix, datestr(now, 30));
-            this.component.save;
+            plot(this.bmmr_);
         end
         function this = saveas(this, fqfn)
-            this.component.fqfilename = fqfn;
-            this.save;
-        end
-        function dt   = sec2datetime(this, s)
-            dt = this.timingData_.sec2datetime(s);
+            this.bmmr_ = this.bmmr_.saveas(fqfn);
         end
         function this = shiftTimes(this, Dt)
-            [this.times_,this.component.img] = shiftTensor(this.times_, this.component.img, Dt);
         end
         function this = shiftWorldlines(this)
         end
-        function this = specificActivityInterpolants(this)
+        function s = specificActivityInterpolants(this)
+            s = this.bmmr_.specificActivityInterpolants;
         end
         function [t,this] = timeInterpolants(this, varargin)
-            [t,this] = this.timingData_.timeInterpolants(varargin{:});
+            [t,this] = this.bmmr_.timeInterpolants(varargin{:});
         end
         function [t,this] = timeMidpointInterpolants(this, varargin)
-            [t,this] = this.timingData_.timeMidpointInterpolants(varargin{:});
+            [t,this] = this.bmmr_.timeMidpointInterpolants(varargin{:});
         end         
         
-        % borrowed from mlfourd.NumericalNIfTId
+        %% borrowed from mlfourd.NumericalNIfTId
         
         function this = blurred(this, blur)
-            bl = mlfourd.BlurringNIfTId(this.component);
-            bl = bl.blurred(blur);
-            this.component = bl.component;
+            this = this.bmmr_.blurred(blur);
         end
         function this = masked(this, msk)
-            assert(isa(msk, 'mlfourd.INIfTI'));
-            this.mask_ = msk;
-            dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
-            dyn = dyn.masked(msk);
-            this.component = dyn.component;
+            this = this.bmmr_.masked(msk);
         end
         function this = thresh(this, t)
-            nn = mlfourd.NumericalNIfTId(this.component);
-            nn = nn.thresh(t);
-            this.component = nn.component;
+            this = this.bmmr_.thresh(t);
         end
         function this = threshp(this, p)
-            nn = mlfourd.NumericalNIfTId(this.component);
-            nn = nn.threshp(p);
-            this.component = nn.component;
+            this = this.bmmr_.threshp(p);
         end
         function this = timeContracted(this)
+            this = this.bmmr_.timeContracted;
         end
         function this = timeSummed(this)
-            dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
-            dyn = dyn.timeSummed;
-            this.component = dyn.component;
+            this = this.bmmr_.timeSummed;
         end 
         function this = uthresh(this, u)
-            nn = mlfourd.NumericalNIfTId(this.component);
-            nn = nn.uthresh(u);
-            this.component = nn.component;
+            this = this.bmmr_.uthresh(u);
         end
         function this = uthreshp(this, p)
-            nn = mlfourd.NumericalNIfTId(this.component);
-            nn = nn.uthreshp(p);
-            this.component = nn.component;
+            this = this.bmmr_.uthreshp(p);
         end
         function this = volumeContracted(this)
+            this = this.bmmr_.volumeContracted;
         end
-        function this = volumeSummed(this)
-            dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
-            dyn = dyn.volumeSummed;
-            this.component = dyn.component;
+        function this = volumeAveraged(this)
+            this = this.bmmr_.volumeAveraged;
         end    
+        function this = volumeSummed(this)
+            this = this.bmmr_.volumeSummed;
+        end    
+        function v    = voxelVolume(this)
+            v = this.bmmr_.voxelVolume;
+        end
         
  		function this = BiographMMR0(cmp, varargin)
             this = this@mlfourd.NIfTIdecoratorProperties(cmp, varargin{:});
@@ -361,43 +233,8 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                 return
             end
             
-            ip = inputParser;
-            addParameter(ip, 'manualData',        [],    @(x) isa(x, 'mldata.IManualMeasurements'));
-            addParameter(ip, 'sessionData',       [],    @(x) isa(x, 'mlpipeline.ISessionData'));
-            addParameter(ip, 'doseAdminDatetime', NaT,   @(x) isa(x, 'datetime'));
-            addParameter(ip, 'invEfficiency',     1.155, @isnumeric); % from HYGLY28/V2
-            addParameter(ip, 'isDecayCorrected',  true,  @islogical);
-            parse(ip, varargin{:});
-            this.manualData_ = ip.Results.manualData;
-            this.sessionData_ = ip.Results.sessionData;
-            this.doseAdminDatetime_ = ip.Results.doseAdminDatetime;
-            this.doseAdminDatetime_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            this.invEfficiency_ = ip.Results.invEfficiency;
-            this.component.img = this.component.img*this.invEfficiency;
-            this.isDecayCorrected_ = ip.Results.isDecayCorrected;
-            
-            this.timingData_ = mldata.TimingData( ...
-                'times',     this.sessionData.times, ...
-                'datetime0', this.sessionData.readDatetime0 - this.manualDataClocksTimeOffsetMMRConsole);
-            if (size(this, 4) < length(this.times))
-                warning('mlsiemens:unexpectedNumel', ...
-                    'this.times->%i but size(this,4)->%i', length(this.times), size(this, 4));
-                this.times = this.times(1:size(this, 4));
-            end
-            if (length(this.times) < size(this, 4))
-                warning('mlsiemens:unexpectedNumel', ...
-                    'this.times->%i but size(this,4)->%i', length(this.times), size(this, 4));
-                this.img = this.img(:,:,:,1:length(this.times));
-            end
-            
-            if (~this.isDecayCorrected_ && ...
-                length(this.component.size) == 4 && size(this.component,4) > 1)
-                dc = mlpet.DecayCorrection.factoryFor(this);
-                this.component.img = dc.uncorrectedActivities(this.component.img, 0);
-                this.decaysPerCC_ = this.decaysPerCC; % KLUDGE
-            end
-            
             this = this.append_descrip('decorated by BiographMMR0');
+            this.bmmr_ = mlsiemens.BiographMMR(cmp, varargin{:});
         end
         
     end 
@@ -405,15 +242,7 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
     %% PROTECTED
     
     properties (Access = protected)
-        decaysPerCC_ % cache
-        doseAdminDatetime_
-        invEfficiency_
-        isDecayCorrected_ = true
-        manualData_
-        mask_
-        scannerTimeShift_
-        sessionData_
-        timingData_        
+        bmmr_
     end
     
     methods (Access = protected)
@@ -436,9 +265,6 @@ classdef BiographMMR0 < mlfourd.NIfTIdecoratorProperties & mlpet.IScannerData
                     error('mlsiemens:unsupportedArraySize', ...
                           'size(BiographMMR0.activity2petCounts.img) -> %s', mat2str(size(img)));
             end
-        end
-        function sec  = manualDataClocksTimeOffsetMMRConsole(this)
-            sec = seconds(this.manualData_.clocks.TimeOffsetWrtNTS____s('mMR console'));
         end
         function yi   = pchip(~, x, y, xi)
             lenxi = length(xi);

@@ -15,8 +15,8 @@ classdef Test_EcatExactHRPlus < matlab.unittest.TestCase
 
 	properties 
  		testObj 
-        home = '/data/cvl/np755/mm01-007_p7267_2008jun16/ECAT_EXACT/pet/p7267ho1_frames'
-        tracerResolved = 'p7267ho1'
+        unittest_home = '/data/cvl/np755/mm01-007_p7267_2008jun16/ECAT_EXACT/pet/p7267ho1_frames'
+        tracerRevision = 'p7267ho1'
         pie = 5.2038
         mask
  	end 
@@ -24,8 +24,8 @@ classdef Test_EcatExactHRPlus < matlab.unittest.TestCase
 	methods (Test) 
         function test_ctor(this)
             %this.verifyEqual(this.testObj., )
-            this.verifyEqual(this.testObj.fqfilename, fullfile(this.home, [this.tracerResolved '.nii.gz']));
-            this.verifyEqual(this.testObj.isDecayCorrected, false);
+            this.verifyEqual(this.testObj.fqfilename, fullfile(this.unittest_home, [this.tracerRevision '.nii.gz']));
+            %this.verifyEqual(this.testObj.isDecayCorrected, false);
             this.verifyEqual(this.testObj.scanIndex, 1);
             this.verifyEqual(this.testObj.length, 60);
             this.verifyEqual(this.testObj.scanDuration, 1.613330000000000e+02);
@@ -95,8 +95,8 @@ classdef Test_EcatExactHRPlus < matlab.unittest.TestCase
 
  	methods (TestClassSetup) 
  		function setupEcatExactHRPlus(this) 
-            cd(this.home);
- 			this.testObj = mlsiemens.EcatExactHRPlus(mlfourd.NIfTId.load(this.tracerResolved)); 
+            cd(this.unittest_home);
+ 			this.testObj = mlsiemens.EcatExactHRPlus(mlfourd.NIfTId.load(this.tracerRevision)); 
             this.mask = this.makeMask;
  		end 
  	end 

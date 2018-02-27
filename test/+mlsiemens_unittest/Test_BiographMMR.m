@@ -92,6 +92,7 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
         end
         function test_volumeSummed(this)
             this.testObj = this.testObj.volumeSummed;
+            this.verifyClass(this.testObj, 'mlsiemens.BiographMMR');
             
             img  = this.testObj.img;
             cnts = this.testObj.counts;
@@ -102,6 +103,7 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
         end
         function test_volumeContracted(this)
             this.testObj = this.testObj.volumeContracted;
+            this.verifyClass(this.testObj, 'mlsiemens.BiographMMR');
             
             img  = this.testObj.img;
             cnts = this.testObj.counts;

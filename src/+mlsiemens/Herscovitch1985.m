@@ -74,7 +74,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         end
         function aa = aparcAseg(sessd, ct4rb)
             if (lexist(sessd.aparcAsegBinarized('typ','.4dfp.ifh'), 'file'))
-                aa = mlpet.PETImagingContext(sessd.aparcAsegBinarized('typ','.4dfp.ifh'));
+                aa = mlfourd.ImagingContext(sessd.aparcAsegBinarized('typ','.4dfp.ifh'));
                 return
             end
             
@@ -133,17 +133,17 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             sc = sc.blurred(this.petPointSpread);
             sc = sc.uthresh(this.CBV_UTHRESH);
             sc.fileprefix = this.sessionData.cbv('typ','fp','suffix',this.resolveTag);        
-            this.product_ = mlpet.PETImagingContext(sc.component);
+            this.product_ = mlfourd.ImagingContext(sc.component);
         end
         function this = buildCmro2Map(this, labs)
             sc = this.scanner;
             sc =sc.petobs;
             sc.img = sc.img*this.MAGIC;
-            cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix',this.resolveTag);
-            oef = obj.sessionData.oef('typ','mlpet.PETImagingContext','suffix',this.resolveTag);
+            cbf = obj.sessionData.cbf('typ','mlfourd.ImagingContext','suffix',this.resolveTag);
+            oef = obj.sessionData.oef('typ','mlfourd.ImagingContext','suffix',this.resolveTag);
             sc.img = 0.01*labs.o2Content*oef.niftid.img*cbf.niftid.img;
             sc.fileprefix = this.sessionData.cmro2('typ', 'fp');
-            this.product_ = mlpet.PETImagingContext(sc.component);
+            this.product_ = mlfourd.ImagingContext(sc.component);
         end
         function aif  = estimateAifOO(this)
             this = this.ensureAifHOMetab;
@@ -183,47 +183,54 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         %% plotting support 
         
         function plotAif(this)
-            figure;
+            %plot(this.aif);
             a = this.aif;
             idxF = a.indexF + 40;
-            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF)/10e3);
+            figure;
+            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF));
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAif:\n%s %s', sd.sessionPath, sd.tracer));
         end
         function plotAifHOMetab(this)
             this = this.ensureAifHOMetab;
-            figure;
+            %plot(this.aifHOMetab);
             a = this.aifHOMetab;
             idxF = a.indexF + 40;
-            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF)/10e3);
+            figure;
+            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF));
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAifHOMetab:\n%s %s', sd.sessionPath, sd.tracer));
         end
         function plotAifOO(this)
             this = this.ensureAifOO;
-            figure;
+            %plot(this.aifOO);
             a = this.aifOO;
             idxF = a.indexF + 40;
-            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF)/10e3);
+            figure;
+            plot(a.times(a.index0:idxF), a.specificActivity(a.index0:idxF));
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotAifOO:\n%s %s', sd.sessionPath, sd.tracer));
         end
         function plotScannerWholebrain(this)
-            this  = this.ensureMask;
-            mskvs = this.mask.volumeSummed;
+            s = this.scanner;
+            s = s.volumeAveraged(s.mask);            
             
-            s    = this.scanner;
-            lent = s.indexF - s.index0 + 1;
-            wc   = zeros(1, lent);
-            for ti = s.index0:s.indexF
-                wc(ti) = squeeze( ...
-                    sum(sum(sum(s.specificActivity(:,:,:,ti).*this.mask.niftid.img))))/ ...
-                    this.MAGIC/mskvs.double;
-            end
-            plot(s.times(s.index0:s.indexF)-s.times(s.index0), wc/10e3);
+%             this  = this.ensureMask;
+%             mskvs = this.mask.volumeSummed;
+%             
+%             s    = this.scanner;
+%             lent = s.indexF - s.index0 + 1;
+%             wc   = zeros(1, lent);
+%             for ti = s.index0:s.indexF
+%                 wc(ti) = squeeze( ...
+%                     sum(sum(sum(s.specificActivity(:,:,:,ti).*this.mask.niftid.img))))/ ...
+%                     this.MAGIC/mskvs.double;
+%             end
+            
+            plot(s.times(s.index0:s.indexF)-s.times(s.index0), s.specificActivity(s.index0:s.indexF));
             hold on   
             a = this.aif;
-            plot(a.times(a.index0:a.indexF)-a.times(a.index0), a.specificActivity(a.index0:a.indexF)/10e3);
+            plot(a.times(a.index0:a.indexF)-a.times(a.index0), a.specificActivity(a.index0:a.indexF));
             sd = this.sessionData;
             title(sprintf('AbstractHerscovitch1985.plotScannerWholebrain:\n%s %s', sd.sessionPath, sd.tracer));
         end 
