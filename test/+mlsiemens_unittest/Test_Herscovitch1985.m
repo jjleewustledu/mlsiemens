@@ -14,14 +14,14 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
  	
 
 	properties
-        invEffTwilite = 0.446548*1e3
+        invEffTwilite = 0.446548 * 1e3
         invEffMMR = 1.1551
-        a1 = 1.0932e-11
-        a2 = 3.4579e-5
-        b1 = -0.92967
-        b2 =  539.71
-        b3 = -81.505
-        b4 =  28235
+        a1 =  9.801275343313559e-12
+        a2 =  3.401076359921338e-05
+        b1 = -1.335246820068828
+        b2 =  8.993914369193620e+02
+        b3 = -42.857285062758898
+        b4 =  2.322990715719311e+04
         fracHOMetab = 153/263
         ooFracTime  = 120
         ooPeakTime  = 0  
@@ -36,9 +36,10 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         sessd 
  		testObj
         
-        doseAdminDatetimeOC = datetime(2016,9,23,10,47,33-10, 'TimeZone', 'America/Chicago');
-        doseAdminDatetimeOO = datetime(2016,9,23,11,13,05-10, 'TimeZone', 'America/Chicago');
-        doseAdminDatetimeHO = datetime(2016,9,23,11,30,01-10,   'TimeZone', 'America/Chicago');
+        doseAdminDatetimeOC  = datetime(2016,9,23,10,47,33-15, 'TimeZone', 'America/Chicago');
+        doseAdminDatetimeOO  = datetime(2016,9,23,11,13,05-15, 'TimeZone', 'America/Chicago');
+        doseAdminDatetimeHO  = datetime(2016,9,23,11,30,01-15, 'TimeZone', 'America/Chicago');
+        doseAdminDatetimeFDG = datetime(2016,9,23,12,43,52-15, 'TimeZone', 'America/Chicago');
  	end
 
 	methods (Test)
@@ -80,9 +81,9 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this.testObj.plotAifHOMetab;
         end
         function test_runPLaif(this)
-            this = this.configAifState('HO');
+            this = this.configTracerState('HO');
             a = this.aif;
-            plaif = mlswisstrace.DeconvolvingPLaif.runPLaif(a.times(1:a.indexF), a.specificActivity(1:a.indexF));
+            plaif = mlswisstrace.DeconvolvingPLaif.runPLaif(a.times(1:a.indexF), a.specificActivity(1:a.indexF), 'HO');
             plot(plaif);
         end
         function test_plotScannerWholebrain(this)
@@ -119,7 +120,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj    = obj.buildCbfMap;
             this.verifyTrue(isa(obj.product, 'mlfourd.ImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessd.cbf('typ','fqfn','suffix','op_fdg'));
+            obj.product.saveas(this.sessd.cbfOpFdg('typ','fqfn'));
         end
         function test_buildCbfWholebrain(this)
             this = this.configTracerState('HO');
@@ -134,7 +135,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj  = this.testObj.buildCbvMap;
             this.verifyTrue(isa(obj.product, 'mlfourd.ImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessd.cbv('typ','fqfn','suffix','op_fdg'));
+            obj.product.saveas(this.sessd.cbvOpFdg('typ','fqfn'));
         end
         function test_buildCbvWholebrain(this)
             this = this.configTracerState('OC');
@@ -142,24 +143,24 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this.verifyEqual(obj.product, 4.148, 'RelTol', 0.01); % bigger mask
         end
         function test_buildCmro2Map(this)
-            labs.pH = 7.36;
-            labs.pCO2 = 44;
-            labs.pO2 = 109;
-            labs.totalCO2 = 26;
-            labs.AaGradient = nan;
-            labs.pcnt_iO2Art = nan;
-            labs.vol_iO2Art = nan;
-            labs.totalHgb = 13.5;
-            labs.oxyHgb = 82.3;
-            labs.carboxyHgb = 4.7;
-            labs.metHgb = 1.4;
+            %labs.pH = 7.36;
+            %labs.pCO2 = 44;
+            %labs.pO2 = 109;
+            %labs.totalCO2 = 26;
+            %labs.AaGradient = nan;
+            %labs.pcnt_iO2Art = nan;
+            %labs.vol_iO2Art = nan;
+            %labs.totalHgb = 13.5;
+            %labs.oxyHgb = 82.3;
+            %labs.carboxyHgb = 4.7;
+            %labs.metHgb = 1.4;
             labs.o2Content = 17.7;
             this = this.configTracerState('OO');
             obj = this.testObj;
-            obj = obj.buildCmro2Map;            
+            obj = obj.buildCmro2Map(labs);            
             this.verifyTrue(isa(obj.product, 'mlfourd.ImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessd.cmro2('typ','fqfn','suffix','op_resolved'));
+            obj.product.saveas(this.sessd.cmro2OpFdg('typ','fqfn'));
         end
         function test_buildCmro2Wholebrain(this)
             this = this.configTracerState('OO');
@@ -173,12 +174,12 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.b2 = this.b2;
             obj.b3 = this.b3;
             obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlfourd.ImagingContext','suffix','op_fdg');
-            obj.cbv = obj.sessionData.cbv('typ','mlfourd.ImagingContext','suffix','op_fdg');
+            obj.cbf = obj.sessionData.cbfOpFdg('typ','mlfourd.ImagingContext');
+            obj.cbv = obj.sessionData.cbvOpFdg('typ','mlfourd.ImagingContext');
             obj = obj.buildOefMap;
             this.verifyTrue(isa(obj.product, 'mlfourd.ImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessd.oef('typ','fqfn','suffix','op_fdg'));
+            obj.product.saveas(this.sessd.oefOpFdg('typ','fqfn'));
         end
         function test_buildOefWholebrain(this)
             this = this.configTracerState('OO');
@@ -187,16 +188,49 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.b2 = this.b2;
             obj.b3 = this.b3;
             obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlfourd.ImagingContext','suffix','op_fdg');
-            obj.cbv = obj.sessionData.cbv('typ','mlfourd.ImagingContext','suffix','op_fdg');
+            obj.cbf = obj.sessionData.cbfOpFdg('typ','mlfourd.ImagingContext');
+            obj.cbv = obj.sessionData.cbvOpFdg('typ','mlfourd.ImagingContext');
             obj = obj.buildOefWholebrain;
             this.verifyEqual(obj.product, 0.2699, 'RelTol', 0.01);
-        end        
+        end  
+        
+        %% ATTN:  GLC EXPOSED
+        function test_constructPhysiologicals(this)
+            labs.o2Content = 17.17;
+            labs.glc = 308;
+            mlsiemens.Herscovitch1985.constructPhysiologicals(this.sessd, this.crv, labs);
+            ic = mlfourd.ImagingContext(this.sessd.cmro2OpFdg);
+            ic.view;
+        end
+        function test_constructCmrglc(this)
+            labs.o2Content = 17.17;
+            labs.glc = 308;
+            mlsiemens.Herscovitch1985.constructCmrglc(this.sessd, labs);
+            ic = mlfourd.ImagingContext(this.sessd.cmro2OpFdg);
+            ic.view;
+        end
+        
+        function test_updownsampleScanner(this)
+           
+            import mlsiemens.*;
+            sd = this.sessd;
+            sd.tracer = 'FDG';            
+            thisFDG = Herscovitch1985.constructTracerState(sd); 
+            thisFDG.scanner.fileprefix = 'Test_Herscovitch_test_updownsampleScanner';
+            thisFDG = thisFDG.downsampleScanner;
+            thisFDG.scanner.view;
+            thisFDG.scanner.mask.view;
+            thisFDG = thisFDG.upsampleScanner;
+            thisFDG.scanner.view;
+            thisFDG.scanner.mask.view;
+        end
 	end
 
  	methods (TestClassSetup)
 		function setupHerscovitch1985(this)
             import mlraichle.* mlsiemens.*;
+            setenv('CCIR_RAD_MEASUREMENTS_DIR', this.ccirRadMeasurementsDir);
+            setenv('TEST_HERSCOVITCH1985', '1');
             studyd = StudyData;
             sessp = fullfile(studyd.subjectsDir, 'HYGLY28', '');
             this.sessd = SessionData( ...
@@ -209,8 +243,6 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                 'ac', true);
             this.mand = mlsiemens.XlsxObjScanData('sessionData', this.sessd);
             cd(this.sessd.vLocation);
-            setenv('CCIR_RAD_MEASUREMENTS_DIR', this.ccirRadMeasurementsDir);
-            setenv('TEST_HERSCOVITCH1985', '1');
             this.addTeardown(@this.teardownHerscovitch1985);
  		end
 	end
@@ -245,6 +277,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this.aif = mlswisstrace.Twilite( ...
                 'fqfilename',        fullfile(getenv('HOME'), 'Documents', 'private', this.crv), ...
                 'invEfficiency',     this.invEffTwilite, ...
+                'sessionData',       this.sessd, ...
                 'manualData',        this.mand, ...
                 'doseAdminDatetime', this.doseAdminDatetimeActive(tracer_), ...
                 'isotope', '15O');
@@ -266,31 +299,31 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         function this = configAcquiredData(this, tracer_)
             this.sessd.tracer =  tracer_;
             this.sessd.attenuationCorrected = true;
+            sessdFdg = this.sessd;
+            sessdFdg.tracer = 'FDG';
             this.mand = mlsiemens.XlsxObjScanData('sessionData', this.sessd);
-            this.mask = mlfourd.ImagingContext( ...
-                fullfile(this.sessd.tracerLocation, ...
-                sprintf('aparcAseg_op_%s_binarized.4dfp.ifh', this.sessd.tracerRevision('typ', 'fp'))));
-            pic = mlfourd.ImagingContext(this.sessd.tracerRevision);
-            this.scanner = mlsiemens.BiographMMR( ...
-                pic.niftid, ...
-                'sessionData',       this.sessd, ...
-                'doseAdminDatetime', this.doseAdminDatetimeActive(tracer_), ...
-                'invEfficiency',     this.invEffMMR, ...
-                'manualData',        this.mand, ...
-                'mask',              this.mask);
-            this.scanner.isDecayCorrected = false;
-            this.scanner.time0 = this.configScannerTime0(tracer_);
-            this.scanner.timeF = this.configScannerTimeF(tracer_);
-            this.scanner.dt    = 1;
             this.aif = mlswisstrace.Twilite( ...
-                'scannerData',       this.scanner, ...
+                'scannerData',       [], ...
                 'fqfilename',        fullfile(getenv('HOME'), 'Documents', 'private', this.crv), ...
                 'invEfficiency',     this.invEffTwilite, ...
+                'sessionData',       this.sessd, ...
                 'manualData',        this.mand, ...
                 'doseAdminDatetime', this.doseAdminDatetimeActive(tracer_), ...
                 'isotope', '15O');
             this.aif.time0 = this.configAifTime0(tracer_);
             this.aif.timeF = this.configAifTimeF(tracer_);
+            this.mask = sessdFdg.brainmaskBinarizeBlended('typ','mlfourd.ImagingContext');
+            this.scanner = mlsiemens.BiographMMR( ...
+                this.sessd.tracerResolvedFinalOpFdg('typ','niftid'), ...
+                'sessionData',       this.sessd, ...
+                'doseAdminDatetime', this.doseAdminDatetimeActive(tracer_), ...
+                'invEfficiency',     this.invEffMMR, ...
+                'manualData',        this.mand, ...
+                'mask',              this.mask);
+            this.scanner.time0 = this.configScannerTime0(tracer_);
+            this.scanner.timeDuration = this.aif.timeDuration;
+            this.scanner.dt = 1;
+            this.scanner.isDecayCorrected = false;
         end
         function t0 = configAifTime0(~, tracer_)
             switch (tracer_)

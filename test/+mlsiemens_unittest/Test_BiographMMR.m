@@ -30,7 +30,7 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
 
 	methods (Test)
         function test_ctor(this)
-            this.verifyClass(this.testObj, 'mlsiemens.BiographMMR0')
+            this.verifyClass(this.testObj, 'mlsiemens.BiographMMR')
             this.verifyEqual(this.testObjImg111, this.imgVoxel, 'RelTol', 1e-6);
         end
         function test_view(this)
@@ -79,6 +79,12 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
             dt_ = this.testObj.datetime;
             this.verifyEqual(dt_(1),   this.testObj.datetime0);
             this.verifyEqual(dt_(end), this.testObj.datetime0 + seconds(3540)); % start time of last frame
+        end
+        function test_setTime0ToInflow(this)
+            this.testObj = this.testObj.shiftTimes(30);
+            this.verifyEqual(this.testObj.time0, 0);
+            this.testObj = this.testObj.setTime0ToInflow;            
+            this.verifyEqual(this.testObj.time0, 30);
         end
         
         function test_volumeAveraged(this)
@@ -129,7 +135,7 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
             mand = XlsxObjScanData( ...
                 'sessionData', this.sessd, ...
                 'fqfilename', this.fqfnman);
- 			this.testObj_ = BiographMMR0( ...
+ 			this.testObj_ = BiographMMR( ...
                 mlfourd.NIfTId.load(this.tracerResolvedFast), ...
                 'sessionData', this.sessd, ...
                 'manualData', mand, ...
