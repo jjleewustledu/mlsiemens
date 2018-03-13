@@ -75,6 +75,10 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this = this.configTracerState('HO');
             this.testObj.plotAif;
         end
+        function test_plotAifOC(this)
+            this = this.configTracerState('OC');
+            this.testObj.plotAif;
+        end
         function test_plotAifOO(this)
             this = this.configTracerState('OO');
             this.testObj.plotAifOO;
@@ -128,7 +132,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             obj.a1 = this.a1;
             obj.a2 = this.a2;
             obj = obj.buildCbfWholebrain;
-            this.verifyEqual(obj.product, 59.61, 'RelTol', 0.01);
+            this.verifyEqual(obj.product, 37.6902047008641, 'RelTol', 0.01); % brainmaskBinarized
         end        
         function test_buildCbvMap(this)
             this = this.configTracerState('OC');
@@ -140,7 +144,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         function test_buildCbvWholebrain(this)
             this = this.configTracerState('OC');
             obj = this.testObj.buildCbvWholebrain;            
-            this.verifyEqual(obj.product, 4.148, 'RelTol', 0.01); % bigger mask
+            this.verifyEqual(obj.product, 5.121371012070974, 'RelTol', 0.01); % brainmaskBinarized
         end
         function test_buildCmro2Map(this)
             %labs.pH = 7.36;
@@ -195,21 +199,19 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         end  
         
         %% ATTN:  GLC EXPOSED
-        function test_constructPhysiologicals(this)
+        function test_constructOxygenOnly(this)
             labs.o2Content = 17.17;
-            labs.glc = 308;
-            mlsiemens.Herscovitch1985.constructPhysiologicals(this.sessd, this.crv, labs);
-            ic = mlfourd.ImagingContext(this.sessd.cmro2OpFdg);
-            ic.view;
+            mlsiemens.Herscovitch1985.constructOxygenOnly(this.sessd);
+        end
+        function test_constructPhysiologicals(this)
+            mlsiemens.Herscovitch1985.constructPhysiologicals(this.sessd);
         end
         function test_constructCmrglc(this)
             labs.o2Content = 17.17;
             labs.glc = 308;
+            labs.hct = 37.55;
             mlsiemens.Herscovitch1985.constructCmrglc(this.sessd, labs);
-            ic = mlfourd.ImagingContext(this.sessd.cmro2OpFdg);
-            ic.view;
-        end
-        
+        end        
         function test_updownsampleScanner(this)
            
             import mlsiemens.*;
@@ -223,6 +225,15 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             thisFDG = thisFDG.upsampleScanner;
             thisFDG.scanner.view;
             thisFDG.scanner.mask.view;
+        end
+        function test_readLaboratories(this)
+            import mlsiemens.*;
+            sd = this.sessd;
+            sd.tracer = 'FDG';            
+            testObj_ = Herscovitch1985.constructTracerState(sd); 
+            labs = testObj_.readLaboratories;
+            this.verifyEqual(labs.glc, 308.5);
+            this.verifyEqual(labs.hct, 37.8);
         end
 	end
 

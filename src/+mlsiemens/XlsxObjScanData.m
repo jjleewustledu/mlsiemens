@@ -95,6 +95,7 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
 
         referenceDate
         sessionData
+        sessionDate
         timingData
     end
     
@@ -159,6 +160,9 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
         function g = get.sessionData(this)
             g = this.sessionData_;
         end
+        function g = get.sessionDate(this)
+            g = this.sessionData_.sessionDate;
+        end
         function g = get.timingData(this)
             g = this.timingData_;
         end
@@ -201,71 +205,144 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
                     error('mlsiemens:unsupportedSwitchcase', 'XlsxObjScanData.catheterInfo');
             end
         end
+        function fn   = crv(this)
+            tbl = readtable(fullfile(getenv('CCIR_RAD_MEASUREMENTS_DIR'), 'Twilite census.xlsx'), ...
+                'Sheet', 'Sheet 1 - DateTable', ...
+                'filetype', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false, 'DatetimeType', 'exceldatenum');            
+            
+            for id = 1:length(tbl.Date)                
+                date_ = this.sessionData.sessionDate;
+                date_.Hour = 0;
+                date_.Minute = 0;
+                date_.Second = 0;
+                if (date_ == mldata.TimingData.datetimeConvertFromExcel2(tbl.Date(id)) && ...
+                    1 == tbl.Human(id))
+                    fn = tbl.Filename(id);
+                    if (iscell(fn))
+                        fn = fn{1};
+                    end
+                    return
+                end
+            end
+            error('mlsiemens:soughtDataNotFound', 'XlsxObjScanData.crv');
+        end
         function sa   = mMRSpecificActivity(this)
             sa = this.mMR_.ROIMean_KBq_mL('ROI1');
         end
         function dt_  = mMRDatetime(this)
-            dt_ = this.mMR_.scanStartTime_Hh_mm_ss('ROI1') - ...
-                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR console'));
+            try
+                dt_ = this.mMR_.scanStartTime_Hh_mm_ss('ROI1') - ...
+                      seconds(this.clocks.TimeOffsetWrtNTS____s('mMR console'));
+            catch ME
+                dispwarning(ME);
+                dt_ = this.mMR_.scanStartTime_Hh_mm_ss('ROI1') - ...
+                      seconds(this.clocks.TIMEOFFSETWRTNTS____S('mMR console'));
+            end
         end
         function sa   = phantomSpecificActivity(this)
             sa = this.phantom_.DECAYCorrSpecificActivity_KBq_mL;
         end
         function dt_  = phantomDatetime(this)
-            dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
-                  seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
+            try
+                dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
+                    seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
+            catch ME
+                dispwarning(ME);
+                dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
+                    seconds(this.clocks.TIMEOFFSETWRTNTS____S('mMR PEVCO lab'));
+            end
+            % TIMEOFFSETWRTNTS____S
         end
         function this = readtable(this, varargin)
             ip = inputParser;
             addOptional(ip, 'fqfnXlsx', this.fqfilename, @(x) lexist(x, 'file'));
-            parse(ip, varargin{:});         
+            parse(ip, varargin{:});
             
-            warning('off', 'MATLAB:table:ModifiedVarnames');   
-            warning('off', 'MATLAB:table:ModifiedAndSavedVarnames');  
-            warning('off', 'MATLAB:table:ModifiedDimnames');  
-
-            this.capracHeader_ = ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Table 1', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', false, 'ReadRowNames', false);
-            this.clocks_ = this.convertClocks2sec( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true));
+            warning('off', 'MATLAB:table:ModifiedVarnames');
+            warning('off', 'MATLAB:table:ModifiedAndSavedVarnames');
+            warning('off', 'MATLAB:table:ModifiedDimnames');
             
-            this.fdg_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Runs', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
-            this.oo_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Runs-1', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
-            this.tracerAdmin_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Radiation Counts Log - Runs-2', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true)); %, 'DatetimeType', 'exceldatenum'));
-            this.cyclotron_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true), ...
-                'mMR PEVCO lab');
-            this.phantom_ = ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-1', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
-            this.capracCalibration_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-2', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
-            this.twilite_ = ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-1-', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
-            this.mMR_ = this.correctDates2( ...
-                readtable(ip.Results.fqfnXlsx, ...
-                'Sheet', 'Twilite Calibration - Runs-2-11', ...
-                'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true)); %, 'DatetimeType', 'exceldatenum'));
+            try
+                this.capracHeader_ = ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Radiation Counts Log - Table 1', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', false, 'ReadRowNames', false);
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.clocks_ = this.convertClocks2sec( ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Twilite Calibration - Runs', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true));
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.fdg_ = this.correctDates2( ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Radiation Counts Log - Runs', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.oo_ = this.correctDates2( ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Radiation Counts Log - Runs-1', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.tracerAdmin_ = this.correctDates2( ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Radiation Counts Log - Runs-2', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true)); %, 'DatetimeType', 'exceldatenum'));
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.cyclotron_ = this.correctDates2( ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Twilite Calibration - Runs-2', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true), ...
+                    'mMR PEVCO lab');
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.phantom_ = ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Twilite Calibration - Runs-2-1', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.capracCalibration_ = this.correctDates2( ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Twilite Calibration - Runs-2-2', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false)); %, 'DatetimeType', 'exceldatenum'));
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.twilite_ = ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Twilite Calibration - Runs-2-1-', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false);
+            catch ME
+                dispwarning(ME);
+            end
+            try
+                this.mMR_ = this.correctDates2( ...
+                    readtable(ip.Results.fqfnXlsx, ...
+                    'Sheet', 'Twilite Calibration - Runs-2-11', ...
+                    'FileType', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', true)); %, 'DatetimeType', 'exceldatenum'));
+            catch ME
+                dispwarning(ME);
+            end
             
             warning('on', 'MATLAB:table:ModifiedVarnames');
             warning('on', 'MATLAB:table:ModifiedAndSavedVarnames'); 
@@ -303,6 +380,9 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             this.fqfilename                = ip.Results.fqfilename;
             if (isempty(ip.Results.fqfilename))
                 this.fqfilename = this.sessionData_.CCIRRadMeasurements; 
+            end
+            if (~lexist(this.fqfilename, 'file'))
+                error('mlsiemens:fileNotFound', 'XlsxObjScanData.ctor');
             end
             this.timingData_               = ip.Results.timingData;
             this.forceDateToReferenceDate_ = ip.Results.forceDateToReferenceDate;
@@ -359,9 +439,17 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
     
     methods (Access = private)
         function c    = convertClocks2sec(this, c)
-            for ic = 1:length(c.TimeOffsetWrtNTS____s)
-                c.TimeOffsetWrtNTS____s(ic) = this.excelNum2sec(c.TimeOffsetWrtNTS____s(ic));
+            try
+                for ic = 1:length(c.TimeOffsetWrtNTS____s)
+                    c.TimeOffsetWrtNTS____s(ic) = this.excelNum2sec(c.TimeOffsetWrtNTS____s(ic));
+                end
+            catch ME
+                %dispwarning(ME);
+                for ic = 1:length(c.TIMEOFFSETWRTNTS____S)
+                    c.TIMEOFFSETWRTNTS____S(ic) = this.excelNum2sec(c.TIMEOFFSETWRTNTS____S(ic));
+                end
             end
+            % TIMEOFFSETWRTNTS____S
         end
         function s    = excelNum2sec(~, excelnum)
             
@@ -407,18 +495,33 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             vN = lower(ip.Results.varName);
             wCN = ip.Results.wallClockName;
             
-            if (~isempty(wCN))
-                dur = seconds(this.clocks.TimeOffsetWrtNTS____s(wCN));
-                return
+            try
+                if (~isempty(wCN))
+                    dur = seconds(this.clocks.TimeOffsetWrtNTS____s(wCN));
+                    return
+                end
+                if (lstrfind(vN, 'drawn'))
+                    dur = seconds(this.clocks.TimeOffsetWrtNTS____s('hand timers')); 
+                    return
+                end
+            catch ME
+                if (~isempty(wCN))
+                    dur = seconds(this.clocks.TIMEOFFSETWRTNTS____S(wCN));
+                    return
+                end
+                if (lstrfind(vN, 'drawn'))
+                    dur = seconds(this.clocks.TIMEOFFSETWRTNTS____S('hand timers')); 
+                    return
+                end
+
             end
-            if (lstrfind(vN, 'drawn'))
-                dur = seconds(this.clocks.TimeOffsetWrtNTS____s('hand timers')); 
-                return
-            end
-            if (lstrfind(vN, 'counted'))
-                dur = seconds(this.clocks.TimeOffsetWrtNTS____s('CT radiation lab'));
-                return
-            end
+            
+            %TIMEOFFSETWRTNTS____S
+            
+%             if (lstrfind(vN, 'counted'))
+%                 dur = seconds(this.clocks.TimeOffsetWrtNTS____s('CT radiation lab'));
+%                 return
+%             end
             dur = seconds(0);
         end
         function tf   = hasTimings(~, var)
