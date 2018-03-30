@@ -1,4 +1,4 @@
-classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
+classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
 	%% XLSXOBJSCANDATA  
 
 	%  $Revision$
@@ -391,6 +391,40 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
  		end
     end 
     
+    %% PROTECTED
+    
+    methods (Access = protected)        
+        function tbl  = correctDates2(this, tbl, varargin)
+            %% CORRECTDATES2 overrides mlio.AbstractXlsxIO
+            
+            vars = tbl.Properties.VariableNames;
+            for v = 1:length(vars)
+                col = tbl.(vars{v});
+                if (this.hasTimings(vars{v}))
+                    if (any(isnumeric(col)))                        
+                        lrows = logical(~isnan(col) & ~isempty(col));
+                        dt_   = this.datetimeConvertFromExcel2(tbl{lrows,v});
+                        col   = NaT(size(col));
+                        col.TimeZone = dt_.TimeZone;
+                        col(lrows) = dt_;
+                        if (~this.isTrueTiming(vars{v}))
+                            col(lrows) = col(lrows) - this.adjustClock4(vars{v}, varargin{:});
+                        end
+                    end
+                    if (any(isdatetime(col)))
+                        col.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+                        lrows = logical(~isnat(col));
+                        col(lrows) = this.correctDateToReferenceDate(col(lrows));
+                        if (~this.isTrueTiming(vars{v}))
+                            col(lrows) = col(lrows) - this.adjustClock4(vars{v}, varargin{:});
+                        end
+                    end
+                end
+                tbl.(vars{v}) = col;
+            end
+        end
+    end
+    
     %% PRIVATE
     
     properties (Access = private)
@@ -451,42 +485,6 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             end
             % TIMEOFFSETWRTNTS____S
         end
-        function s    = excelNum2sec(~, excelnum)
-            
-            pm            = sign(excelnum);
-            dt_           = datetime(abs(excelnum), 'ConvertFrom', 'excel');
-            dt_.TimeZone  = mldata.TimingData.PREFERRED_TIMEZONE;
-            dt__          = datetime(dt_.Year, dt_.Month, dt_.Day);
-            dt__.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-            s             = pm*seconds(dt_ - dt__);
-        end
-        function tbl  = correctDates2(this, tbl, varargin)
-            vars = tbl.Properties.VariableNames;
-            for v = 1:length(vars)
-                col = tbl.(vars{v});
-                if (this.hasTimings(vars{v}))
-                    if (any(isnumeric(col)))                        
-                        lrows = logical(~isnan(col) & ~isempty(col));
-                        dt_   = this.datetimeConvertFromExcel2(tbl{lrows,v});
-                        col   = NaT(size(col));
-                        col.TimeZone = dt_.TimeZone;
-                        col(lrows) = dt_;
-                        if (~this.isTrueTiming(vars{v}))
-                            col(lrows) = col(lrows) - this.adjustClock4(vars{v}, varargin{:});
-                        end
-                    end
-                    if (any(isdatetime(col)))
-                        col.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
-                        lrows = logical(~isnat(col));
-                        col(lrows) = this.correctDateToReferenceDate(col(lrows));
-                        if (~this.isTrueTiming(vars{v}))
-                            col(lrows) = col(lrows) - this.adjustClock4(vars{v}, varargin{:});
-                        end
-                    end
-                end
-                tbl.(vars{v}) = col;
-            end
-        end
         function dur  = adjustClock4(this, varargin)
             ip = inputParser;
             addRequired(ip, 'varName', @ischar);
@@ -524,9 +522,6 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
 %             end
             dur = seconds(0);
         end
-        function tf   = hasTimings(~, var)
-            tf = lstrfind(lower(var), 'time') | lstrfind(lower(var), 'hh_mm_ss');
-        end
         function tf   = isTrueTiming(~, var)
             tf = lstrfind(lower(var), 'true');
         end
@@ -543,11 +538,6 @@ classdef XlsxObjScanData < mlio.AbstractIO & mldata.IManualMeasurements
             dt_.Month    = dtRef.Month;
             dt_.Day      = dtRef.Day;
             dt_.TimeZone = dtRef.TimeZone;
-        end
-        function dt_  = datetimeConvertFromExcel2(~, varargin)
-            % addresses what may be an artefact of linking cells across sheets in Numbers/Excel on MacOS
-            
-            dt_ = mldata.TimingData.datetimeConvertFromExcel2(varargin{:});            
         end
         function d    = extractDateOnly(this, dt_)
             if (~isa(dt_, 'datetime'))

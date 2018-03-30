@@ -79,18 +79,18 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             
             return
             
-            thoseCmrglc = Herscovitch1985.constructCmrglc(sessdFdg, thoseCbv{end}.cbv); 
-            if (~isempty(thoseCmrglc))            
-                dgo = thoseCmrglc.product;
-                dgo.fqfileprefix = thoseCmrglc.sessionData.agiOpFdg('typ','fqfp');
-                dgo.img = thoseCmrglc.product.niftid.img - (1/6)*thoseCmro2{end}.product.niftid.img; % \mumol/min/hg
-                thoseCmrglc.save(dgo);
-
-                ogi = thoseCmrglc.product;
-                ogi.fqfileprefix = thoseCmrglc.sessionData.ogiOpFdg('typ','fqfp');
-                ogi.img = thoseCmro2{end}.product.niftid.img ./ thoseCmrglc.product.niftid.img; % \mumol/min/hg
-                thoseCmrglc.save(dgo);
-            end
+%             thoseCmrglc = Herscovitch1985.constructCmrglc(sessdFdg, thoseCbv{end}.cbv); 
+%             if (~isempty(thoseCmrglc))            
+%                 dgo = thoseCmrglc.product;
+%                 dgo.fqfileprefix = thoseCmrglc.sessionData.agiOpFdg('typ','fqfp');
+%                 dgo.img = thoseCmrglc.product.niftid.img - (1/6)*thoseCmro2{end}.product.niftid.img; % \mumol/min/hg
+%                 thoseCmrglc.save(dgo);
+% 
+%                 ogi = thoseCmrglc.product;
+%                 ogi.fqfileprefix = thoseCmrglc.sessionData.ogiOpFdg('typ','fqfp');
+%                 ogi.img = thoseCmro2{end}.product.niftid.img ./ thoseCmrglc.product.niftid.img; % \mumol/min/hg
+%                 thoseCmrglc.save(ogi);
+%             end
         end    
         function this = constructCbf(sessd)
             import mlsiemens.*;
