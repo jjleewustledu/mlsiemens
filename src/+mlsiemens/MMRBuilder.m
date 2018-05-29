@@ -260,19 +260,19 @@ classdef MMRBuilder < mlpipeline.VendorBuilder
             bv = this.buildVisitor_;
             
             assertLexist(sd.tracerListmodeMhdr('typ', 'fqfn'));
-            if (~lexist(  sd.tracerListmodeSif( 'typ', 'fqfn'), 'file'))
+            %if (~lexist(  sd.tracerListmodeSif( 'typ', 'fqfn'), 'file'))
                 pwd0 = pushd(sd.tracerListmodeMhdr('typ', 'path'));
                 bv.sif_4dfp(sd.tracerListmodeMhdr( 'typ', 'fp'));
                 popd(pwd0);                    
-            end
+            %end
             if (~isdir(sd.tracerSif('typ', 'path')))
                 mlfourdfp.FourdfpVisitor.mkdir( sd.tracerSif('typ', 'path'));
             end
-            if (~lexist(sd.tracerSif('typ', 'fqfn'), 'file'))
+            %if (~lexist(sd.tracerSif('typ', 'fqfn'), 'file'))
                 pwd0 = pushd(sd.tracerSif('typ', 'path'));
                 bv.lns_4dfp(sd.tracerListmodeMhdr('typ', 'fqfp'));
                 popd(pwd0);
-            end
+            %end
             fqfp = sd.tracerSif('typ', 'fqfp');
         end
     end
