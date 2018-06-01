@@ -227,7 +227,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             error('mlsiemens:soughtDataNotFound', 'XlsxObjScanData.crv');
         end
         function sa   = mMRSpecificActivity(this)
-            sa = this.mMR_.ROIMean_KBq_mL('ROI1');
+            sa = 1000 * this.mMR_.ROIMean_KBq_mL('ROI1');
         end
         function dt_  = mMRDatetime(this)
             try
@@ -235,23 +235,22 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
                       seconds(this.clocks.TimeOffsetWrtNTS____s('mMR console'));
             catch ME
                 dispwarning(ME);
-                dt_ = this.mMR_.scanStartTime_Hh_mm_ss('ROI1') - ...
-                      seconds(this.clocks.TIMEOFFSETWRTNTS____S('mMR console'));
             end
         end
         function sa   = phantomSpecificActivity(this)
-            sa = this.phantom_.DECAYCorrSpecificActivity_KBq_mL;
+            %% PHANTOMSPECIFICACTIVITY returns Bq/mL
+            
+            sa = 1000 * this.phantom_.DECAYCorrSpecificActivity_KBq_mL;
         end
         function dt_  = phantomDatetime(this)
             try
-                dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
-                    seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
+                ct_ = this.cyclotron_.time_Hh_mm_ss('residual dose');
+                ct_ = datetime(ct_{1});
+                dt_ =  ct_ - seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
+                dt_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
             catch ME
                 dispwarning(ME);
-                dt_ = this.cyclotron_.time_Hh_mm_ss('residual dose') - ...
-                    seconds(this.clocks.TIMEOFFSETWRTNTS____S('mMR PEVCO lab'));
             end
-            % TIMEOFFSETWRTNTS____S
         end
         function this = readtable(this, varargin)
             ip = inputParser;

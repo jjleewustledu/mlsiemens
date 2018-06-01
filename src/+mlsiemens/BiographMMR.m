@@ -32,6 +32,9 @@ classdef BiographMMR < mlpet.AbstractScannerData
             assert(isa(sessd, 'mlpipeline.ISessionData'))      
             this = mlsiemens.BiographMMR(mlfourd.NIfTId.load(varargin{:}), 'sessionData', sessd);
         end
+        function fwhh = petPointSpread
+            fwhh = mlsiemens.MMRRegistry.instance.petPointSpread;
+        end
     end
     
     methods 
