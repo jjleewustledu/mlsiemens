@@ -14,11 +14,6 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
  	
 
 	properties
-        invEffTwilite = 409 % [invEffTwilite] = (Bq s)/(mL counts); 
-                            % estimated using TwiliteBuilder.counts2specificActivity
-                            % pre-3/2016:  mean := 409, covar := 0.0336
-                            % post-3/2016: mean := 216, covar := 0.0862
-        invEffMMR = 1.1551 % [invEffMMR] = 1        
         a1 =  9.801275343313559e-12
         a2 =  3.401076359921338e-05
         b1 = -1.335246820068828
@@ -37,7 +32,10 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         mask
         scanner
         sessd 
+        sessf = 'HYGLY28'
+        t1
  		testObj
+        vnum = 2
         
         doseAdminDatetimeOC  = datetime(2016,9,23,10,47,33-15, 'TimeZone', 'America/Chicago');
         doseAdminDatetimeOO  = datetime(2016,9,23,11,13,05-15, 'TimeZone', 'America/Chicago');
@@ -47,11 +45,22 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
 
 	methods (Test)
         function test_ctor(this)
-            this = this.configTracerState('HO');
+            this = this.configTracerState('FDG');
             this.verifyClass(this.aif, 'mlswisstrace.Twilite');
             this.verifyClass(this.scanner, 'mlsiemens.BiographMMR');
             this.verifyClass(this.testObj, 'mlsiemens.Herscovitch1985');
         end
+        function test_configT1001(this)
+            this = this.configTracerState('HO');
+            [t,f] = this.testObj.configT1001;
+            mlfourdfp.Viewer.view({f t});
+        end
+        function test_configMask(this)
+            this = this.configTracerState('HO');
+            [m,f] = this.testObj.configMask;
+            mlfourdfp.Viewer.view({f m});
+        end
+        
         function test_buildCalibrated(this)
             this = this.configTracerState('HO');
             plot(this.testObj.aif);
@@ -161,7 +170,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             %labs.oxyHgb = 82.3;
             %labs.carboxyHgb = 4.7;
             %labs.metHgb = 1.4;
-            labs.o2Content = 17.7;
+            labs.o2Content = this.sessd.o2Content;
             this = this.configTracerState('OO');
             obj = this.testObj;
             obj = obj.buildCmro2Map(labs);            
@@ -202,19 +211,22 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         end  
         
         %% ATTN:  GLC EXPOSED
-        function test_constructOxygenOnly(this)
-            labs.o2Content = 17.17;
-            mlsiemens.Herscovitch1985.constructOxygenOnly(this.sessd);
-        end
-        function test_constructPhysiologicals(this)
-            mlsiemens.Herscovitch1985.constructPhysiologicals(this.sessd);
+        function test_constructAifs(this)
+            mlsiemens.Herscovitch1985.constructAifs(this.sessd);
         end
         function test_constructCmrglc(this)
-            labs.o2Content = 17.17;
+            labs.o2Content = this.sessd.o2Content;
             labs.glc = 308;
             labs.hct = 37.55;
             mlsiemens.Herscovitch1985.constructCmrglc(this.sessd, labs);
-        end        
+        end      
+        function test_constructOxygenOnly(this)
+            labs.o2Content = this.sessd.o2Content;
+            mlsiemens.Herscovitch1985.constructOxygenOnly(this.sessd, labs);
+        end
+        function test_constructPhysiologicals(this)
+            mlsiemens.Herscovitch1985.constructPhysiologicals(this.sessd);
+        end  
         function test_updownsampleScanner(this)
            
             import mlsiemens.*;
@@ -245,20 +257,23 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             import mlraichle.* mlsiemens.*;
             setenv('CCIR_RAD_MEASUREMENTS_DIR', this.ccirRadMeasurementsDir);
             setenv('TEST_HERSCOVITCH1985', '1');
-            studyd = StudyData;
-            sessp = fullfile(studyd.subjectsDir, 'HYGLY28', '');
-            this.sessd = SessionData( ...
-                'studyData', studyd, ...
-                'sessionDate', datetime(2016,9,23, 'TimeZone', 'America/Chicago'), ...
-                'sessionPath', sessp, ...
-                'tracer', 'HO', ...
-                'rnumber', 2, ...
-                'snumber', 1, ...
-                'vnumber', 2, ...
-                'ac', true);
+            this.sessd = HerscovitchContext( ...
+                'studyData', mlraichle.StudyData, ...
+                'sessionFolder', this.sessf, ...
+                'vnumber', this.vnum);
+%             , ...
+%                 'sessionDate', datetime(2016,9,23, 'TimeZone', 'America/Chicago'), ...
+%                 'tracer', 'HO', ...
+%                 'rnumber', 1, ...
+%                 'snumber', 1, ...
+%                 'vnumber', this.vnum, ...
+%                 'ac', true);
             this.mand = mlsiemens.XlsxObjScanData('sessionData', this.sessd);
-            cd(this.sessd.vLocation);
-            this.addTeardown(@this.teardownHerscovitch1985);
+            cd(this.sessd.vallLocation);
+            this.addTeardown(@this.teardownHerscovitch1985);            
+             
+            this.t1   = this.sessd.T1001OpFdg;
+            this.mask = this.sessd.MaskBrainOpFdg;
  		end
 	end
 
@@ -267,8 +282,10 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
  			%this.testObj = this.testObj_;
  			%this.addTeardown(@this.cleanFiles);
  		end
-	end
+    end
 
+    %% PRIVATE
+    
 	properties (Access = private)
  		%testObj_
  	end
@@ -291,7 +308,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this.mand = mlsiemens.XlsxObjScanData('sessionData', this.sessd);
             this.aif = mlswisstrace.Twilite( ...
                 'fqfilename',        fullfile(getenv('HOME'), 'Documents', 'private', this.crv), ...
-                'invEfficiency',     this.invEffTwilite, ...
+                'invEfficiency',     this.sessd.INV_EFF_TWILITE, ...
                 'sessionData',       this.sessd, ...
                 'manualData',        this.mand, ...
                 'doseAdminDatetime', this.doseAdminDatetimeActive(tracer_), ...
@@ -306,7 +323,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
                 'scanner', this.scanner, ...
                 'aif', this.aif, ...
                 'timeDuration', this.scanner.timeDuration, ...
-                'mask', this.mask);
+                'mask', mlfourd.ImagingContext(this.scanner.mask));
             this.testObj.ooPeakTime  = this.ooPeakTime;
             this.testObj.ooFracTime  = this.ooFracTime;
             this.testObj.fracHOMetab = this.fracHOMetab;
@@ -320,19 +337,18 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this.aif = mlswisstrace.Twilite( ...
                 'scannerData',       [], ...
                 'fqfilename',        fullfile(getenv('HOME'), 'Documents', 'private', this.crv), ...
-                'invEfficiency',     this.invEffTwilite, ...
+                'invEfficiency',     this.sessd.INV_EFF_TWILITE, ...
                 'sessionData',       this.sessd, ...
                 'manualData',        this.mand, ...
                 'doseAdminDatetime', this.doseAdminDatetimeActive(tracer_), ...
                 'isotope', '15O');
             this.aif.time0 = this.configAifTime0(tracer_);
             this.aif.timeF = this.configAifTimeF(tracer_);
-            this.mask = sessdFdg.aparcAsegBinarized('typ','mlfourd.ImagingContext');
             this.scanner = mlsiemens.BiographMMR( ...
                 this.sessd.tracerResolvedFinal('typ','niftid'), ...
                 'sessionData',       this.sessd, ...
                 'doseAdminDatetime', this.doseAdminDatetimeActive(tracer_), ...
-                'invEfficiency',     this.invEffMMR, ...
+                'invEfficiency',     this.sessd.INV_EFF_MMR, ...
                 'manualData',        this.mand, ...
                 'mask',              this.mask);
             this.scanner.time0 = this.configScannerTime0(tracer_);
@@ -343,24 +359,28 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         function t0 = configAifTime0(~, tracer_)
             switch (tracer_)
                 case 'HO'
-                    t0 = 30;
+                    t0 = 20;
                 case 'OO'
                     t0 = 0;
                 case {'OC' 'CO'}
                     t0 = 120;
+                case 'FDG'
+                    t0 = 0;
                 otherwise
                     error('mlsiemens:unsupportedSwitchCase', ...
                         'Test_Herscovitch1985.doseAdminDatetimeActive');
             end
         end
-        function tF = configAifTimeF(~, tracer_)
+        function tF = configAifTimeF(this, tracer_)
             switch (tracer_)
                 case 'HO'
-                    tF = 70;
+                    tF = 60;
                 case 'OO'
                     tF = 40;
                 case {'OC' 'CO'}
                     tF = 120+180;
+                case 'FDG'
+                    tF = this.sessd.times(end);
                 otherwise
                     error('mlsiemens:unsupportedSwitchCase', ...
                         'Test_Herscovitch1985.doseAdminDatetimeActive');

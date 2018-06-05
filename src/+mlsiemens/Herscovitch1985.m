@@ -8,20 +8,21 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
  	%  and checked into repository /Users/jjlee/Local/src/mlcvl/mlsiemens/src/+mlsiemens.
  	%% It was developed on Matlab 9.1.0.441655 (R2016b) for MACI64.  Copyright 2017 John Joowon Lee.
  	
-
     properties (Constant)
-        INV_EFF_TWILITE = 0.446548 * 1e3
-        INV_EFF_MMR = 1.1551
+        REUSE = false
+        CHECK_VIEWS = false
     end
     
     properties
         MAGIC = 1
-        canonFlows = 5:5:200 % mL/100 g/min
+        canonFlows = 10:2:100 % mL/100 g/min
         labsTable
-        useSI = true;
+        useSI = true
     end
     
     properties (Dependent)
+        INV_EFF_MMR
+        INV_EFF_TWILITE
         W
     end
     
@@ -44,66 +45,124 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 end
             end
         end
-        function those = constructPhysiologicals(sessd)
+        function those = constructCbfAndCbv(sessd, varargin)
+            
+            ip = inputParser;
+            parse(ip, varargin{:});
+            
+            this = mlsiemens.Herscovitch1985('sessionData', sessd);
+            this.configT1001;
+            this.configMask;
+            
             import mlsiemens.*;
-            sessdFdg = sessd;
             those = {};
             thoseCbf = {};
             thoseCbv = {};
+            for s = 1:3
+                sessd.snumber = s;
+                try
+                    thoseCbf = [thoseCbf Herscovitch1985.constructCbf(sessd)]; %#ok<AGROW>
+                catch ME
+                    disp(ME.identifier);
+                    fprintf('mlsiemens.Herscovitch1985.constructCbf failed for s->%i\n', s);
+                end
+            end
+            productAverage(thoseCbf);
+            for s = 1:3
+                sessd.snumber = s;
+                try
+                    thoseCbv = [thoseCbv Herscovitch1985.constructCbv(sessd)]; %#ok<AGROW>
+                catch ME
+                    disp(ME.identifier);
+                    fprintf('mlsiemens.Herscovitch1985.constructCbv failed for s->%i\n', s);
+                end
+            end
+            productAverage(thoseCbv);
+        end  
+        function those = constructPhysiologicals(sessd, varargin)
+            
+            ip = inputParser;
+            parse(ip, varargin{:});
+            
+            this = mlsiemens.Herscovitch1985('sessionData', sessd);
+            this.configT1001;
+            this.configMask;
+            
+            import mlsiemens.*;
+            those = {};
+            thoseCbf = {};
+            thoseCbv = {};
+            thoseOef = {};
             thoseCmro2 = {};
             for s = 1:3
                 sessd.snumber = s;
                 try
                     thoseCbf = [thoseCbf Herscovitch1985.constructCbf(sessd)]; %#ok<AGROW>
-                catch 
-                    fprintf('mlsiemens.Herscovitch1985.constructCbf failed for s->%i\n', s);
+                catch ME
+                    %disp(ME.message);
+                    %fprintf('mlsiemens.Herscovitch1985.constructCbf failed for s->%i\n', s);
                 end
             end
+            thoseCbf = productAverage(thoseCbf);
             for s = 1:3
                 sessd.snumber = s;
                 try
                     thoseCbv = [thoseCbv Herscovitch1985.constructCbv(sessd)]; %#ok<AGROW>
-                catch 
-                    fprintf('mlsiemens.Herscovitch1985.constructCbv failed for s->%i\n', s);
+                catch ME
+                    %disp(ME.message);
+                    %fprintf('mlsiemens.Herscovitch1985.constructCbv failed for s->%i\n', s);
                 end
             end
+            thoseCbv = productAverage(thoseCbv);
             for s = 1:3
                 sessd.snumber = s;
                 try
-                    thoseCmro2 = [thoseCmro2 Herscovitch1985.constructCmro2( ...
-                        sessd, thoseCbf{end}.cbf, thoseCbv{end}.cbv)]; %#ok<AGROW>
-                catch 
+                    thoseOef = [thoseOef Herscovitch1985.constructOef( ...
+                        sessd, thoseCbf.product, thoseCbv.product)]; %#ok<AGROW>
+                catch ME
+                    disp(ME.message);
+                    fprintf('mlsiemens.Herscovitch1985.constructOef failed for s->%i\n', s);
+                end
+            end
+            productAverage(thoseOef);
+            for s = 1:3
+                sessd.snumber = s;
+                try
+                    thoseCmro2 = [thoseCmro2 Herscovitch1985.constructCmro2(sessd)]; %#ok<AGROW>
+                catch ME
+                    disp(ME.message);
                     fprintf('mlsiemens.Herscovitch1985.constructCmro2 failed for s->%i\n', s);
                 end
             end
+            productAverage(thoseCmro2);
             
-            return
-            
-%             thoseCmrglc = Herscovitch1985.constructCmrglc(sessdFdg, thoseCbv{end}.cbv); 
+%             thoseCmrglc = Herscovitch1985.constructCmrglc(sessdFdg, thoseCbv.product); 
 %             if (~isempty(thoseCmrglc))            
 %                 dgo = thoseCmrglc.product;
 %                 dgo.fqfileprefix = thoseCmrglc.sessionData.agiOpFdg('typ','fqfp');
-%                 dgo.img = thoseCmrglc.product.niftid.img - (1/6)*thoseCmro2{end}.product.niftid.img; % \mumol/min/hg
+%                 dgo.img = thoseCmrglc.product.niftid.img - (1/6)*thoseCmro2.product.niftid.img; % \mumol/min/hg
 %                 thoseCmrglc.save(dgo);
 % 
 %                 ogi = thoseCmrglc.product;
 %                 ogi.fqfileprefix = thoseCmrglc.sessionData.ogiOpFdg('typ','fqfp');
-%                 ogi.img = thoseCmro2{end}.product.niftid.img ./ thoseCmrglc.product.niftid.img; % \mumol/min/hg
+%                 ogi.img = thoseCmro2.product.niftid.img ./ thoseCmrglc.product.niftid.img; % \mumol/min/hg
 %                 thoseCmrglc.save(ogi);
 %             end
-        end    
+        end      
         function this = constructCbf(sessd)
             import mlsiemens.*;
             sessd.attenuationCorrected = true;
             sessd.tracer = 'HO';
-            if (lexist(sessd.cbfOpFdg, 'file'))
-                this.cbf = sessd.cbfOpFdg('typ','mlfourd.ImagingContext');
+            if (lexist(sessd.cbfOpFdg, 'file') && mlsiemens.Herscovitch1985.REUSE)
+                this.product = sessd.cbfOpFdg('typ','mlfourd.ImagingContext');
                 return
             end
             this = Herscovitch1985.constructTracerState(sessd);
             this = this.buildA1A2;
             this = this.buildCbfMap;
-            %view(this.product);
+            if (mlsiemens.Herscovitch1985.CHECK_VIEWS)
+                view(this.product);
+            end
             this.saveNiigz;
             this.saveFourdfp;
         end
@@ -111,51 +170,67 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             import mlsiemens.*;
             sessd.attenuationCorrected = true;
             sessd.tracer = 'OC';       
-            if (lexist(sessd.cbvOpFdg, 'file'))
-                this.cbv = sessd.cbvOpFdg('typ','mlfourd.ImagingContext');
+            if (lexist(sessd.cbvOpFdg, 'file') && mlsiemens.Herscovitch1985.REUSE)
+                this.product = sessd.cbvOpFdg('typ','mlfourd.ImagingContext');
                 return
             end
             this = Herscovitch1985.constructTracerState(sessd);    
             this = this.buildCbvMap;
-            %view(this.product);
+            if (mlsiemens.Herscovitch1985.CHECK_VIEWS)
+                view(this.product);
+            end
             this.saveNiigz;
             this.saveFourdfp;
         end     
-        function this = constructCmro2(sessd, cbf_, cbv_)
+        function this = constructOef(sessd, cbf_, cbv_)
             import mlsiemens.*;
             sessd.attenuationCorrected = true;
             sessd.tracer = 'OO';        
-            if (lexist(sessd.oefOpFdg, 'file') && lexist(sessd.cmro2OpFdg, 'file'))
+            if (lexist(sessd.oefOpFdg, 'file') && lexist(sessd.cmro2OpFdg, 'file') && mlsiemens.Herscovitch1985.REUSE)
+                this.product = sessd.cmro2OpFdg('typ', 'numericalNiftid');
+                return
+            end    
+            this = Herscovitch1985.constructTracerState(sessd);
+            this = this.buildB1B2;
+            this = this.buildB3B4;
+            this.cbf_ = cbf_;
+            this.cbv_ = cbv_;
+            this = this.buildOefMap;
+            if (mlsiemens.Herscovitch1985.CHECK_VIEWS)
+                view(this.product);
+            end
+            this.save;     
+        end
+        function this = constructCmro2(sessd)
+            import mlsiemens.*;
+            sessd.attenuationCorrected = true;
+            sessd.tracer = 'OO';        
+            if (lexist(sessd.oefOpFdg, 'file') && lexist(sessd.cmro2OpFdg, 'file') && mlsiemens.Herscovitch1985.REUSE)
                 this.product = sessd.cmro2OpFdg('typ', 'numericalNiftid');
                 return
             end    
             this = Herscovitch1985.constructTracerState(sessd);
             labs = this.readLaboratories;
-            this = this.buildB1B2;
-            this = this.buildB3B4;
-            this.cbf = cbf_;
-            this.cbv = cbv_;
-            this = this.buildOefMap;
-            %view(this.product);
-            save(this.product);
             this = this.buildCmro2Map(labs);
-            %view(this.product);
-            this.saveNiigz;
-            this.saveFourdfp;      
+            if (mlsiemens.Herscovitch1985.CHECK_VIEWS)
+                view(this.product);
+            end
+            this.save;       
         end
         function this = constructCmrglc(sessd, cbv_)
             import mlsiemens.*;
             sessd.attenuationCorrected = true;
             sessd.tracer = 'FDG';        
             this = Herscovitch1985.constructTracerState(sessd); 
-            if (lexist(sessd.cmrglcOpFdg, 'file'))
+            if (lexist(sessd.cmrglcOpFdg, 'file') && mlsiemens.Herscovitch1985.REUSE)
                 return
             end                  
             labs = this.readLaboratories;
             this = this.buildCmrglcMap(labs, cbv_);
-            %view(this.product);
-            this.saveNiigz;
-            this.saveFourdfp; 
+            if (mlsiemens.Herscovitch1985.CHECK_VIEWS)
+                view(this.product);
+            end
+            this.save;
         end
         function this = constructTracerState(sessd, varargin)
             try
@@ -177,12 +252,9 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 setenv('CCIR_RAD_MEASUREMENTS_DIR', fullfile(getenv('HOME'), 'Documents', 'private', ''));
                 
                 import mlsiemens.*;
-                aif = Herscovitch1985.configAcquiredAifData(sessd, varargin{:});
                 this = mlsiemens.Herscovitch1985( ...
                     'sessionData', sessd, ...
-                    'scanner', [], ...
-                    'aif', aif, ...
-                    'mask', []); % 'timeDuration', scanner.timeDuration, ...
+                    'scanner', []); % 'timeDuration', scanner.timeDuration, ...
             catch ME
                 dispwarning(ME);
             end
@@ -276,27 +348,69 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         
         %% GET
         
+        function g = get.INV_EFF_MMR(this)
+            g = this.sessionData.INV_EFF_MMR;
+        end
+        function g = get.INV_EFF_TWILITE(this)
+            g = this.sessionData.INV_EFF_TWILITE;
+        end
         function g = get.W(this)
             g = this.scanner.invEfficiency;
         end
         
-        %%
+        %% 
         
- 		function this = Herscovitch1985(varargin)
- 			this = this@mlpet.AbstractHerscovitch1985(varargin{:});
-            this.aif_ = this.aif_.setTime0ToInflow;
-            if (strcmp(this.sessionData.tracer, 'HO') || strcmp(this.sessionData.tracer, 'OO'))
-                this = this.deconvolveAif;
-            end
-            this.aif_.timeDuration = this.configAifTimeDuration(this.sessionData.tracer);    
-            if (~isempty(this.scanner_))
-                %if (~strcmp(this.sessionData.tracer, 'FDG'))
-                    this.scanner_ = this.scanner.setTime0ToInflow;
-                %end
-                this.scanner_.timeDuration = this.aif.timeDuration;
-            end
-        end        
-         
+        function [t,f,t4] = configT1001(this)
+            pwd0 = pushd(this.sessionData.vallLocation);
+            
+            vref = this.sessionData.vnumberRef;
+            f = sprintf('fdgv%ir1_sumtr1_op_fdgv%ir1_avgr1', vref, vref);
+            t = 'T1001';
+            tm = 'T1001_mskt';
+            cRB = mlfourdfp.CompositeT4ResolveBuilder( ...
+                'sessionData', this.sessionData, ...
+                'blurArg', 1.5, ...
+                'theImages', {f t}, ...
+                'maskForImages', {'none' tm}, ...
+                'resolveTag', sprintf('op_fdgv%ir1', vref), ...
+                'NRevisions', 1, ...
+                'logPath', ensuredir(fullfile(this.sessionData.vallLocation, 'Log', '')));            
+            cRB.neverTouchFinishfile = true;
+            cRB.ignoreFinishfile = true;
+            cRB = cRB.resolve; 
+            t4 = cRB.t4s{1}{2};
+            t = cRB.product{2};
+            f = cRB.product{1};
+            
+            popd(pwd0);
+        end
+        function [m,ref] = configMask(this)
+            pwd0 = pushd(this.sessionData.vallLocation);
+            fv = mlfourdfp.FourdfpVisitor;
+                      
+            aa = this.sessionData.aparcAseg;
+            aa.mgh;
+            aa.niftid;
+            aa.fourdfp;
+            sfp = fullfile(pwd, fv.ensureSafeFileprefix(aa.fileprefix));
+            aa.fqfileprefix = sfp;
+            aa.save;
+            
+            import mlfourd.*;
+            vref = this.sessionData.vnumberRef;
+            t4   = sprintf('T1001r1_to_fdgv1r1_sumtr1_op_fdgv%ir1_avgr1_t4', vref);
+            sfp1 = sprintf('%s_op_fdgv%ir1', sfp, vref);
+            ref  = fullfile(pwd, sprintf('fdgv%ir1_sumt', vref));
+            fv.t4img_4dfp(t4, sfp, 'out', sfp1, 'options', ['-n -O' ref]);
+            m = ImagingContext([sfp1 '.4dfp.ifh']);
+            nn = m.numericalNiftid;
+            nn = nn ~= 0 & nn ~= 43 & nn ~= 4 & nn ~= 14 & nn ~= 15; % exclude 4 ventricles
+            nn.saveas([sfp1 '_mskb.4dfp.ifh']); 
+            m = ImagingContext(nn);
+            
+            popd(pwd0);
+        end
+        
         function rho    = estimatePetdyn(this, aif, cbf)
             assert(isa(aif, 'mlpet.IAifData'));
             assert(isnumeric(cbf));  
@@ -357,18 +471,17 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             
             sc = this.scanner;
             sc = sc.petobs;
-            nimg = this.oefNumer(sc.img);
-            dimg = this.oefDenom;
+            nimg = this.oefNumer(sc.img); % blurred
+            dimg = this.oefDenom;         % blurred
             sc.img = this.is0to1(nimg./dimg);
-            sc = sc.blurred(this.petPointSpread);
             sc.fqfilename = this.sessionData.oefOpFdg('typ','fqfn');
             this.product_ = mlfourd.ImagingContext(sc.component);
         end
         function this = buildCmro2Map(this, labs)
             sc = this.scanner;
             sc = sc.petobs;
-            cbf = this.sessionData.cbfOpFdg('typ','mlfourd.ImagingContext');
-            oef = this.sessionData.oefOpFdg('typ','mlfourd.ImagingContext');
+            cbf = this.sessionData.cbfOpFdg('avg', true, 'typ','mlfourd.ImagingContext');
+            oef = this.sessionData.oefOpFdg('avg', true, 'typ','mlfourd.ImagingContext');
             if (this.useSI)
                 sc.img = 1e3  * this.percentVolume2molL(labs.o2Content) * oef.niftid.img .* cbf.niftid.img; % \mumol/min/hg
             else                
@@ -466,8 +579,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             fv = FourdfpVisitor;
             sessFdg = this.sessionData;
             sessFdg.tracer = 'FDG';
-            fv.lns_4dfp([sessd.tracerRevision('typ','fqfp') '_on_resolved_sumt'], ...
-                        [sessd.tracerRevision('typ','fqfp') 'OnResolved_sumt']);
+            fv.lns_4dfp([this.sessionData.tracerRevision('typ','fqfp') '_on_resolved_sumt'], ...
+                        [this.sessionData.tracerRevision('typ','fqfp') 'OnResolved_sumt']);
             
             ct4rb = CompositeT4ResolveBuilder();
         end
@@ -594,8 +707,93 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             obj.filesuffix = '.nii.gz';
             obj.save;
             obj.filesuffix = fs0;
-        end
+        end        
+        
+        %% ctor
+        
+ 		function this = Herscovitch1985(varargin)
+ 			this = this@mlpet.AbstractHerscovitch1985(varargin{:});
+            this.aif_ = this.aif_.setTime0ToInflow;
+            if (strcmp(this.sessionData.tracer, 'HO') || strcmp(this.sessionData.tracer, 'OO'))
+                this = this.deconvolveAif;
+            end
+            this.aif_.timeDuration = this.configAifTimeDuration(this.sessionData.tracer);    
+            if (~isempty(this.scanner_))
+                this.scanner_ = this.scanner.setTime0ToInflow;
+                this.scanner_.timeDuration = this.aif.timeDuration;
+            end
+        end  
     end 
+    
+    %% PROTECTED
+    
+    methods (Access = protected)
+        function aif = configAcquiredAifData(this)  
+            sessd = this.sessionData;
+            if (strcmp(sessd.tracer, 'FDG'))
+                aif = this.configAcquiredFdgAif;
+                return
+            end            
+            mand = mlsiemens.XlsxObjScanData('sessionData', sessd);
+            aif = mlswisstrace.Twilite( ...
+                'scannerData',       [], ...
+                'fqfilename',        fullfile(mand.filepath, mand.crv), ...
+                'invEfficiency',     sessd.INV_EFF_TWILITE, ...
+                'sessionData',       sessd, ...
+                'manualData',        mand, ...
+                'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
+                'isotope', '15O');
+        end
+        function aif = configAcquiredFdgAif(this)  
+            sessd = this.sessionData;
+            sessd.tracer = 'FDG';            
+            mand = mlsiemens.XlsxObjScanData('sessionData', sessd);
+            aif = mlcapintec.Caprac( ...
+                'fqfilename',        sessd.CCIRRadMeasurements, ...
+                'sessionData',       sessd, ...
+                'manualData',        mand, ...
+                'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
+                'isotope', '18F');
+        end
+        function this = deconvolveAif(this)
+            if (lexist(this.deconvolveAifFn, 'file'))
+                load(  this.deconvolveAifFn)
+                this.aif_ = a; %#ok<NODEF>
+                return
+            end
+            
+            a = this.aif;
+            plaif = mlswisstrace.DeconvolvingPLaif.runPLaif( ...
+                a.times(1:a.indexF), a.specificActivity(1:a.indexF), this.aif.tracer);
+            a.specificActivity(1:a.indexF) = plaif.itsDeconvSpecificActivity;
+            a.counts = a.specificActivity / a.counts2specificActivity;
+            a.time0 = max(1, plaif.t0 - 3);
+            save(this.deconvolveAifFn, 'a', '-v7.3');
+            this.aif_ = a;
+        end
+        function fqfn = deconvolveAifFn(this)
+            fqfn = fullfile(this.sessionData.vallLocation, ...
+                sprintf('mlsiemens_Herscovitch1985_deconvolveAif_%s.mat', ...
+                        this.sessionData.tracerRevision('typ', 'fp')));
+        end
+        function this = productAverage(those)
+            %  @param those is a composite of mlsiemens.Herscovitch1985.
+            %  @return this is an mlsiemens.Herscovitch containing product := mean(composite of products).
+            
+            assert(~isempty(those));            
+            avgf = those(1).product.fourdfp;
+            assert(~lstrfind(avgf.fileprefix, '_avg'));
+            for p = 2:length(those)
+                nextf = those(p).product.fourdfp;
+                avgf.img = avgf.img + nextf.img;
+            end
+            avgf.img = avgf.img / length(those);
+            avgf.fileprefix = [mlsiemens.Herscovitch1985.scrubSNumber(avgf.fileprefix) '_avg'];
+            avgf.save;
+            this = those(1);
+            this.product_ = mlfourd.ImagingContext(avgf);
+        end 
+    end    
     
     %% PRIVATE
     
@@ -604,11 +802,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
     end
     
     methods (Static, Access = private)
-        function [aif,scanner,mask] = configAcquiredData(sessd, varargin)  
-            ip = inputParser;
-            addOptional(ip, 'crv', '', @ischar);
-            parse(ip, varargin{:});
-            
+        function [aif,scanner,mask] = configAcquiredData(sessd, varargin)
             import mlsiemens.*;
             tracer_ = sessd.tracer;
             if (strcmp(tracer_, 'FDG'))
@@ -622,47 +816,26 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             aif = mlswisstrace.Twilite( ...
                 'scannerData',       [], ...
                 'fqfilename',        fullfile(mand.filepath, mand.crv), ...
-                'invEfficiency',     Herscovitch1985.INV_EFF_TWILITE, ...
+                'invEfficiency',     sessd.INV_EFF_TWILITE, ...
                 'sessionData',       sessd, ...
                 'manualData',        mand, ...
                 'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
                 'isotope', '15O');
-            mask = sessdFdg.brainmaskBinarizeBlended('typ','mlfourd.ImagingContext');
-            if (~lexist(sessd.tracerResolvedFinalOpFdg, 'file'))
+            mask = sessdFdg.MaskBrainOpFdg;
+            if (~lexist(sessd.tracerResolvedFinal, 'file'))
                 error('mlsiemens:fileNotFound', 'Herscovitch.configAcquiredData');
             end
             scanner = mlsiemens.BiographMMR( ...
-                sessd.tracerResolvedFinalOpFdg('typ','niftid'), ...
+                sessd.tracerResolvedFinal('typ','niftid'), ...
                 'sessionData',       sessd, ...
                 'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
-                'invEfficiency',     Herscovitch1985.INV_EFF_MMR, ...
+                'invEfficiency',     sessd.INV_EFF_MMR, ...
                 'manualData',        mand, ...
                 'mask',              mask);
             scanner.dt = 1;
             scanner.isDecayCorrected = false;
         end
-        function aif = configAcquiredAifData(sessd, varargin)  
-            ip = inputParser;
-            addOptional(ip, 'crv', '', @ischar);
-            parse(ip, varargin{:});
-            
-            import mlsiemens.*;
-            if (strcmp(sessd.tracer, 'FDG'))
-                aif = Herscovitch1985.configAcquiredFdgAif(sessd);
-                return
-            end
-            
-            mand = XlsxObjScanData('sessionData', sessd);
-            aif = mlswisstrace.Twilite( ...
-                'scannerData',       [], ...
-                'fqfilename',        fullfile(mand.filepath, mand.crv), ...
-                'invEfficiency',     Herscovitch1985.INV_EFF_TWILITE, ...
-                'sessionData',       sessd, ...
-                'manualData',        mand, ...
-                'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
-                'isotope', '15O');
-        end
-        function [aif,scanner,mask] = configAcquiredFdg(sessd)  
+        function [aif,scanner,mask] = configAcquiredFdg(sessd)
             tracer_ = 'FDG';
             sessd.tracer = tracer_;
             
@@ -674,7 +847,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'manualData',        mand, ...
                 'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
                 'isotope', '18F');
-            mask = sessd.brainmaskBinarizeBlended('typ','mlfourd.ImagingContext');
+            mask = sessd.MaskBrainOpFdg;
             scanner = mlsiemens.BiographMMR( ...
                 sessd.tracerResolvedFinal('typ','niftid'), ...
                 'sessionData',       sessd, ...
@@ -684,19 +857,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'mask',              mask);
             scanner.dt = 1;
             scanner.isDecayCorrected = false;
-        end
-        function aif = configAcquiredFdgAif(sessd)  
-            tracer_ = 'FDG';
-            sessd.tracer = tracer_;
-            
-            import mlsiemens.*;
-            mand = XlsxObjScanData('sessionData', sessd);
-            aif = mlcapintec.Caprac( ...
-                'fqfilename',        sessd.CCIRRadMeasurements, ...
-                'sessionData',       sessd, ...
-                'manualData',        mand, ...
-                'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
-                'isotope', '18F');
         end
         function tD = configAifTimeDuration(tracer_)
             switch (tracer_)
@@ -713,29 +873,16 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                         'Test_Herscovitch1985.doseAdminDatetimeActive');
             end
         end
-    end
-    
-    methods (Access = private)
-        function this = deconvolveAif(this)
-            if (lexist(this.deconvolveAifFn, 'file'))
-                load(  this.deconvolveAifFn)
-                this.aif_ = a; %#ok<NODEF>
-                return
+        function s = scrubSNumber(s)
+            tracers = {'cbf' 'cbv' 'oef' 'cmro' 'cmrglc' 'ogi' 'agi'};
+            for t = 1:length(tracers)
+                pos = regexp(s, [tracers{t} '\dv\d_op_fdg']);
+                if (~isempty(pos))
+                    len = length(tracers{t});
+                    s = [s(pos:pos+len-1) s(pos+len+1:end)];
+                end
             end
-            
-            a = this.aif;
-            plaif = mlswisstrace.DeconvolvingPLaif.runPLaif( ...
-                a.times(1:a.indexF), a.specificActivity(1:a.indexF), this.aif.tracer);
-            a.specificActivity(1:a.indexF) = plaif.itsDeconvSpecificActivity;
-            a.counts = a.specificActivity / a.counts2specificActivity;
-            a.time0 = plaif.t0;
-            save(this.deconvolveAifFn, 'a', '-v7.3');
-            this.aif_ = a;
-        end
-        function fqfn = deconvolveAifFn(this)
-            fqfn = fullfile(this.aif.sessionData.vLocation, ...
-                sprintf('mlsiemens_Herscovitch1985_deconvolveAif_%s.mat', this.aif.tracer));
-        end
+        end 
     end
     
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

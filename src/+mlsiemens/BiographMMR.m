@@ -20,8 +20,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
         decays   % in Bq*s := specificActivity*voxelVolume*tau
         invEfficiency
         specificActivity % activity/volume in Bq/mL
-        specificDecays   % decays/volume in Bq*s/mL := specificActivity*tau    
-        
+        specificDecays   % decays/volume in Bq*s/mL := specificActivity*tau            
     end    
 
     methods (Static) 
