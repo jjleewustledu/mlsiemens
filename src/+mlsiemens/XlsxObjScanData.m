@@ -369,7 +369,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
  			%% XLSXOBJSCANDATA
 
  			ip = inputParser;
-            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.SessionData'));
+            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'timingData', mldata.TimingData, @(x) isa(x, 'mldata.TimingData'));
             addParameter(ip, 'fqfilename', '', @ischar);
             addParameter(ip, 'forceDateToReferenceDate', true, @islogical);
@@ -560,7 +560,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
         function this = updateTimingData(this)
             if (~lstrcmp(upper(this.sessionData.tracer), 'FDG'))
                 return
-            end
+            end            
             td       = this.timingData_;
             t        = this.measurementsTable2timesDrawn;
             td.times = double(t - t(1));      

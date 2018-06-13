@@ -10,7 +10,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
  	
     
     properties (Constant)
-        HOUR_KLUDGE = -1
         READTABLE_HEADERLINES = 0
     end
     
@@ -93,8 +92,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
         end
         function this = petobs(this)
             this.fileprefix = [this.fileprefix '_obs'];
-            %this = this.blurred( ...
-            %    mlsiemens.MMRRegistry.instance.petPointSpread);
             idx0 = this.index0;
             idxF = this.indexF;
             if (idx0 == idxF)
@@ -102,7 +99,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
                 return
             end
             this.img = trapz(this.times(idx0:idxF), this.img(:,:,:,idx0:idxF), 4);
-            %this.img = this.img*this.voxelVolume;
         end    
         function sai  = specificActivityInterpolants(this, varargin)
             sai = this.interpolateMetric(this.specificActivity);
