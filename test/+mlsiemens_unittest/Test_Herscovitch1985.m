@@ -102,9 +102,9 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             plaif = mlswisstrace.DeconvolvingPLaif.runPLaif(a.times(1:a.indexF), a.specificActivity(1:a.indexF), 'HO');
             plot(plaif);
         end
-        function test_plotScannerWholebrain(this)
+        function test_plotScanner(this)
             this = this.configTracerState('HO');
-            this.testObj.plotScannerWholebrain;
+            this.testObj.plotScanner;
         end
         
         function test_buildA1A2(this)
@@ -273,7 +273,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this.addTeardown(@this.teardownHerscovitch1985);            
              
             this.t1   = this.sessd.T1001OpFdg;
-            this.mask = this.sessd.MaskBrainOpFdg;
+            this.mask = this.sessd.MaskOpFdg;
  		end
 	end
 

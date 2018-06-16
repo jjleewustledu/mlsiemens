@@ -90,10 +90,15 @@ classdef BiographMMR < mlpet.AbstractScannerData
             end
             popd(pwd0);
         end
-        function this = petobs(this)
+        function this = petobs(this, varargin)
+            ip = inputParser;
+            addOptional(ip, 'idx0', this.index0, @isnumeric);
+            addOptional(ip, 'idxF', this.indexF, @isnumeric);            
+            parse(ip, varargin{:});
+            idx0 = ip.Results.idx0;
+            idxF = ip.Results.idxF;
+            
             this.fileprefix = [this.fileprefix '_obs'];
-            idx0 = this.index0;
-            idxF = this.indexF;
             if (idx0 == idxF)
                 this.img = squeeze(this.img);
                 return
