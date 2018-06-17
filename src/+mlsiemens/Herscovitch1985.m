@@ -228,47 +228,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             warning('on', 'mlsiemens:fileNotFound');
             
             those = [thoseCbf thoseCbv thoseOef thoseCmro2];
-        end      
-        function this = constructPhysiologicals2(sessd, varargin)
-            
-            ip = inputParser;
-            parse(ip, varargin{:});
-            
-            import mlsiemens.*;            
-            sessd.attenuationCorrected = true;
-            sessd.tracer = 'FDG';
-            sessd.attenuationCorrected = true;
-            Herscovitch1985.configT1001(sessd);
-            Herscovitch1985.configMask(sessd);
-            if (lexist(sessd.tracerRevision))
-                try
-                    this = Herscovitch1985.constructCmrglc(sessd, sessd.cbvOpFdg('avg', true)); 
-                    this.checkView
-                    cmrglc = sessd.cmrglcOpFdg('typ', 'niftid');
-                    cmro2  = sessd.cmro2OpFdg('avg', true, 'typ', 'niftid');
-
-                    if (lexist(cmro2, 'file'))
-                        agi = cmrglc;
-                        agi.fqfileprefix = sessd.agiOpFdg('typ','fqfp');
-                        agi.img = cmrglc.img - (1/6)*cmro2.img; % \mumol/min/hg
-                        agi.save;
-                        agi.filesuffix = '.4dfp.ifh';
-                        agi.save;
-
-                        ogi = cmrglc;
-                        ogi.fqfileprefix = sessd.ogiOpFdg('typ','fqfp');
-                        ogi.img = cmro2.img ./ cmrglc.img; % \mumol/min/hg
-                        ogi.img(isnan(ogi.img)) = 0;
-                        ogi.img(~isfinite(ogi.img)) = 0;
-                        ogi.save;
-                        ogi.filesuffix = '.4dfp.ifh';
-                        ogi.save;
-                    end
-                catch ME
-                    dispwarning(ME);
-                end
-            end
-        end  
+        end        
         function this = constructCbf(sessd)
             import mlsiemens.*;
             if (lexist(sessd.cbfOpFdg, 'file') && mlsiemens.Herscovitch1985.REUSE)
@@ -314,17 +274,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             labs = this.readLaboratories;
             this = this.buildCmro2Map(labs);
             this.save;       
-        end
-        function this = constructCmrglc(sessd, cbv_)
-            import mlsiemens.*;   
-            if (lexist(sessd.cmrglcOpFdg, 'file') && mlsiemens.Herscovitch1985.REUSE)
-                this.product = sessd.cmrglcOpFdg('typ', 'numericalNiftid');
-                return
-            end                  
-            this = Herscovitch1985.constructTracerState(sessd); 
-            labs = this.readLaboratories;
-            this = this.buildCmrglcMaps(labs, cbv_);
-            this.save;
         end
         function this = constructTracerState(sessd, varargin)
             ip = inputParser;
@@ -482,74 +431,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             sc.fqfilename = this.sessionData.cmro2OpFdg('typ', 'fqfn');
             this.product_ = mlfourd.ImagingContext(sc.component);
         end
-        function this = buildCmrglcMap(this, labs, cbv_)
-            if (lexist(cbv_, 'file'))
-                cbv_ = mlfourd.ImagingContext(cbv_);
-                downCbv = this.downsampleNii(cbv_.numericalNiftid);
-            else
-                downCbv = [];
-            end
-            this.referenceMask_ = mlfourd.NumericalNIfTId(this.scanner_.mask);
-            this.referenceMask_ = this.referenceMask_.blurred(this.petPointSpread);
-            this.referenceMask_ = this.referenceMask_.binarized;
-            this.referenceMask_.fileprefix = 'mlsiemens_Herscovitch1985_buildCmrglcMap_referenceMask_';
-            this.aif_.isDecayCorrected = true;
-            this.scanner_.isDecayCorrected = true;
-            this = this.downsampleScanner;
-            strat = mlkinetics.Huang1980( ...
-                'aif', this.aif, ...
-                'scanner', this.scanner_, ...
-                'cbv', downCbv, ...
-                'glc', labs.glc, ...
-                'hct', labs.hct);
-            this.scanner_.img = strat.buildCmrglcMap; % [CMRglc] == (mg/dL)(1/min)         
-            if (this.useSI)
-                % [mg*mL/(dL*hg)] x 0.05551 [\mumol/mL][dL/mg] x 1.05^{-1} [mL/g] == [\mumol/(min hg)]
-                this.scanner_.img = 0.05551 * this.BRAIN_DENSITY^(-1) * this.scanner_.img; % [CMRglc] == \mumol/min/hg
-            end
-            this = this.upsampleScanner;
-            this.product_ = mlfourd.ImagingContext(this.scanner_.component);
-            this.product_ = this.product_.blurred(this.petPointSpread);
-            this.product_.fqfilename = this.sessionData.cmrglcOpFdg('typ', 'fqfn');
-        end
-        function this = buildCmrglcMaps(this, labs, cbv_)
-            if (lexist(cbv_, 'file'))
-                cbv_ = mlfourd.ImagingContext(cbv_);
-                downCbv = this.downsampleNii(cbv_.numericalNiftid);
-            else
-                downCbv = [];
-            end
-            this.referenceMask_ = mlfourd.NumericalNIfTId(this.scanner_.mask);
-            this.referenceMask_ = this.referenceMask_.blurred(this.petPointSpread);
-            this.referenceMask_ = this.referenceMask_.binarized;
-            this.referenceMask_.fileprefix = 'mlsiemens_Herscovitch1985_buildCmrglcMap_referenceMask_';
-            this.aif_.isDecayCorrected = true;
-            this.scanner_.isDecayCorrected = true;
-            ks = this.scanner_;
-            ks.fileprefix = this.sessionData.ksOpFdg('typ', 'fp');
-            this = this.downsampleScanner;
-            this = this.downsampleKs;
-            strat = mlkinetics.Huang1980( ...
-                'aif', this.aif, ...
-                'scanner', this.scanner_, ...
-                'cbv', downCbv, ...
-                'glc', labs.glc, ...
-                'hct', labs.hct);
-            [this.scanner_.img,ks.img] = strat.buildCmrglcMap; % [CMRglc] == (mg/dL)(1/min)         
-            if (this.useSI)
-                % [mg*mL/(dL*hg)] x 0.05551 [\mumol/mL][dL/mg] x 1.05^{-1} [mL/g] == [\mumol/(min hg)]
-                this.scanner_.img = 0.05551 * this.BRAIN_DENSITY^(-1) * this.scanner_.img; % [CMRglc] == \mumol/min/hg
-            end
-            this = this.upsampleScanner;
-            this = this.upsampleKs;
-            this.product_ = {};
-            this.product_{1} = mlfourd.ImagingContext(this.scanner_.component);
-            this.product_{1} = this.product_.blurred(this.petPointSpread);
-            this.product_{1}.fqfilename = this.sessionData.cmrglcOpFdg('typ', 'fqfn');
-            this.product_{2} = mlfourd.ImagingContext(ks.component);
-            this.product_{2} = this.product_.blurred(this.petPointSpread);
-            this.product_{2}.fqfilename = this.sessionData.ksOpFdg('typ', 'fqfn');
-        end
         function nii  = downsampleNii(~, nii0)
             nii0.filesuffix = '.nii.gz';
             nii0.save;
@@ -558,24 +439,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'flirt -interp nearestneighbour -in %s -ref %s -out %s -nosearch -applyisoxfm 4', ...
                 nii0.fqfilename, nii0.fqfilename, fqfnDown));
             nii = mlfourd.NIfTId.load(fqfnDown);           
-        end
-        function this = downsampleScanner(this)
-            down = this.downsampleNii(this.scanner_);
-            this.scanner_.img = down.img;
-            this.scanner_.fqfilename = down.fqfilename;     
-            this.scanner_.mmppix = down.mmppix;
-            if (~isempty(this.scanner_.mask))
-                this.scanner_.mask = this.downsampleNii(this.referenceMask_);
-            end
-        end
-        function this = downsampleKs(this, ks)
-            down = this.downsampleNii(ks);
-            ks.img = down.img;
-            ks.fqfilename = down.fqfilename;     
-            ks.mmppix = down.mmppix;
-            if (~isempty(ks.mask))
-                ks.mask = this.downsampleNii(this.referenceMask_);
-            end
         end
         function aif  = estimateAifHOMetab(this)
             aif       = this.aif;
@@ -634,23 +497,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'flirt -interp trilinear -in %s -ref %s -out %s -nosearch -applyxfm', ...
                 nii0.fqfilename, niiRef.fqfilename, fqfnNative));
             nii = mlfourd.NIfTId.load(fqfnNative);          
-        end
-        function this = upsampleScanner(this)
-            assert(~isempty(this.referenceMask_));            
-            up = this.upsampleNii(this.scanner_, this.referenceMask_);
-            this.scanner_.img = up.img;
-            this.scanner_.fqfilename = up.fqfilename;   
-            this.scanner_.mmppix = up.mmppix;          
-            this.scanner_.mask = this.referenceMask_;
-        end 
-        function this = upsampleKs(this, ks)
-            assert(~isempty(this.referenceMask_));            
-            up = this.upsampleNii(ks, this.referenceMask_);
-           ks.img = up.img;
-           ks.fqfilename = up.fqfilename;   
-           ks.mmppix = up.mmppix;          
-           ks.mask = this.referenceMask_;
-        end        
+        end      
         
         %%
         
@@ -752,7 +599,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         end
         function saveFourdfp(this, varargin)
             ip = inputParser;
-            addOptional(ip, 'obj', this.product, @(x) isa(x, 'mlfourd.INIfTI') || isa(x, 'mlfourd.ImagingContext'));
+            addOptional(ip, 'obj', this.product, @(x) isa(x, 'mlfourd.INIfTI') || isa(x, 'mlfourd.ImagingContext') || iscell(x));
             parse(ip, varargin{:});
             obj = ip.Results.obj;
             
@@ -770,7 +617,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         end
         function saveNiigz(this, varargin)
             ip = inputParser;
-            addOptional(ip, 'obj', this.product, @(x) isa(x, 'mlfourd.INIfTI') || isa(x, 'mlfourd.ImagingContext'));
+            addOptional(ip, 'obj', this.product, @(x) isa(x, 'mlfourd.INIfTI') || isa(x, 'mlfourd.ImagingContext') || iscell(x));
             parse(ip, varargin{:});
             obj = ip.Results.obj;
             
@@ -894,11 +741,10 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
     methods (Static, Access = protected)
         function [aif,scanner,mask] = configAcquiredData(sessd, varargin)
             import mlsiemens.*;
-            tracer_ = sessd.tracer;
-            if (strcmp(tracer_, 'FDG'))
-                [aif,scanner,mask] = Herscovitch1985.configAcquiredFdg(sessd);
-                return
-            end
+            assert(strcmpi(sessd.tracer, 'OC') || ...
+                   strcmpi(sessd.tracer, 'OO') || ...
+                   strcmpi(sessd.tracer, 'HO'), ...
+                   'mlsiemens:unexpectedParamValue', 'Herscovitch1985_15O.sessd.tracer->%s', sessd.tracer);
             sessdFdg = sessd;
             sessdFdg.tracer = 'FDG';
             
@@ -940,44 +786,17 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             if (~isempty(sessd.hoursOffsetForced))
                 scanner.datetime0 = scanner.datetime0 + hours(sessd.hoursOffsetForced);
             end
-            Herscovitch1985.adjustClocks(aif, scanner);
-            Herscovtich1985.writeAcquisitionDiary(sessd, aif, scanner);
+            [aif,scanner] = Herscovitch1985.adjustClocks(aif, scanner);
+            [aif,scanner] = Herscovitch1985.writeAcquisitionDiary(sessd, aif, scanner);
         end
-        function [aif,scanner,mask] = configAcquiredFdg(sessd)
-            tracer_ = 'FDG';
-            sessd.tracer = tracer_;
-            
-            import mlsiemens.*;
-            mand = XlsxObjScanData('sessionData', sessd);
-            aif = mlcapintec.Caprac( ...
-                'fqfilename',        sessd.CCIRRadMeasurements, ...
-                'sessionData',       sessd, ...
-                'manualData',        mand, ...
-                'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
-                'isotope', '18F');
-            mask = sessd.MaskOpFdg;
-            scanner = mlsiemens.BiographMMR( ...
-                sessd.tracerResolvedFinal('typ','niftid'), ...
-                'sessionData',       sessd, ...
-                'doseAdminDatetime', mand.tracerAdmin.TrueAdmin_Time_Hh_mm_ss(sessd.doseAdminDatetimeTag), ...
-                'invEfficiency',     sessd.INV_EFF_MMR, ...
-                'manualData',        mand, ...
-                'mask',              mask);
-            scanner.dt = 1;
-            if (~isempty(sessd.hoursOffsetForced))
-                scanner.datetime0 = scanner.datetime0 + hours(sessd.hoursOffsetForced);
-            end
-            Herscovitch1985.adjustClocks(aif, scanner);
-            Herscovtich1985.writeAcquisitionDiary(sessd, aif, scanner);
-        end
-        function adjustClocks(aif, scanner)
+        function [aif,scanner] = adjustClocks(aif, scanner)
             if (abs(scanner.datetime0 - aif.datetime0) > minutes(10))
                 scanner.datetime0 = scanner.datetime0 - hours(1);
                 assert(abs(scanner.datetime0 - aif.datetime0) < minutes(10), ...
                     'mlsiemens:datetimeErr', 'Herscovitch1985.adjustClocks');
             end
         end
-        function writeAcquisitionDiary(sessd, aif, scanner)
+        function [aif,scanner] = writeAcquisitionDiary(sessd, aif, scanner)
             logfn = fullfile(sessd.vallLocation, 'mlsiemens_Herscovitch1985_configAcquiredData.log');
             deleteExisting(logfn);
             diary(logfn);
