@@ -381,12 +381,12 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         function this = mcflirtedAfterBlur(this, blur)
             dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
             dyn = dyn.mcflirtedAfterBlur(blur);
-            this.component = dyn.component;
+            this.component_ = dyn.component;
         end
         function this = withRevertedFrames(this, origNiid, frames)
             dyn = mlfourd.DynamicNIfTId(this.component); %% KLUDGE to work-around faults with decorators in matlab
             dyn = dyn.withRevertedFrames(origNiid, frames);
-            this.component = dyn.component;
+            this.component_ = dyn.component;
         end
     end
 
