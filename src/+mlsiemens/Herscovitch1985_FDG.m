@@ -24,8 +24,10 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
             Herscovitch1985_FDG.configMask(sessd);
             if (lexist(sessd.tracerRevision))
                 try
-                    this = Herscovitch1985_FDG.constructCmrglc(sessd, sessd.cbvOpFdg('avg', true)); 
-                    this.checkView
+                    this = Herscovitch1985_FDG.constructCmrglc(sessd); %, sessd.cbvOpFdg('avg', true)); 
+                    return
+                    
+                    %this.checkView
                     cmrglc = sessd.cmrglcOpFdg('typ', 'niftid');
                     cmro2  = sessd.cmro2OpFdg('avg', true, 'typ', 'niftid');
 
@@ -51,7 +53,7 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
                 end
             end
         end  
-        function this = constructCmrglc(sessd, cbv_)
+        function this = constructCmrglc(sessd, varargin)
             import mlsiemens.*;   
             if (lexist(sessd.cmrglcOpFdg, 'file') && mlsiemens.Herscovitch1985_FDG.REUSE)
                 this.product = sessd.cmrglcOpFdg('typ', 'numericalNiftid');
@@ -59,7 +61,7 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
             end                  
             this = Herscovitch1985_FDG.constructTracerState(sessd); 
             labs = this.readLaboratories;
-            this = this.buildCmrglcMaps(labs, cbv_);
+            this = this.buildCmrglcMaps(labs, varargin{:});
             this.save;
         end
         function this = constructTracerState(sessd, varargin)
@@ -90,88 +92,33 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
     end
 
 	methods		
-        function this = buildCmrglcMaps(this, labs, cbv_)
-            if (lexist(cbv_, 'file'))
-                cbv_ = mlfourd.ImagingContext(cbv_);
-                downCbv = this.downsampleNii(cbv_.numericalNiftid);
-            else
-                downCbv = [];
-            end
-            this.referenceMask_ = mlfourd.NumericalNIfTId(this.scanner_.mask);
-            this.referenceMask_ = this.referenceMask_.blurred(this.petPointSpread);
-            this.referenceMask_ = this.referenceMask_.binarized;
-            this.referenceMask_.fileprefix = 'mlsiemens_Herscovitch1985_buildCmrglcMap_referenceMask_';
-            this.aif_.isDecayCorrected = true;
-            this.scanner_.isDecayCorrected = true;
-            ks = this.scanner_;
-            ks.fileprefix = this.sessionData.ksOpFdg('typ', 'fp');
-            this = this.downsampleScanner;
-            [this,ks] = this.downsampleKs(ks);
-            strat = mlkinetics.Huang1980( ...
-                'aif', this.aif, ...
-                'scanner', this.scanner_, ...
-                'cbv', downCbv, ...
-                'glc', labs.glc, ...
-                'hct', labs.hct);
-            [this.scanner_.img,ks.img] = strat.buildCmrglcMap; % [CMRglc] == (mg/dL)(1/min)         
-            if (this.useSI)
-                % [mg*mL/(dL*hg)] x 0.05551 [\mumol/mL][dL/mg] x 1.05^{-1} [mL/g] == [\mumol/(min hg)]
-                this.scanner_.img = 0.05551 * this.BRAIN_DENSITY^(-1) * this.scanner_.img; % [CMRglc] == \mumol/min/hg
-            end
-            this = this.upsampleScanner;
-            [this,ks] = this.upsampleKs(ks);
-            this.product_ = {};
-            this.product_{1} = mlfourd.ImagingContext(this.scanner_.component);
-            this.product_{1} = this.product_{1}.blurred(this.petPointSpread);
-            this.product_{1}.fqfilename = this.sessionData.cmrglcOpFdg('typ', 'fqfn');
-            this.product_{2} = mlfourd.ImagingContext(ks.component);
-            this.product_{2} = this.product_{2}.blurred(this.petPointSpread);
-            this.product_{2}.fqfilename = this.sessionData.ksOpFdg('typ', 'fqfn');
-        end
-        function [this,ks] = downsampleKs(this, ks)
-            down = this.downsampleNii(ks);
-            ks.img = down.img;
-            ks.fqfilename = down.fqfilename;     
-            ks.mmppix = down.mmppix;
-            if (~isempty(ks.mask))
-                ks.mask = this.downsampleNii(this.referenceMask_);
+        function this = buildCmrglcMaps(this, varargin)
+            %% BUILDCMRGLCMAPS delegates to strategies VoxelResampler & WholebrainResampler.
+            
+            switch (lower(this.resamplerType_))
+                case 'voxelresampler'
+                    this = this.buildCmrglcMaps_voxelResampler(varargin{:});
+                case 'wholebrainresampler'
+                    this = this.buildCmrglcMaps_wholebrainResampler(varargin{:});
+                otherwise
+                    error('mlsiemens:unsupportedSwitchcase', 'Herscovitch1985_FDG.buildCmrglcMaps');
             end
         end
-        function this = downsampleScanner(this)
-            down = this.downsampleNii(this.scanner_);
-            this.scanner_.img = down.img;
-            this.scanner_.fqfilename = down.fqfilename;     
-            this.scanner_.mmppix = down.mmppix;
-            if (~isempty(this.scanner_.mask))
-                this.scanner_.mask = this.downsampleNii(this.referenceMask_);
-            end
-        end
-        function [this,ks] = upsampleKs(this, ks)
-            assert(~isempty(this.referenceMask_));
-            up = this.upsampleNii(ks, this.referenceMask_);
-            ks.img = up.img;
-            ks.fqfilename = up.fqfilename;
-            ks.mmppix = up.mmppix;
-            ks.mask = this.referenceMask_;
-        end  
-        function this = upsampleScanner(this)
-            assert(~isempty(this.referenceMask_));            
-            up = this.upsampleNii(this.scanner_, this.referenceMask_);
-            this.scanner_.img = up.img;
-            this.scanner_.fqfilename = up.fqfilename;   
-            this.scanner_.mmppix = up.mmppix;          
-            this.scanner_.mask = this.referenceMask_;
-        end 
         
  		function this = Herscovitch1985_FDG(varargin)
  			%% HERSCOVITCH1985_FDG
  			%  @param .
 
- 			this = this@mlsiemens.Herscovitch1985(varargin{:});
+ 			this = this@mlsiemens.Herscovitch1985(varargin{:});            
+            this.resamplerType_ = this.sessionData.resamplerType;
  		end
     end 
 
     %% PROTECTED    
+    
+    properties (Access = protected)
+        resamplerType_
+    end
     
     methods (Static, Access = protected)        
         function [aif,scanner,mask] = configAcquiredData(sessd)
@@ -195,12 +142,109 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
                 'manualData',        mand, ...
                 'mask',              mask); % natively decay-corrected
             scanner.dt = 1;
-            if (~isempty(sessd.hoursOffsetForced))
-                scanner.datetime0 = scanner.datetime0 + hours(sessd.hoursOffsetForced);
-            end
             [aif,scanner] = Herscovitch1985_FDG.adjustClocks(aif, scanner);
             [aif,scanner] = Herscovitch1985.writeAcquisitionDiary(sessd, aif, scanner);
         end 
+    end
+    
+    methods (Access = protected)
+        function this = buildCmrglcMaps_voxelResampler(this, labs, varargin)
+            %  @param varargin is for legacy parameters that will be ignored.
+            
+            import mlfourd.*;
+            this.aif_.isDecayCorrected = true;
+            this.scanner_.isDecayCorrected = true;            
+            cmrglc = VoxelResampler.constructSampledScanner( ...
+                this.scanner_, ...
+                'fileprefix', this.sessionData.cmrglcOpFdg('typ', 'fp', 'tag', this.dbgTag), ...
+                'doEnlargemask', true, ...
+                'blur', this.petPointSpread);
+            mask2 = this.scanner_; 
+            mask2.img = mask2.mask.img;
+            ks = VoxelResampler.constructSampledScanner( ...
+                mask2, ...
+                'fileprefix', this.sessionData.ksOpFdg('typ', 'fp', 'tag', this.dbgTag), ...
+                'doEnlargemask', true, ...
+                'blur', this.petPointSpread);
+            synth = VoxelResampler.constructSampledScanner( ...
+                mask2, ...
+                'fileprefix', [this.scanner_.fileprefix '_synth'], ...
+                'doEnlargemask', true, ...
+                'blur', this.petPointSpread);
+            
+            cmrglc = cmrglc.downsample;
+            ks     = ks.downsample;
+            synth  = synth.downsample;
+            strat = mlkinetics.Huang1980( ...
+                'aif', this.aif, ...
+                'scanner', this.scanner_, ...
+                'resampler', cmrglc, ...
+                'glc', labs.glc, ...
+                'hct', labs.hct, ...
+                'useSI', this.useSI, ...
+                varargin{:});
+            [cmrglc.img,ks.img,synth.img] = strat.buildCmrglcMap;
+            cmrglc = cmrglc.upsample;
+            cmrglc.fileprefix = this.sessionData.cmrglcOpFdg('typ','fp','tag','_voxel');
+            ks = ks.upsample;         
+            ks.fileprefix = this.sessionData.ksOpFdg('typ','fp','tag','_voxel');
+            synth = synth.upsample;   
+            synth.fileprefix = this.sessionData.cmrglcOpFdg('typ','fp','tag','_synth_voxel');   
+            
+            this.product_ = {};
+            this.product_{1} = cmrglc.dynamic;
+            this.product_{1} = this.product_{1}.blurred(this.petPointSpread);
+            this.product_{2} = ks.dynamic;
+            this.product_{2} = this.product_{2}.blurred(this.petPointSpread);
+            this.product_{3} = synth.dynamic;
+            this.product_{3} = this.product_{3}.blurred(this.petPointSpread);
+        end
+        function this = buildCmrglcMaps_wholebrainResampler(this, labs, varargin)
+            %  @param varargin is for legacy parameters that will be ignored.
+            
+            import mlfourd.*;
+            this.aif_.isDecayCorrected = true;
+            this.scanner_.isDecayCorrected = true;            
+            cmrglc = WholebrainResampler.constructSampledScanner( ...
+                this.scanner_, ...
+                'fileprefix', this.sessionData.cmrglcOpFdg('typ', 'fp', 'tag', this.dbgTag));
+            mask2 = this.scanner_; 
+            mask2.img = mask2.mask.img;
+            ks = WholebrainResampler.constructSampledScanner( ...
+                mask2, ...
+                'fileprefix', this.sessionData.ksOpFdg('typ', 'fp', 'tag', this.dbgTag));
+            synth = WholebrainResampler.constructSampledScanner( ...
+                mask2, ...
+                'fileprefix', [this.scanner_.fileprefix '_synth']);
+            
+            cmrglc = cmrglc.downsample;
+            ks     = ks.downsample;
+            synth  = synth.downsample;
+            strat = mlkinetics.Huang1980( ...
+                'aif', this.aif, ...
+                'scanner', this.scanner_, ...
+                'resampler', cmrglc, ...
+                'glc', labs.glc, ...
+                'hct', labs.hct, ...
+                'useSI', this.useSI, ...
+                'logger', mlpipeline.Logger([cmrglc.fqfileprefix '_wb']), ...
+                varargin{:});
+            [cmrglc.img,ks.img,synth.img] = strat.buildCmrglcMap;
+            cmrglc = cmrglc.upsample;
+            cmrglc.fileprefix = this.sessionData.cmrglcOpFdg('typ','fp','tag','_wb');
+            ks = ks.upsample;
+            ks.fileprefix = this.sessionData.ksOpFdg('typ','fp','tag','_wb');
+            synth = synth.upsample;
+            synth.fileprefix = this.sessionData.cmrglcOpFdg('typ','fp','tag','_synth_wb');            
+            
+            this.product_ = {};
+            this.product_{1} = cmrglc.dynamic;
+            this.product_{1} = this.product_{1}.blurred(this.petPointSpread);
+            this.product_{2} = ks.dynamic;
+            this.product_{2} = this.product_{2}.blurred(this.petPointSpread);
+            this.product_{3} = synth.dynamic;
+            %this.product_{3} = this.product_{3}.blurred(this.petPointSpread);
+        end
     end
     
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

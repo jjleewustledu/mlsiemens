@@ -38,7 +38,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             pwd0 = pushd(sessd.vallLocation);
             
             vref = sessd.vnumberRef;
-            f = sprintf('fdgv%ir1_sumtr1_op_fdgv%ir1_avgr1', vref, vref);
+            f = sprintf('fdgv%ir1_sumtr1_op_fdgv%ir1', vref, vref); % _avgr1
             t = 'T1001';
             tm = 'T1001_mskt';
             cRB = mlfourdfp.CompositeT4ResolveBuilder( ...
@@ -73,7 +73,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             
             import mlfourd.*;
             vref = sessd.vnumberRef;
-            t4   = sprintf('T1001r1_to_fdgv1r1_sumtr1_op_fdgv%ir1_avgr1_t4', vref);
+            t4   = sprintf('T1001r1_to_fdgv1r1_sumtr1_op_fdgv%ir1_t4', vref); % _avgr1
             sfp1 = sprintf('%s_op_fdgv%ir1', sfp, vref);
             ref  = fullfile(pwd, sprintf('fdgv%ir1_sumt', vref));
             fv.t4img_4dfp(t4, sfp, 'out', sfp1, 'options', ['-n -O' ref]);
@@ -783,9 +783,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'manualData',        mand, ...
                 'mask',              mask);
             scanner.dt = 1;
-            if (~isempty(sessd.hoursOffsetForced))
-                scanner.datetime0 = scanner.datetime0 + hours(sessd.hoursOffsetForced);
-            end
             [aif,scanner] = Herscovitch1985.adjustClocks(aif, scanner);
             [aif,scanner] = Herscovitch1985.writeAcquisitionDiary(sessd, aif, scanner);
         end

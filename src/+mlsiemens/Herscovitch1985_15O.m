@@ -89,9 +89,6 @@ classdef Herscovitch1985_15O < mlsiemens.Herscovitch1985
                 'manualData',        mand, ...
                 'mask',              mask);
             scanner.dt = 1;
-            if (~isempty(sessd.hoursOffsetForced))
-                scanner.datetime0 = scanner.datetime0 + hours(sessd.hoursOffsetForced);
-            end
             [aif,scanner] = Herscovitch1985.adjustClocks(aif, scanner);
             [aif,scanner] = Herscovitch1985.writeAcquisitionDiary(sessd, aif, scanner);
         end       

@@ -567,7 +567,8 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             this.timingData_ = td;
         end
         function t    = measurementsTable2timesDrawn(this)
-            t = seconds(this.fdg.TIMEDRAWN_Hh_mm_ss - this.fdg.TIMEDRAWN_Hh_mm_ss(1));
+            timedrawn = ensureDatetime(this.fdg.TIMEDRAWN_Hh_mm_ss);
+            t = seconds(timedrawn - timedrawn(1));
             t = ensureRowVector(t);
         end
     end
