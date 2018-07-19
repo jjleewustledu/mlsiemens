@@ -67,9 +67,9 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             this.testObj.plotAifHOMetab;
             this.testObj.plotAifOO;
         end
-        function test_plotScannerWholebrain(this)
+        function test_plotScanner(this)
             this = this.configTracer('HO');
-            this.testObj.plotScannerWholebrain;
+            this.testObj.plotScanner;
         end
         
         function test_buildA1A2(this)
@@ -101,7 +101,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             obj    = obj.buildCbfMap;
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.cbf('typ','fqfn','suffix','op_fdg'));
+            obj.product.saveas(this.sessionData.cbf('typ','fqfn','tag','op_fdg'));
         end
         function test_buildCbfWholebrain(this)
             this = this.configTracer('HO');
@@ -116,7 +116,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             obj  = this.testObj.buildCbvMap;
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.cbv('typ','fqfn','suffix','op_fdg'));
+            obj.product.saveas(this.sessionData.cbv('typ','fqfn','tag','op_fdg'));
         end
         function test_buildCbvWholebrain(this)
             this = this.configTracer('OC');
@@ -141,7 +141,7 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             obj = obj.buildCmro2Map;            
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.cmro2('typ','fqfn','suffix','op_resolved'));
+            obj.product.saveas(this.sessionData.cmro2('typ','fqfn','tag','op_resolved'));
         end
         function test_buildCmro2Wholebrain(this)
             this = this.configTracer('OO');
@@ -160,12 +160,12 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             obj.b2 = this.b2;
             obj.b3 = this.b3;
             obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_fdg');
-            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_fdg');
+            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','tag','op_fdg');
+            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','tag','op_fdg');
             obj = obj.buildOefMap;
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.oef('typ','fqfn','suffix','op_fdg'));
+            obj.product.saveas(this.sessionData.oef('typ','fqfn','tag','op_fdg'));
         end
         function test_buildOefWholebrain(this)
             this = this.configTracer('OO');
@@ -174,8 +174,8 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             obj.b2 = this.b2;
             obj.b3 = this.b3;
             obj.b4 = this.b4;
-            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','suffix','op_fdg');
-            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','suffix','op_fdg');
+            obj.cbf = obj.sessionData.cbf('typ','mlpet.PETImagingContext','tag','op_fdg');
+            obj.cbv = obj.sessionData.cbv('typ','mlpet.PETImagingContext','tag','op_fdg');
             obj = obj.buildOefWholebrain;
             this.verifyEqual(obj.product, 0.3049, 'RelTol', 0.01);
         end        

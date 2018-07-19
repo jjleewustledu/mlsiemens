@@ -59,9 +59,9 @@ classdef Test_Herscovitch1985Bayes < matlab.unittest.TestCase
             this = this.configTracer('HO');
             this.testObj.plotAif;
         end
-        function test_plotScannerWholebrain(this)
+        function test_plotScanner(this)
             this = this.configTracer('HO');
-            this.testObj.plotScannerWholebrain;
+            this.testObj.plotScanner;
         end
         
         function test_buildA1A2(this)
@@ -79,7 +79,7 @@ classdef Test_Herscovitch1985Bayes < matlab.unittest.TestCase
             obj    = obj.buildCbfMap;
             this.verifyTrue(isa(obj.product, 'mlpet.PETImagingContext'));
             obj.product.view;
-            obj.product.saveas(this.sessionData.cbf('typ','fqfn','suffix','op_fdg'));
+            obj.product.saveas(this.sessionData.cbf('typ','fqfn','tag','op_fdg'));
         end
         function test_buildCbfWholebrain(this)
             this = this.configTracer('HO');
