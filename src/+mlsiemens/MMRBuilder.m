@@ -188,7 +188,7 @@ classdef MMRBuilder < mlpipeline.VendorBuilder
             addOptional(ip, 'fqfp',  sd.tracerRevision('typ', 'fqfp', 'frame', sd.frame), @ischar);
             parse(ip, varargin{:});
             
-            if (lexist([ip.Results.fqfp '.4dfp.ifh']))
+            if (lexist([ip.Results.fqfp '.4dfp.hdr']))
                 fqfp = ip.Results.fqfp;
                 return
             end            

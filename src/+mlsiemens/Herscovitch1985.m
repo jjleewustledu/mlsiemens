@@ -76,10 +76,10 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             sfp1 = sprintf('%s_op_fdgv%ir1', sfp, vref);
             ref  = fullfile(pwd, sprintf('fdgv%ir1_sumt', vref));
             fv.t4img_4dfp(t4, sfp, 'out', sfp1, 'options', ['-n -O' ref]);
-            m = ImagingContext([sfp1 '.4dfp.ifh']);
+            m = ImagingContext([sfp1 '.4dfp.hdr']);
             nn = m.numericalNiftid;
             nn = nn ~= 0 & nn ~= 43 & nn ~= 4 & nn ~= 14 & nn ~= 15; % exclude 4 ventricles
-            nn.saveas([sfp1 '_mskb.4dfp.ifh']); 
+            nn.saveas([sfp1 '_mskb.4dfp.hdr']); 
             m = ImagingContext(nn);
             
             popd(pwd0);
@@ -610,7 +610,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             end
             
             fs0 = obj.filesuffix;
-            obj.filesuffix = '.4dfp.ifh';
+            obj.filesuffix = '.4dfp.hdr';
             obj.save;
             obj.filesuffix = fs0;
         end

@@ -36,7 +36,7 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
                         agi.fqfileprefix = sessd.agiOpFdg('typ','fqfp');
                         agi.img = cmrglc.img - (1/6)*cmro2.img; % \mumol/min/hg
                         agi.save;
-                        agi.filesuffix = '.4dfp.ifh';
+                        agi.filesuffix = '.4dfp.hdr';
                         agi.save;
 
                         ogi = cmrglc;
@@ -45,7 +45,7 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
                         ogi.img(isnan(ogi.img)) = 0;
                         ogi.img(~isfinite(ogi.img)) = 0;
                         ogi.save;
-                        ogi.filesuffix = '.4dfp.ifh';
+                        ogi.filesuffix = '.4dfp.hdr';
                         ogi.save;
                     end
                 catch ME
