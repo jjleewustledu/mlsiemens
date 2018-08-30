@@ -21,7 +21,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         MAGIC = 1
         canonFlows = 10:2:100 % mL/100 g/min, not to exceed 110 per Cook's distance in buildModelCbf
         labsTable
-        referenceWholebrainCbv = 3.8 % Ito Eur J Nucl Med Mol Imaging (2004) 31:635-643
+        
         useSI = true
     end
     
@@ -29,7 +29,17 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         INV_EFF_MMR
         INV_EFF_TWILITE
         W
+        referenceWholebrainCbv
         regionTag
+    end
+    
+    methods 
+        
+        %% GET
+        
+        function g = get.referenceWholebrainCbv(this)
+            g = 3.8; % Ito Eur J Nucl Med Mol Imaging (2004) 31:635-643
+        end
     end
     
     methods (Static)
@@ -394,7 +404,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             sc = sc.blurred(this.petPointSpread);
             
             % rescale to reference value
-            wb = mlsiemens.Herscovitch1985.configMask;
+            wb = mlsiemens.Herscovitch1985.configMask(this.sessionData);
             sc.img = this.referenceWholebrainCbv * sc.img / sc.volumeAveraged(wb.niftid);
             sc.fqfilename = this.sessionData.cbvOpFdg('typ','fqfn');        
             this.product_ = mlfourd.ImagingContext(sc.component);
@@ -715,8 +725,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 return
             end
             
-            a = this.aif;
-            plaif = mlswisstrace.DeconvolvingPLaif.runPLaif( ...
+            a = this.aif;         
+            plaif = mlswisstrace.DeconvolvingOC.runPLaif( ...
                 a.times(1:a.indexF), a.specificActivity(1:a.indexF), this.sessionData.tracerRevision('typ','fp'));
             a.specificActivity(1:a.indexF) = plaif.itsDeconvSpecificActivity;
             a.counts = a.specificActivity / a.invEfficiency;

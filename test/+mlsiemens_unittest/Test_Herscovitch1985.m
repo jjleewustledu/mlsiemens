@@ -218,7 +218,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             labs.o2Content = this.sessd.o2Content;
             labs.glc = 308;
             labs.hct = 37.55;
-            mlsiemens.Herscovitch1985.constructCmrglc(this.sessd, labs);
+            mlsiemens.Herscovitch1985_FDG.constructCmrglc(this.sessd, labs);
         end      
         function test_constructOxygenOnly(this)
             labs.o2Content = this.sessd.o2Content;

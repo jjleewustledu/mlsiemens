@@ -26,7 +26,7 @@ classdef SiemensDicom
             %  @param tracer is char
             %  @param visit is char
             %  @param attenuation is char
-            %  @return niih is mlfourd.NIfTIContext
+            %  @return niih is mlfourd.ImagingFormatContext
             
             assert(ischar(trStr));
             assert(ischar(vStr));
@@ -35,7 +35,7 @@ classdef SiemensDicom
             targ = sprintf('%s_%s-Converted-Frames-%s', trStr, vStr, attStr);
             targNiigz = [targ '.nii.gz'];
             if (SiemensDicom.finished(targNiigz))
-                niih = NIfTIContext(targNiigz);
+                niih = ImagingFormatContext(targNiigz);
                 return
             end
             
@@ -61,7 +61,7 @@ classdef SiemensDicom
             %% within *-Converted-Frame*
             %  @param tracer is char
             %  @param visit is char
-            %  @return niih is mlfourd.NIfTIContext
+            %  @return niih is mlfourd.ImagingFormatContext
             
             assert(ischar(trStr));
             assert(ischar(vStr)); 
@@ -70,7 +70,7 @@ classdef SiemensDicom
             targ = sprintf('%s_%s-LM-00-OP', trStr, vStr);
             targNiigz = [targ '.nii.gz'];
             if (SiemensDicom.finished(targNiigz))
-                niih = NIfTIContext(targNiigz);
+                niih = ImagingFormatContext(targNiigz);
                 return
             end
             
@@ -84,7 +84,7 @@ classdef SiemensDicom
                 mlbash(sprintf('dcm2niix -o %s -f %s %s-DICOM', pwd, fp, fv));
                 %%mlbash(sprintf('fslroi %s %s %i %i %i %i 0 -1', fp, fp, xmin, xsize, xmin, xsize)); 
                 % clobbers scl_slope, scl_inter
-                niih_ = NIfTIContext([fp '.nii.gz']);
+                niih_ = ImagingFormatContext([fp '.nii.gz']);
                 niih_ = niih_.applyScl;
                 niih_.addLog(['mlsiemens.SiemensDicom.dcm2niixInnerFrames:  finished work in ' pwd]);
                 niihs{f} = niih_;
