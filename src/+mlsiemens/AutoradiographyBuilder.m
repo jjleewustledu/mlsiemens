@@ -10,7 +10,7 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
  	
     properties (Constant)
         LAMBDA = 0.95           % brain-blood equilibrium partition coefficient, mL/mL, Herscovitch, Raichle, JCBFM (1985) 5:65
-        BRAIN_DENSITY = 1.05    % assumed mean brain density, g/mL
+        DENSITY_BRAIN = 1.05    % assumed mean brain density, g/mL
         RBC_FACTOR = 0.766      % per Tom Videen, metproc.inc, line 193
         TIME_SUP = 120          % sec
         REUSE_STORED = true
@@ -163,7 +163,7 @@ classdef AutoradiographyBuilder < mlbayesian.AbstractDynamicProblem
         end
         
         function f = invs_to_mLmin100g(f)
-            f = 100 * 60 * f / mlpet.AutoradiographyBuilder.BRAIN_DENSITY;
+            f = 100 * 60 * f / mlpet.AutoradiographyBuilder.DENSITY_BRAIN;
         end
     end
     

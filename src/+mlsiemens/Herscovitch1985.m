@@ -400,7 +400,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'mlsiemens:unexpectedParamsErr', 'Herscovitch1985.buildCbvMap');
             sc = sc.petobs;
             this.aif_.isDecayCorrected = false;
-            sc.img = 100*sc.img*this.W/(this.SMALL_LARGE_HCT_RATIO*this.aif.specificActivityIntegral);
+            sc.img = 100*sc.img*this.W/(this.RATIO_SMALL_LARGE_HCT*this.aif.specificActivityIntegral);
             sc = sc.blurred(this.petPointSpread);
             
             % rescale to reference value
@@ -469,7 +469,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             aif.specificActivity = this.aif.specificActivity - this.aifHOMetab.specificActivity;
         end
         function aifi = estimateAifOOIntegral(this)
-            aifi = 0.01*this.SMALL_LARGE_HCT_RATIO*this.BRAIN_DENSITY*this.aifOO.specificActivityIntegral;
+            aifi = 0.01*this.RATIO_SMALL_LARGE_HCT*this.DENSITY_BRAIN*this.aifOO.specificActivityIntegral;
         end
         function rho  = estimatePetdyn(this, aif, cbf)
             assert(isa(aif, 'mlpet.IAifData'));
@@ -594,7 +594,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 date_.Hour = 0;
                 date_.Minute = 0;
                 date_.Second = 0;
-                if (date_ == mldata.TimingData.datetimeConvertFromExcel2(tbl.date(id)))
+                if (date_ == mldata.Xlsx.datetimeConvertFromExcel2(tbl.date(id)))
                     labs.hct = tbl.Hct(id);
                     labs.glc = tbl.glc(id);
                     return
@@ -676,7 +676,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         end  
     end 
     
-    %% PROTECTED    
+    %% PROTECTED
     
     properties (Access = protected)
         referenceMask_

@@ -110,7 +110,7 @@ classdef VideenAutoradiography < mlsiemens.AutoradiographyBuilder
             %  from CBF = af * P^2 + bf * P, P <- \int dt c_i; returning units of well-counts
             
             import mlpet.*;
-            CBF = 6000 * f / VideenAutoradiography.BRAIN_DENSITY; 
+            CBF = 6000 * f / VideenAutoradiography.DENSITY_BRAIN; 
             spe = (-bf + sqrt(bf^2 + 4 * af * CBF)) / (2 * af);             
             spe = pie * spe; % possibly in error by factor of 60 sec/min
         end
