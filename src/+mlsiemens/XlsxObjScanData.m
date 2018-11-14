@@ -1,4 +1,4 @@
-classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
+classdef XlsxObjScanData < mlio.AbstractXlsxIO
 	%% XLSXOBJSCANDATA  
 
 	%  $Revision$
@@ -151,7 +151,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             end
             if (isnumeric(g))
                 g = datetime(g, 'ConvertFrom', 'excel');
-                g = g + mldata.TimingData.SERIAL_DAYS_1900_TO_1904;
+                g = g + mldata.Xlsx.SERIAL_DAYS_1900_TO_1904;
             else
                 g = datetime(g);
             end
@@ -215,7 +215,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
                 date_.Hour = 0;
                 date_.Minute = 0;
                 date_.Second = 0;
-                if (date_ == mldata.TimingData.datetimeConvertFromExcel2(tbl.Date(id)) && ...
+                if (date_ == mldata.Xlsx.datetimeConvertFromExcel2(tbl.Date(id)) && ...
                     1 == tbl.Human(id))
                     fn = tbl.Filename(id);
                     if (iscell(fn))
@@ -247,7 +247,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
                 ct_ = this.cyclotron_.time_Hh_mm_ss('residual dose');
                 ct_ = datetime(ct_{1});
                 dt_ =  ct_ - seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
-                dt_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+                dt_.TimeZone = mldata.Xlsx.PREFERRED_TIMEZONE;
             catch ME
                 dispwarning(ME);
             end
@@ -537,25 +537,6 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             dt_.Month    = dtRef.Month;
             dt_.Day      = dtRef.Day;
             dt_.TimeZone = dtRef.TimeZone;
-        end
-        function d    = extractDateOnly(this, dt_)
-            if (~isa(dt_, 'datetime'))
-                dt_ = this.datetime(dt_);
-                assert(isa(dt_, 'datetime'));
-            end
-            d.Year  = dt_.Year;
-            d.Month = dt_.Month;
-            d.Day   = dt_.Day;
-        end
-        function dt_  = replaceDateOnly(this, dt_, d)
-            if (~isa(dt_, 'datetime'))
-                dt_ = this.datetime(dt_);
-                assert(isa(dt_, 'datetime'));
-            end
-            dt_.Year  = d.Year;
-            dt_.Month = d.Month;
-            dt_.Day   = d.Day;
-            dt_.TimeZone = d.TimeZone;
         end
         function this = updateTimingData(this)
             if (~lstrcmp(upper(this.sessionData.tracer), 'FDG'))

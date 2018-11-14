@@ -1,6 +1,7 @@
 classdef CalibrationVisitor 
 	%% CALIBRATIONVISITOR uses calibration measurements from 
-    %  {CCIRRadMeasurements 2017dec6, aperture data from 2017dec6}.numbers, stored as constant private properties below.
+    %  {CCIRRadMeasurements 2017dec6, "aperture data from 2017dec6"}.numbers, stored as constant private properties below.
+    %  {CCIRRadMeasurements 2017sep6}.
 
 	%  $Revision$
  	%  was created 31-Jan-2018 20:02:37 by jjlee,
