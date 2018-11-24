@@ -1,4 +1,4 @@
-classdef AbstractHdrParser < mlio.AbstractParser
+classdef AbstractHdrParser < handle & mlio.AbstractParser
 	%% ABSTRACTHDRPARSER  
 
 	%  $Revision$
