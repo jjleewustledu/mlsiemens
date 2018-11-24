@@ -46,8 +46,6 @@ classdef Test_EcatExactHRPlus < matlab.unittest.TestCase
             this.verifyEqual(this.testObj.times(4), 49.332999999999998);
             this.verifyEqual(this.testObj.times(60), 1.613330000000000e+02);
         end
-        function test_timesMidpoints(this)
-        end
         function test_taus(this)
         end
         function test_timeInterpolants(this)

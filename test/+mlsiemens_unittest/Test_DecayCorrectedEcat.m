@@ -14,21 +14,21 @@ classdef Test_DecayCorrectedEcat < matlab.unittest.TestCase
  	%  $Id$ 
 
 	properties 
-        unittest_home = '/data/nil-bluearc/arbelaez/jjlee/GluT/p8047_JJL/PET/scan1'
- 		testObj 
         fact = 0.972559020531241436025027269352
+ 		testObj 
+        unittest_home = fullfile(getenv('ARBELAEZ'), 'jjlee', 'GluT', 'p8047_JJL', 'PET', 'scan1', '')
  	end 
 
 	methods (Test) 
         function test_load(this)
-            newObj = mlsiemens.DecayCorrectedEcat.load('p8047gluc1');
+            newObj = mlsiemens.DecayCorrectedEcat.load('p8047gluc1', 'isotope', '11C');
             this.verifyEqual(this.testObj.counts, newObj.counts);
         end
         function test_ctor(this)
             this.verifyEqual(this.testObj.fqfilename, fullfile(this.unittest_home, 'p8047gluc1_decayCorrect.nii.gz'));
             this.verifyEqual(this.testObj.scanIndex, 1);
             this.verifyEqual(this.testObj.tracer, 'gluc');
-            this.verifyEqual(this.testObj.length, 44);
+            this.verifyEqual(size(this.testObj, 4), 44);
             this.verifyEqual(this.testObj.scanDuration, 3.618933000000000e+03);
         end
         function test_times(this)
@@ -81,7 +81,7 @@ classdef Test_DecayCorrectedEcat < matlab.unittest.TestCase
             this = this@matlab.unittest.TestCase;
             cd(this.unittest_home);
             import mlsiemens.* mlfourd.*;
- 			this.testObj = DecayCorrectedEcat(NIfTId.load('p8047gluc1.nii.gz')); 
+ 			this.testObj = DecayCorrectedEcat(NIfTId.load('p8047gluc1.nii.gz'), 'isotope', '11C'); 
         end
     end
     

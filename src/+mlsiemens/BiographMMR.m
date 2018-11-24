@@ -114,9 +114,6 @@ classdef BiographMMR < mlpet.AbstractScannerData
         function [t,this] = timeInterpolants(this, varargin)
             [t,this] = this.timingData_.timeInterpolants(varargin{:});
         end
-        function [t,this] = timeMidpointInterpolants(this, varargin)
-            [t,this] = this.timingData_.timeMidpointInterpolants(varargin{:});
-        end
         function v    = voxelVolume(this)
             %  @param this.img is at least 3D
             %  @return voxel volume in mL
@@ -151,6 +148,26 @@ classdef BiographMMR < mlpet.AbstractScannerData
     end
     
     methods (Access = protected)
+        function this = createTimingData(this)
+            this.timingData_ = mldata.TimingData( ...
+                'times',     this.sessionData.times, ...
+                'datetimeMeasured', this.sessionData.readDatetime0 - this.manualDataClocksTimeOffsetMMRConsole);
+            if (length(size(this)) < 4)
+                return
+            end
+            if (size(this, 4) == length(this.times))
+                return
+            end
+            if (size(this, 4) < length(this.times)) % trim this.times
+                this.times = this.times(1:size(this, 4));
+            end
+            if (length(this.times) < size(this, 4)) % trim this.img
+                this.img = this.img(:,:,:,1:length(this.times));
+            end
+            warning('mlpet:unexpectedNumel', ...
+                'AbstractScannerData.createTiminData:  this.times->%i but size(this,4)->%i', ...
+                length(this.times), size(this, 4));
+        end
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

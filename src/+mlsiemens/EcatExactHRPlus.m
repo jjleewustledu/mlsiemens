@@ -11,10 +11,6 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
  	%  developed on Matlab 8.4.0.150421 (R2014b) 
  	%  $Id$  
 
-    properties (Constant)
-        DEPTH_SEARCH_FOR_WELL = 3
-    end
-
     properties
         decays
         specificActivity
@@ -27,7 +23,6 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         header    
         scanDuration % sec   
         scanIndex % integer, e.g., last char in 'p1234ho1'
-        tracer % char, e.g., 'ho'
                 
         activity
         counts 
@@ -48,9 +43,8 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             this = mlsiemens.EcatExactHRPlus(mlfourd.NIfTId.load(varargin{:}));
         end
         function this = loadSession(sessd, varargin)
-            this = mlsiemens.EcatExactHRPlus.load(varargin{:});
             assert(isa(sessd, 'mlpipeline.ISessionData'))
-            this.sessionData_ = sessd;
+            this = mlsiemens.EcatExactHRPlus(mlfourd.NIfTId.load(varargin{:}), 'sessionData', sessd);
         end
     end
 
@@ -64,10 +58,6 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
                 names = names(1);
             end
             idx = str2double(names.idx);
-        end
-        function t    = get.tracer(this)
-            names = regexp(this.component.fileprefix, mlpet.PETIO.TRACER_EXPR, 'names');
-            t = names.tracer;
         end
         function sd   = get.scanDuration(this)
             assert(~isempty(this.times_));
@@ -99,7 +89,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         end
         function this = set.counts(this, c)
             assert(isnumeric(c));
-            this.component.img = double(c);
+            this.component_.img = double(c);
         end
         function fn   = get.hdrinfoFqfilename(this)
             pnum = str2pnum(this.component.fileprefix);
@@ -171,17 +161,6 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             if (~isempty(varargin))
                 t = t(varargin{:}); end
         end
-        function [t,this] = timeMidpointInterpolants(this, varargin)
-            if (~isempty(this.timeMidpointInterpolants_))
-                t = this.timeMidpointInterpolants_;
-                return
-            end
-            
-            t = this.time0+this.dt/2:this.dt:this.timeF+this.dt/2;
-            this.timeMidpointInterpolants_ = t;
-            if (~isempty(varargin))
-                t = t(varargin{:}); end
-        end     
         function tc       = tscCountInterpolants(this, varargin)
             tc = pchip(this.times, this.tscCounts, this.timeInterpolants);
             
@@ -226,8 +205,8 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             
             this = this.append_descrip('decorated by EcatExactHRPlus');   
             this = this.readRec;
-            this = this.readWellMatrix; 
-            this = this.setTimeMidpoints;
+            this = this.createTimingData;
+            this = this.readWellMatrix;
             this = this.readPie; % if isempty(this.pie_)
             this = this.shiftTimes(this.scannerTimeShift);
             this.isDecayCorrected_ = false;
@@ -372,6 +351,31 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
                 otherwise
                     error('mlsiemens:unsupportedArraySize', 'size(EcatExactHRPlus.petCounts2tscCounts.img) -> %s', mat2str(size(img)));
             end
+        end        
+        
+        function t    = get_tracer__(this)
+            names = regexp(this.component.fileprefix, mlpet.PETIO.TRACER_EXPR, 'names');
+            t = names.tracer;
+        end
+        function this = createTimingData(this)        
+            this.timingData_ = mldata.TimingData( ...
+                'times',     this.times, ...
+                'datetimeMeasured', NaT);
+            if (length(size(this)) < 4)
+                return
+            end
+            if (size(this, 4) == length(this.times))
+                return
+            end
+            if (size(this, 4) < length(this.times)) % trim this.times
+                this.times = this.times(1:size(this, 4));
+            end
+            if (length(this.times) < size(this, 4)) % trim this.img
+                this.img = this.img(:,:,:,1:length(this.times));
+            end
+            warning('mlpet:unexpectedNumel', ...
+                'AbstractScannerData.createTiminData:  this.times->%i but size(this,4)->%i', ...
+                length(this.times), size(this, 4));
         end
     end
     

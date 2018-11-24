@@ -60,13 +60,6 @@ classdef Test_BiographMMR < matlab.unittest.TestCase
             % get
             this.verifyEqual(this.testObj.times, this.sessd.times);
         end
-        function test_timeMidpoints(this)
-            % get
-            this.verifyEqual(this.testObj.timeMidpoints, this.sessd.timeMidpoints);
-            % set
-            %this.testObj.timeMidpoints = 0.5:1:99.5;            
-            %this.verifyEqual(this.testObj.timeMidpoints, 0.5:1:99.5);
-        end
         function test_taus(this)
             % get
             this.verifyEqual(this.testObj.taus, this.sessd.taus);

@@ -19,18 +19,17 @@ classdef DecayCorrectedEcat < mlsiemens.EcatExactHRPlus
     end
 
 	methods 		  
- 		function this = DecayCorrectedEcat(cmp) 
+ 		function this = DecayCorrectedEcat(cmp, varargin) 
  			%% DECAYCORRECTEDECAT 
  			%  Usage:  this = DecayCorrectedEcat(INIfTI_object) 
 
- 			this = this@mlsiemens.EcatExactHRPlus(cmp); 
+ 			this = this@mlsiemens.EcatExactHRPlus(cmp, varargin{:}); 
             assert( isa(cmp, 'mlfourd.INIfTI'));
             assert(~isa(cmp, 'mlsiemens.DecayCorrectedEcat'));
             
-            this.decayCorrection_ = mlpet.DecayCorrection.factoryFor(this);
-            this.counts = this.decayCorrection_.correctedActivities(this.counts, this.times(1));
+            this.decayCorrection_ = mlpet.Decay('isotope', '15O', 'activities', this.counts);
+            this.counts = this.decayCorrection_.undecayActivities(this.times);
             this = this.updateFileprefix;
-            this = this.setTimeMidpoints_dc;
         end 
     end 
     
@@ -38,14 +37,7 @@ classdef DecayCorrectedEcat < mlsiemens.EcatExactHRPlus
     
     methods (Access = 'protected')
         function this = updateFileprefix(this)
-            this.component.fileprefix = [this.component.fileprefix '_decayCorrect'];
-        end
-        function this = setTimeMidpoints_dc(this)
-            k_decay = log(2) / this.decayCorrection_.halfLife;
-            this.timeMidpoints_ = this.times;
-            for t = 2:this.length
-                this.timeMidpoints_(t) = this.times(t-1) - (1/k_decay) * log(0.5*(exp(-k_decay*this.taus(t)) + 1));
-            end            
+            this.component_.fileprefix = [this.component.fileprefix '_decayCorrect'];
         end
     end
 
