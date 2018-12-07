@@ -20,9 +20,9 @@ classdef Herscovitch1985_15O < mlsiemens.Herscovitch1985
             
             this = this.deconvolveAif;
             this.aif_ = this.aif_.setTime0ToInflow;
-            this.aif_.timeDuration = this.configAifTimeDuration(this.sessionData.tracer);
+            this.aif_.timeWindow = this.configAifTimeDuration(this.sessionData.tracer);
             this.scanner_ = this.scanner.setTime0ToInflow;
-            this.scanner_.timeDuration = this.aif.timeDuration;
+            this.scanner_.timeWindow = this.aif.timeWindow;
             
             this.scanner_.isDecayCorrected = false; % decay-uncorrected with zero-time at bolus inflow
             tzero = seconds(this.scanner_.datetime0 - this.aif_.datetime0); % zero-times in the aif frame

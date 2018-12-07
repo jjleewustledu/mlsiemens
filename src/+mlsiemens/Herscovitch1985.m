@@ -50,6 +50,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             f = sessd.reference.tracerRevisionSumt('typ', 'fqfp');
             t = 'T1001';
             tm = 'T1001_mskt';
+            res = mlpet.Resources.instance;
             cRB = mlfourdfp.CompositeT4ResolveBuilder( ...
                 'sessionData', sessd, ...
                 'blurArg', 1.5, ...
@@ -58,8 +59,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'resolveTag', sprintf('op_fdgv%ir1', sessd.reference.vnumber), ...
                 'NRevisions', 1, ...
                 'logPath', ensuredir(fullfile(sessd.vallLocation, 'Log', '')));
-            cRB.neverTouchFinishfile = true;
-            cRB.ignoreFinishfile = true;
+            cRB.neverMarkFinished = res.neverMarkFinished;
+            cRB.ignoreFinishfile  = true;
             cRB = cRB.resolve; 
             t4 = cRB.t4s{1}{2};
             t = cRB.product{2};
@@ -302,7 +303,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'sessionData', sessd, ...
                 'scanner', scanner, ...
                 'aif', aif, ...
-                'mask', mask); % 'timeDuration', scanner.timeDuration, ...            
+                'mask', mask); % 'timeWindow', scanner.timeWindow, ...            
             this.plotAif;
             this.plotScanner
             saveFigures(sprintf('fig_mlsiemens_Herscovitch1985_constructTracerState_%s', sessd.tracerRevision('typ','fp')));  
@@ -321,7 +322,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             import mlsiemens.*;
             this = mlsiemens.Herscovitch1985( ...
                 'sessionData', sessd, ...
-                'scanner', []); % 'timeDuration', scanner.timeDuration, ...
+                'scanner', []); % 'timeWindow', scanner.timeWindow, ...
             
             popd(pwd0);
         end
@@ -655,9 +656,9 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             
             this = this.deconvolveAif;
             this.aif_ = this.aif_.setTime0ToInflow;
-            this.aif_.timeDuration = this.configAifTimeDuration(this.sessionData.tracer);
+            this.aif_.timeWindow = this.configAifTimeDuration(this.sessionData.tracer);
             this.scanner_ = this.scanner.setTime0ToInflow;
-            this.scanner_.timeDuration = this.aif.timeDuration;
+            this.scanner_.timeWindow = this.aif.timeWindow;
             
             tzero = seconds(this.scanner_.datetime0 - this.aif_.datetime0); % zero-times in the aif frame
             this.aif_ = this.aif_.shiftWorldlines(tzero, this.aif_.time0); 
