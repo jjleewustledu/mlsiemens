@@ -1,4 +1,4 @@
-classdef MMRBuilder < mlpipeline.VendorBuilder
+classdef MMRBuilder 
 	%% MMRBUILDER  
 
 	%  $Revision$
@@ -196,7 +196,7 @@ classdef MMRBuilder < mlpipeline.VendorBuilder
             bv.cropfrac_4dfp(this.firstCrop, ip.Results.fqfp0, ip.Results.fqfp);
             fqfp = ip.Results.fqfp;
         end
-        function loc = ensureTracerLocation(this)
+        function loc  = ensureTracerLocation(this)
             %% ENSURETRACERLOCATION 
             %  @return this.sessionData.tracerLocation, creating the location as needed.
             
