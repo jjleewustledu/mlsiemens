@@ -85,7 +85,6 @@ classdef SiemensDicom
                 %%mlbash(sprintf('fslroi %s %s %i %i %i %i 0 -1', fp, fp, xmin, xsize, xmin, xsize)); 
                 % clobbers scl_slope, scl_inter
                 niih_ = ImagingFormatContext([fp '.nii.gz']);
-                niih_ = niih_.applyScl;
                 niih_.addLog(['mlsiemens.SiemensDicom.dcm2niixInnerFrames:  finished work in ' pwd]);
                 niihs{f} = niih_;
             end
@@ -124,7 +123,7 @@ classdef SiemensDicom
             infos    = cell(1, length(fqdns));
             for iser = 1:length(fqdns)
                 try
-                    dcms = DirTool(fullfile(fqdns{iser}, 'DICOM', ['*.' this.dicomExtension]));
+                    dcms = DirTool(fullfile(fqdns{iser}, 'DICOM', ['*' this.dicomExtension]));
                     if (~isempty(dcms.fqfns))
                         infos{iser} = dicominfo(dcms.fqfns{1});
                     end

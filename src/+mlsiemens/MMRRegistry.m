@@ -1,4 +1,4 @@
-classdef MMRRegistry < mlpatterns.Singleton
+classdef MMRRegistry < handle
 	%% MMRREGISTRY  
 
 	%  $Revision$
@@ -78,7 +78,6 @@ classdef MMRRegistry < mlpatterns.Singleton
     
 	methods (Access = 'private')
  		function this = MMRRegistry(varargin)
- 			this = this@mlpatterns.Singleton(varargin{:});
  		end
  	end 
 
