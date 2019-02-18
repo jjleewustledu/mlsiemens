@@ -16,7 +16,7 @@ classdef BiographMMRBuilder < mlpet.AbstractScannerBuilder
  			%% BIOGRAPHMMRBUILDER
 
  			this = this@mlpet.AbstractScannerBuilder(varargin{:});
-            tracer = mlfourd.ImagingContext(this.sessionData.tracerResolvedFinal);
+            tracer = mlfourd.ImagingContext2(this.sessionData.tracerResolvedFinal);
             tracer = tracer.niftid;
             tracer.viewer = 'fsleyes';
             tracer.view;
