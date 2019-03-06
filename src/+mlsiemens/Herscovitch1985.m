@@ -56,7 +56,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 'blurArg', 1.5, ...
                 'theImages', {f t}, ...
                 'maskForImages', {'none' tm}, ...
-                'resolveTag', sprintf('op_fdgv%ir1', sessd.reference.vnumber), ...
+                'resolveTag', 'op_fdgr1', ...
                 'NRevisions', 1, ...
                 'logPath', ensuredir(fullfile(sessd.vallLocation, 'Log', '')));
             cRB.neverMarkFinished = res.neverMarkFinished;
@@ -82,10 +82,9 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             aa.save;
             
             import mlfourd.*;
-            vref = sessd.vnumberRef;
-            t4   = sprintf('T1001r1_to_fdgv1r1_sumtr1_op_fdgv%ir1_t4', vref); % _avgr1
-            sfp1 = sprintf('%s_op_fdgv%ir1', sfp, vref);
-            ref  = fullfile(pwd, sprintf('fdgv%ir1_sumt', vref));
+            t4   = 'T1001r1_to_fdgv1r1_sumtr1_op_fdgr1_t4'; % _avgr1
+            sfp1 = sprintf('%s_op_fdgr1', sfp);
+            ref  = fullfile(pwd, sprintf('fdgr1_sumt'));
             fv.t4img_4dfp(t4, sfp, 'out', sfp1, 'options', ['-n -O' ref]);
             m = ImagingContext([sfp1 '.4dfp.hdr']);
             nn = m.numericalNiftid;

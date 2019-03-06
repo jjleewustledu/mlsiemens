@@ -230,12 +230,12 @@ classdef MMRBuilder
 %             if (~bv.lexist_4dfp('t2'))
 %                 
 %                 % KLUDGE
-%                 pwd0 = pushd(sd.vLocation);
+%                 pwd0 = pushd(sd.sessionPath);
 %                 dt = mlsystem.DirTool('t2*');
 %                 assert(~isempty(dt.fqfns));
 %                 bv.lns_4dfp(myfileprefix(dt.fqfns{1}), 't2');
 %                 popd(pwd0);
-%                 bv.lns_4dfp(fullfile(sd.vLocation, 't2'));
+%                 bv.lns_4dfp(fullfile(sd.sessionPath, 't2'));
 %             end
 %             if (~lexist(sd.tof('typ', 'fn')))
 %                 assert(bv.lexist_4dfp(sd.tof('typ', 'fqfp')));

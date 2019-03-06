@@ -189,8 +189,8 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             sessp = fullfile(studyd.subjectsDir, 'HYGLY28', '');
             this.sessionData = SessionData( ...
                 'studyData', studyd, 'sessionPath', sessp, ...
-                'tracer', '', 'snumber', 1, 'vnumber', 1, 'ac', true);
-            cd(this.sessionData.vLocation);
+                'tracer', '', 'snumber', 1, 'ac', true);
+            cd(this.sessionData.sessionPath);
             setenv(upper('Test_Herscovitch1985'), '1');
             this.addTeardown(@this.teardownHerscovitch1985);
  		end
