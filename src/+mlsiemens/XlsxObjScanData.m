@@ -95,7 +95,6 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
 
         referenceDate
         sessionData
-        sessionDate
         timingData
     end
     
@@ -139,7 +138,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
                 error('mlsiemens:variableReferencedBeforeAssigned', 'XlsxObjScanData.get.referenceDate');
             end           
             if (~strcmp(computer, 'MACI64'))
-                g = this.sessionData.sessionDate;
+                g = this.sessionData.datetime;
 %                 g.Hour = 0;
 %                 g.Minute = 0;
 %                 g.Second = 0;
@@ -155,13 +154,10 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
             else
                 g = datetime(g);
             end
-            g.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+            g.TimeZone = mlnipet.Resources.PREFERRED_TIMEZONE;
         end
         function g = get.sessionData(this)
             g = this.sessionData_;
-        end
-        function g = get.sessionDate(this)
-            g = this.sessionData_.sessionDate;
         end
         function g = get.timingData(this)
             g = this.timingData_;
@@ -211,7 +207,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
                 'filetype', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false, 'DatetimeType', 'exceldatenum');            
             
             for id = 1:length(tbl.Date)                
-                date_ = this.sessionData.sessionDate;
+                date_ = this.sessionData.datetime;
                 date_.Hour = 0;
                 date_.Minute = 0;
                 date_.Second = 0;
@@ -362,7 +358,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
             
             dt_ = this.tracerAdmin_.TrueAdmin_Time_Hh_mm_ss( ...
                 this.tracerCode(ip.Results.tracer, ip.Results.snumber));
-            dt_.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+            dt_.TimeZone = mlnipet.Resources.PREFERRED_TIMEZONE;
         end
         
  		function this = XlsxObjScanData(varargin)
@@ -411,7 +407,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
                         end
                     end
                     if (any(isdatetime(col)))
-                        col.TimeZone = mldata.TimingData.PREFERRED_TIMEZONE;
+                        col.TimeZone = mlnipet.Resources.PREFERRED_TIMEZONE;
                         lrows = logical(~isnat(col));
                         col(lrows) = this.correctDateToReferenceDate(col(lrows));
                         if (~this.isTrueTiming(vars{v}))
