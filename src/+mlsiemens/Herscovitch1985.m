@@ -47,7 +47,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             assert(isa(sessd, 'mlpipeline.ISessionData'));
             pwd0 = pushd(sessd.vallLocation);
             
-            f = sessd.reference.tracerRevisionSumt('typ', 'fqfp');
+            f = sessd.reference.tracerRevisionAvgt('typ', 'fqfp');
             t = 'T1001';
             tm = 'T1001_mskt';
             res = mlpet.Resources.instance;
@@ -822,7 +822,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 aif.plot;
                 aif.plotSpecificActivity;
                 s_ = scanner; s_ = s_.volumeAveraged; plot(s_.times, s_.img);
-                %ss_ = scanner; ss_ = ss_.timeSummed; ss_.view(mask);
             end
         end
         function tD = configAifTimeDuration(tracer_)
