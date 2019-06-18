@@ -139,9 +139,6 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
             end           
             if (~strcmp(computer, 'MACI64'))
                 g = this.sessionData.datetime;
-%                 g.Hour = 0;
-%                 g.Minute = 0;
-%                 g.Second = 0;
                 return
             end
             g = this.capracHeader_.Var2(1);
@@ -154,7 +151,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
             else
                 g = datetime(g);
             end
-            g.TimeZone = mlnipet.Resources.PREFERRED_TIMEZONE;
+            g.TimeZone = mlpipeline.ResourcesRegistry.instance.preferredTimeZone;
         end
         function g = get.sessionData(this)
             g = this.sessionData_;
@@ -243,7 +240,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
                 ct_ = this.cyclotron_.time_Hh_mm_ss('residual dose');
                 ct_ = datetime(ct_{1});
                 dt_ =  ct_ - seconds(this.clocks.TimeOffsetWrtNTS____s('mMR PEVCO lab'));
-                dt_.TimeZone = mldata.Xlsx.PREFERRED_TIMEZONE;
+                dt_.TimeZone = mldata.Xlsx.preferredTimeZone;
             catch ME
                 dispwarning(ME);
             end
@@ -358,7 +355,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
             
             dt_ = this.tracerAdmin_.TrueAdmin_Time_Hh_mm_ss( ...
                 this.tracerCode(ip.Results.tracer, ip.Results.snumber));
-            dt_.TimeZone = mlnipet.Resources.PREFERRED_TIMEZONE;
+            dt_.TimeZone = mlpipeline.ResourcesRegistry.instance.preferredTimeZone;
         end
         
  		function this = XlsxObjScanData(varargin)
@@ -407,7 +404,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
                         end
                     end
                     if (any(isdatetime(col)))
-                        col.TimeZone = mlnipet.Resources.PREFERRED_TIMEZONE;
+                        col.TimeZone = mlpipeline.ResourcesRegistry.instance.preferredTimeZone;
                         lrows = logical(~isnat(col));
                         col(lrows) = this.correctDateToReferenceDate(col(lrows));
                         if (~this.isTrueTiming(vars{v}))
