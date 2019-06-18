@@ -13,7 +13,6 @@ classdef SiemensDicom
     
     properties
         cachedDcminfosFilename = 'DicomSorter_dcminfos_infos.mat'
-        dicomExtension = '.dcm'
     end
     
     methods (Static)
@@ -123,7 +122,7 @@ classdef SiemensDicom
             infos    = cell(1, length(fqdns));
             for iser = 1:length(fqdns)
                 try
-                    dcms = DirTool(fullfile(fqdns{iser}, 'DICOM', ['*' this.dicomExtension]));
+                    dcms = DirTool(fullfile(fqdns{iser}, 'DICOM', ['*' mlpipeline.ResourcesRegistry.instance().dicomExtension]));
                     if (~isempty(dcms.fqfns))
                         infos{iser} = dicominfo(dcms.fqfns{1});
                     end
