@@ -55,8 +55,8 @@ classdef Test_Herscovitch1985_visit1 < matlab.unittest.TestCase
             twilite.HO.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF);          
             this = this.configTracer('OO');
             twilite.OO.times = this.aif.times(this.aif.index0:this.aif.indexF);
-            twilite.OO.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF);  %#ok<STRNU>
-            save(fullfile(mlraichle.RaichleRegistry.instance.subjectsDir, 'HYGLY28', 'V1', 'twilite.mat'), 'twilite');
+            twilite.OO.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF);
+            save(fullfile(mlraichle.StudyRegistry.instance.subjectsDir, 'HYGLY28', 'V1', 'twilite.mat'), 'twilite');
         end
         function test_plotAifHO(this)
             this = this.configTracer('HO');

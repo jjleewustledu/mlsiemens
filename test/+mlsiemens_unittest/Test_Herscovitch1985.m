@@ -81,7 +81,7 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             this = this.configTracerState('OO');
             twilite.OO.times = this.aif.times(this.aif.index0:this.aif.indexF);
             twilite.OO.specificActivity = this.aif.specificActivity(this.aif.index0:this.aif.indexF);  %#ok<STRNU>
-            save('twilite', fullfile(mlraichle.RaichleRegistry.instance.subjectsDir, 'HYGLY28', 'V2', 'twilite.mat'));
+            save('twilite', fullfile(mlraichle.StudyRegistry.instance.subjectsDir, 'HYGLY28', 'V2', 'twilite.mat'));
         end
         function test_plotAifHO(this)
             this = this.configTracerState('HO');
