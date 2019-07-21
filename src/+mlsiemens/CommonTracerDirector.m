@@ -498,7 +498,7 @@ classdef CommonTracerDirector < mlpipeline.AbstractDirector
             this.builder_.sessionData.frame = nan;
             this.builder_ = this.builder_.partitionMonolith;
             this.builder_ = this.builder_.motionCorrectFrames;            
-            this.builder_ = this.builder_.reconstituteFramesAC2;
+            this.builder_ = this.builder_.reconstituteFramesAC3;
             this.builder_ = this.builder_.avgtProduct;
             
             popd(pwd0);
@@ -518,7 +518,7 @@ classdef CommonTracerDirector < mlpipeline.AbstractDirector
             this.builder_.sessionData.frame = nan;
             this.builder_ = this.builder_.partitionMonolith;
             this.builder_ = this.builder_.motionCorrectFrames;            
-            this.builder_ = this.builder_.reconstituteFramesAC2;
+            this.builder_ = this.builder_.reconstituteFramesAC3;
             this.builder_ = this.builder_.avgtProduct;
         end
         function this  = instanceConstructUnresolvedNAC(this)     
