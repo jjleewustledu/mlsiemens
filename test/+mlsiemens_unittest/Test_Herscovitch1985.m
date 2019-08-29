@@ -61,13 +61,13 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
             mlfourdfp.Viewer.view({f m});
         end
         
-        function test_buildCalibrated(this)
+        function test_calibrated(this)
             this = this.configTracerState('HO');
             plot(this.testObj.aif);
             plot(this.testObj.scanner);
             this.verifyEqual(sum(this.testObj.aif.counts), 2.538281818181829e+04, 'RelTol', 1e-10);
             this.verifyEqual(sum(sum(sum(sum(this.testObj.scanner.counts)))), 3.227361903087533e+09, 'RelTol', 1e-10);
-            this.testObj = this.testObj.buildCalibrated;            
+            this.testObj = this.testObj.calibrated;            
             this.verifyEqual(sum(this.testObj.aif.specificActivity), 1.122809320988796e+04, 'RelTol', 1e-10);
             this.verifyEqual(sum(sum(sum(sum(this.testObj.scanner.specificActivity)))), 6.966239350203043e+11, 'RelTol', 1e-10);
         end
