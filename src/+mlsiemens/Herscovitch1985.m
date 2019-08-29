@@ -376,9 +376,9 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
         
         %% config and build
         
-        function this = buildCalibrated(this)
-            this.aif_ = this.aif.buildCalibrated;
-            this.scanner_ = this.scanner.buildCalibrated;
+        function this = calibrated(this)
+            this.aif_ = this.aif.calibrated;
+            this.scanner_ = this.scanner.calibrated;
         end
         function this = buildCbfMap(this)
             assert(~isempty(this.a1));
