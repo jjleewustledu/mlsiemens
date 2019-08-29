@@ -70,8 +70,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
         function ai   = activityInterpolants(this, varargin)
             ai = this.interpolateMetric(this.activity, varargin{:});
         end  
-        function this = buildCalibrated(this)
-            this.invEfficiency_ = this.invEfficiency_;
+        function this = calibrated(this)
         end
         function ci   = countInterpolants(this, varargin)
             ci = this.interpolateMetric(this.counts, varargin{:});
