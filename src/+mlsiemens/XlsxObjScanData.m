@@ -1,4 +1,4 @@
-classdef XlsxObjScanData < mlio.AbstractXlsxIO
+classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
 	%% XLSXOBJSCANDATA  
 
 	%  $Revision$
@@ -93,9 +93,36 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
         % ROI2    NaT                          NaN              NaN             NaN              NaN         NaN              NaN                           0                                    0    
         % ROI3    NaT                          NaN              NaN             NaN              NaN         NaN              NaN                           0                                    0    
 
+        preferredTimeZone
         referenceDate
         sessionData
         timingData
+    end    
+    
+    methods (Static)
+        function tc = tracerCode(tr, snumber)
+            assert(ischar(tr));
+            assert(isnumeric(snumber));
+            if (lstrfind(upper(tr), 'FDG') || ...
+                strcmp(tr(1:2), '18') || ...
+                strcmp(tr(1), '['))
+                tc = '[18F]DG';
+                return
+            end
+            switch tr(1)
+                case 'C'
+                    tc = 'C[15O]';
+                case 'O'
+                    tc = 'O[15O]';
+                case 'H'
+                    tc = 'H2[15O]';
+                otherwise
+                    error('mlsiemens:unsupportedSwitchCase', 'XlsxObjScanData.tracerCode');
+            end
+            if (snumber > 1)
+                tc = sprintf('%s_%i', tc, snumber-1);
+            end
+        end
     end
     
 	methods 
@@ -133,25 +160,15 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
             g = this.mMR_;
         end
         
+        function g = get.preferredTimeZone(~)
+            g = mlpipeline.ResourcesRegistry.instance.preferredTimeZone;
+        end
         function g = get.referenceDate(this)
-            if (isempty(this.capracHeader))
-                error('mlsiemens:variableReferencedBeforeAssigned', 'XlsxObjScanData.get.referenceDate');
-            end           
-            if (~strcmp(computer, 'MACI64'))
-                g = this.sessionData.datetime;
-                return
-            end
-            g = this.capracHeader_.Var2(1);
-            if (iscell(g))
-                g = g{1};
-            end
-            if (isnumeric(g))
-                g = datetime(g, 'ConvertFrom', 'excel');
-                g = g + mldata.Xlsx.SERIAL_DAYS_1900_TO_1904;
-            else
-                g = datetime(g);
-            end
-            g.TimeZone = mlpipeline.ResourcesRegistry.instance.preferredTimeZone;
+            %% from fileprefix
+            
+            re = regexp(this.fileprefix, '^\w+ (?<dt>\d\d\d\d[a-zA-Z]+\d+)$', 'names');
+            g = datetime(re.dt, 'InputFormat', 'yyyMMMd', 'TimeZone', this.preferredTimeZone);
+            assert(isdatetime(g))
         end
         function g = get.sessionData(this)
             g = this.sessionData_;
@@ -197,27 +214,6 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
                 otherwise
                     error('mlsiemens:unsupportedSwitchcase', 'XlsxObjScanData.catheterInfo');
             end
-        end
-        function fn   = crv(this)
-            tbl = readtable(fullfile(getenv('CCIR_RAD_MEASUREMENTS_DIR'), 'Twilite census.xlsx'), ...
-                'Sheet', 'Sheet 1 - DateTable', ...
-                'filetype', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false, 'DatetimeType', 'exceldatenum');            
-            
-            for id = 1:length(tbl.Date)                
-                date_ = this.sessionData.datetime;
-                date_.Hour = 0;
-                date_.Minute = 0;
-                date_.Second = 0;
-                if (date_ == mldata.Xlsx.datetimeConvertFromExcel2(tbl.Date(id)) && ...
-                    1 == tbl.Human(id))
-                    fn = tbl.Filename(id);
-                    if (iscell(fn))
-                        fn = fn{1};
-                    end
-                    return
-                end
-            end
-            error('mlsiemens:soughtDataNotFound', 'XlsxObjScanData.crv');
         end
         function sa   = mMRSpecificActivity(this)
             sa = 1000 * this.mMR_.ROIMean_KBq_mL('ROI1');
@@ -544,6 +540,33 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO
             timedrawn = ensureDatetime(this.fdg.TIMEDRAWN_Hh_mm_ss);
             t = seconds(timedrawn - timedrawn(1));
             t = ensureRowVector(t);
+        end
+    end
+    
+    %% HIDDEN, DEPRECATED
+    
+    methods (Hidden)
+        function fn = crv(this)
+            tbl = readtable(fullfile(getenv('CCIR_RAD_MEASUREMENTS_DIR'), 'Twilite census.xlsx'), ...
+                'Sheet', 'Sheet 1 - DateTable', ...
+                'filetype', 'spreadsheet', 'ReadVariableNames', true, 'ReadRowNames', false, 'DatetimeType', 'exceldatenum');            
+            
+            for id = 1:length(tbl.Date)                
+                date_ = this.sessionData.datetime;
+                date_.Hour = 0;
+                date_.Minute = 0;
+                date_.Second = 0;
+                xlsx = mldata.Xlsx;
+                if (date_ == xlsx.datetimeConvertFromExcel2(tbl.Date(id)) && ...
+                    1 == tbl.Human(id))
+                    fn = tbl.Filename(id);
+                    if (iscell(fn))
+                        fn = fn{1};
+                    end
+                    return
+                end
+            end
+            error('mlsiemens:soughtDataNotFound', 'XlsxObjScanData.crv');
         end
     end
 
