@@ -344,6 +344,16 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             this = this.updateTimingData;
         end
         function dt_  = referenceDatetime(this, varargin)
+            %% for tracer
+            %  @param tracer
+            %  @param snumber
+            
+            if isempty(this.sessionData_)
+                dt_ = this.mMR.scanStartTime_Hh_mm_ss(1);
+                assert(isdatetime(dt_));
+                return
+            end
+            
             ip = inputParser;
             addParameter(ip, 'tracer',  this.sessionData.tracer, @ischar);
             addParameter(ip, 'snumber', this.sessionData.snumber, @isnumeric);
