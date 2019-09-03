@@ -340,7 +340,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             % spreadsheets auto-fill datetime cells with the date of data entry
             % which is typically not the date of measurement
             
-            this.timingData_.datetime0 = this.referenceDatetime;
+            this.timingData_.datetimeMeasured = this.referenceDatetime;
             this = this.updateTimingData;
         end
         function dt_  = referenceDatetime(this, varargin)
@@ -351,29 +351,32 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             
             dt_ = this.tracerAdmin_.TrueAdmin_Time_Hh_mm_ss( ...
                 this.tracerCode(ip.Results.tracer, ip.Results.snumber));
-            dt_.TimeZone = mlpipeline.ResourcesRegistry.instance.preferredTimeZone;
+            dt_.TimeZone = this.preferredTimeZone;
         end
         
  		function this = XlsxObjScanData(varargin)
  			%% XLSXOBJSCANDATA
+            %  @param fqfilename of xlsx.
+            %  @param sessionData is an mlpipeline.ISessionsData and provides a default fqfilename.
 
  			ip = inputParser;
+            addParameter(ip, 'fqfilename', '', @ischar);
             addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'timingData', mldata.TimingData, @(x) isa(x, 'mldata.TimingData'));
-            addParameter(ip, 'fqfilename', '', @ischar);
             addParameter(ip, 'forceDateToReferenceDate', true, @islogical);
             parse(ip, varargin{:});            
+            ipr = ip.Results;
             
-            this.sessionData_              = ip.Results.sessionData;
-            this.fqfilename                = ip.Results.fqfilename;
-            if (isempty(ip.Results.fqfilename))
-                this.fqfilename = this.sessionData_.CCIRRadMeasurements; 
+            this.sessionData_              = ipr.sessionData;
+            this.fqfilename                = ipr.fqfilename;
+            if isempty(this.fqfilename)
+                this.fqfilename            = this.sessionData_.CCIRRadMeasurements; 
             end
-            if (~lexist(this.fqfilename, 'file'))
+            if ~lexist(this.fqfilename, 'file')
                 error('mlsiemens:fileNotFound', 'XlsxObjScanData.ctor');
             end
-            this.timingData_               = ip.Results.timingData;
-            this.forceDateToReferenceDate_ = ip.Results.forceDateToReferenceDate;
+            this.timingData_               = ipr.timingData;
+            this.forceDateToReferenceDate_ = ipr.forceDateToReferenceDate;
  			this = this.readtable;        
             this.calibrationVisitor_       = mlsiemens.CalibrationVisitor(this);
  		end
@@ -391,7 +394,8 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
                 if (this.hasTimings(vars{v}))
                     if (any(isnumeric(col)))                        
                         lrows = logical(~isnan(col) & ~isempty(col));
-                        dt_   = this.datetimeConvertFromExcel2(tbl{lrows,v});
+                        xlsx = mldata.Xlsx;
+                        dt_   = xlsx.datetimeConvertFromExcel2(tbl{lrows,v});
                         col   = NaT(size(col));
                         col.TimeZone = dt_.TimeZone;
                         col(lrows) = dt_;
@@ -400,7 +404,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
                         end
                     end
                     if (any(isdatetime(col)))
-                        col.TimeZone = mlpipeline.ResourcesRegistry.instance.preferredTimeZone;
+                        col.TimeZone = this.preferredTimeZone;
                         lrows = logical(~isnat(col));
                         col(lrows) = this.correctDateToReferenceDate(col(lrows));
                         if (~this.isTrueTiming(vars{v}))
@@ -528,7 +532,8 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
             dt_.TimeZone = dtRef.TimeZone;
         end
         function this = updateTimingData(this)
-            if (~lstrcmp(upper(this.sessionData.tracer), 'FDG'))
+            if isempty(this.sessionData_) || ...
+                    ~lstrcmp(upper(this.sessionData.tracer), 'FDG')
                 return
             end            
             td       = this.timingData_;
