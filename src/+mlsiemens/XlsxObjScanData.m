@@ -429,48 +429,21 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
     
     %% PRIVATE
     
-    properties (Access = private)
-        forceDateToReferenceDate_
+    properties (Access = private)        
+        calibrationVisitor_
+        capracCalibration_
         capracHeader_
-        fdg_
-        oo_
-        tracerAdmin_
         clocks_
         cyclotron_
-        phantom_
-        capracCalibration_
-        twilite_
+        fdg_
+        forceDateToReferenceDate_
         mMR_
-        
+        oo_
+        phantom_
         sessionData_
-        timingData_
-        calibrationVisitor_
-    end
-    
-    methods (Static, Access = private)
-        function tc = tracerCode(tr, snumber)
-            assert(ischar(tr));
-            assert(isnumeric(snumber));
-            if (lstrfind(upper(tr), 'FDG') || ...
-                strcmp(tr(1:2), '18') || ...
-                strcmp(tr(1), '['))
-                tc = '[18F]DG';
-                return
-            end
-            switch tr(1)
-                case 'C'
-                    tc = 'C[15O]';
-                case 'O'
-                    tc = 'O[15O]';
-                case 'H'
-                    tc = 'H2[15O]';
-                otherwise
-                    error('mlsiemens:unsupportedSwitchCase', 'XlsxObjScanData.tracerCode');
-            end
-            if (snumber > 1)
-                tc = sprintf('%s_%i', tc, snumber-1);
-            end
-        end
+        timingData_  
+        tracerAdmin_
+        twilite_      
     end
     
     methods (Access = private)
