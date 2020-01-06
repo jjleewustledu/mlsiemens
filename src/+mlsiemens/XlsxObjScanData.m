@@ -405,7 +405,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
                     if (any(isnumeric(col)))                        
                         lrows = logical(~isnan(col) & ~isempty(col));
                         xlsx = mldata.Xlsx;
-                        dt_   = xlsx.datetimeConvertFromExcel2(tbl{lrows,v});
+                        dt_   = xlsx.datetimeConvertFromExcel(tbl{lrows,v});
                         col   = NaT(size(col));
                         col.TimeZone = dt_.TimeZone;
                         col(lrows) = dt_;
@@ -545,7 +545,7 @@ classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
                 date_.Minute = 0;
                 date_.Second = 0;
                 xlsx = mldata.Xlsx;
-                if (date_ == xlsx.datetimeConvertFromExcel2(tbl.Date(id)) && ...
+                if (date_ == xlsx.datetimeConvertFromExcel(tbl.Date(id)) && ...
                     1 == tbl.Human(id))
                     fn = tbl.Filename(id);
                     if (iscell(fn))

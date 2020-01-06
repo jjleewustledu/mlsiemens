@@ -594,7 +594,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
                 date_.Hour = 0;
                 date_.Minute = 0;
                 date_.Second = 0;
-                if (date_ == mldata.Xlsx.datetimeConvertFromExcel2(tbl.date(id)))
+                if (date_ == mldata.Xlsx.datetimeConvertFromExcel(tbl.date(id)))
                     labs.hct = tbl.Hct(id);
                     labs.glc = tbl.glc(id);
                     return
