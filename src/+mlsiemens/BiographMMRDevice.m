@@ -1,4 +1,4 @@
-classdef BiographMMRDevice < handle & mlpet.Instrument
+classdef BiographMMRDevice < handle & mlpet.Device
 	%% BIOGRAPHMMRDEVICE  
 
 	%  $Revision$
@@ -27,7 +27,7 @@ classdef BiographMMRDevice < handle & mlpet.Instrument
  			%% BIOGRAPHMMRDEVICE
  			%  @param .
 
- 			this = this@mlpet.Instrument(varargin{:});
+ 			this = this@mlpet.Device(varargin{:});
  		end
  	end 
 
