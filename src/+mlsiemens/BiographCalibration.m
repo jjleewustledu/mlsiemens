@@ -8,32 +8,47 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
  	
 	properties (Dependent)
  		invEfficiency
+        calibrationAvailable
     end
     
-    methods (Static)
-        function this = createBySession(varargin)
+    methods (Static)        
+        function buildCalibration()
+        end
+        function this = createFromSession(sesd, varargin)
             %% CREATEBYSESSION
             %  @param required sessionData is an mlpipeline.ISessionData.
-            %  See also:  mlpet.CCIRRadMeasurements.createBySession().
+            %  @param offset is numeric & searches for alternative SessionData.
             
-            rad = mlpet.CCIRRadMeasurements.createBySession(varargin{:});
-            this = mlsiemens.BiographCalibration.createByRadMeasurements(rad);
+            import mlsiemens.BiographCalibration
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addRequired(ip, 'sesd', @(x) isa(x, 'mlpipeline.ISessionData'))
+            addOptional(ip, 'offset', 1, @isnumeric)
+            parse(ip, sesd, varargin{:})
+            ipr = ip.Results;
+            
+            try
+                this = BiographCalibration(sesd, varargin{:});
+                
+                % get Biograph calibration from most time-proximal calibration measurements
+                if ~this.calibrationAvailable
+                    error('mlsiemens:ValueError', 'BiographCalibration.calibrationAvailable -> false')
+                end
+            catch ME
+                handwarning(ME)
+                sesd = BiographCalibration.findProximalSession(sesd, ipr.offset);
+                this = BiographCalibration.createFromSession(sesd, 'offset', ipr.offset+1);
+            end
         end
-        function this = createByRadMeasurements(rad)
-            %% CREATEBYRADMEASUREMENTS
- 			%  @param required radMeasurements is mlpet.CCIRRadMeasurements.
-
-            assert(isa(rad, 'mlpet.CCIRRadMeasurements'))
-            this = mlsiemens.BiographCalibration(rad);
-        end
-        function inveff = invEfficiencyf(varargin)
+        function ie = invEfficiencyf(obj)
             %% INVEFFICIENCYF attempts to use calibration data from the nearest possible datetime.
+            %  @param obj is an mlpipeline.ISessionData
             
-            error('mlsiemens:NotImplementedError')
-        end
-        
-        function a = e7tools_to_NiftyPET(activity)
-            a = (activity - 1712.7) / 1.0573;
+            assert(isa(obj, 'mlpipeline.ISessionData'))
+            this = mlsiemens.BiographCalibration.createFromSession(obj);
+            ie = this.invEfficiency;
+            ie = asrow(ie);
         end
     end
 
@@ -41,38 +56,65 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
         
         %% GET
         
+        function g = get.calibrationAvailable(this)
+            try
+                rm = this.radMeasurements_;
+                g1 = isnice(rm.mMR{'NiftyPET','ROIMean_KBq_mL'});                
+                g2 = any(strcmp(rm.wellCounter.TRACER, '[18F]DG') & ...
+                    isnice(rm.wellCounter.MassSample_G) & ...
+                    isnice(rm.wellCounter.Ge_68_Kdpm));
+                g = g1 && g2;
+            catch ME
+                handwarning(ME)
+                g = false;
+            end
+        end
         function g = get.invEfficiency(this)
             g = this.invEfficiency_;
         end
+        
+        %%
+        
     end 
     
     %% PROTECTED
     
     properties (Access = protected)
+        biographData_
         invEfficiency_
     end
     
     methods (Access = protected)        
- 		function this = BiographCalibration(varargin)
-            this = this@mlpet.AbstractCalibration(varargin{:});
+ 		function this = BiographCalibration(sesd, varargin)
+            this = this@mlpet.AbstractCalibration( ...
+                'radMeas', mlpet.CCIRRadMeasurements.createFromSession(sesd), varargin{:});
             
+            % get activity density from Caprac
             rm = this.radMeasurements_;
-            rowSelect = strcmp(rm.wellCounter.TRACER, '[18F]DG');
+            rowSelect = strcmp(rm.wellCounter.TRACER, '[18F]DG') & ...
+                isnice(rm.wellCounter.MassSample_G) & ...
+                isnice(rm.wellCounter.Ge_68_Kdpm);
             mass = rm.wellCounter.MassSample_G(rowSelect);
-            ge68 = rm.wellCounter.Ge_68_Kdpm(rowSelect);
-            sa = mlcapintec.CapracCalibration.specificActivityf(mass, ge68./mass); % kdpm/g
-            shift = seconds( ...
-                rm.mMR.scanStartTime_Hh_mm_ss('NiftyPET') - ...
-                seconds(rm.clocks.TimeOffsetWrtNTS____s('mMR console')) - ...
-                rm.wellCounter.TIMECOUNTED_Hh_mm_ss(rowSelect)); % backwards in time, clock-adjusted
-            sa = this.shiftWorldLines(sa, shift, this.radionuclide_.halflife);
-            activityDensityWell = (1e3/60) * mlcapintec.CapracCalibration.WATER_DENSITY * mean(sa); % Bq/mL
-            activityDensityRoi = 1e3 * rm.mMR.ROIMean_KBq_mL('NiftyPET'); % Bq/mL
+            ge68 = rm.wellCounter.Ge_68_Kdpm(rowSelect); 
             
-            this.invEfficiency_ = activityDensityWell/activityDensityRoi;
+            try
+                shift = seconds( ...
+                    rm.mMR.scanStartTime_Hh_mm_ss(1) - ...
+                    seconds(rm.clocks.TimeOffsetWrtNTS____s('mMR console')) - ...
+                    rm.wellCounter.TIMECOUNTED_Hh_mm_ss(rowSelect)); % backwards in time, clock-adjusted            
+                capCal = mlcapintec.CapracCalibration.createFromSession(sesd);
+                activityDensityCapr = capCal.activityDensity('mass', mass, 'ge68', ge68, 'solvent', 'water');
+                activityDensityCapr = this.shiftWorldLines(activityDensityCapr, shift, this.radionuclide_.halflife);
+                activityDensityBiograph = 1e3 * rm.mMR.ROIMean_KBq_mL('NiftyPET'); % Bq/mL   
+                this.invEfficiency_ = mean(activityDensityCapr)/mean(activityDensityBiograph);
+            catch ME
+                handwarning(ME)
+                this.invEfficiency_ = NaN;
+            end
+            
+            this.biographData_ = mlsiemens.BiographData.createFromSession(sesd);
         end
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
- end
-
+end

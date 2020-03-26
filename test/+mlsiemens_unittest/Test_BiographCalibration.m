@@ -12,6 +12,7 @@ classdef Test_BiographCalibration < matlab.unittest.TestCase
  	
 	properties
  		registry
+        session
  		testObj
  	end
 
@@ -25,13 +26,43 @@ classdef Test_BiographCalibration < matlab.unittest.TestCase
         function test_ctor(this)
             this.verifyEqual(this.testObj.invEfficiency, 1, 'RelTol', 1e-4)
         end
+        
+        function test_calibrationAvailable(this)
+            obj = mlsiemens.BiographCalibration.createFromSession(this.session);
+            this.verifyEqual(obj.calibrationAvailable, true)
+        end
+        function test_invEfficiencyf(this)
+            obj = mlsiemens.BiographCalibration.createFromSession(this.session);
+            this.verifyEqual(obj.invEfficiencyf, [], 'RelTol', 1e-4)
+        end
+        function test_census(this)
+            singularity = getenv('SINGULARITY_HOME');
+            for proj = globFoldersT(fullfile(singularity, 'CCIR_*'))
+                for ses = globFoldersT(fullfile(proj{1}, 'ses-E*'))
+                    for fdg = globFoldersT(fullfile(ses{1}, 'FDG_DT*-Converted-AC'))
+                        str = fullfile(mybasename(proj{1}), mybasename(ses{1}), mybasename(fdg{end}));
+                        sesd = mlraichle.SessionData.create(str);
+                        try
+                            if datetime(sesd) > datetime(2016, 4, 1, 'TimeZone', 'America/Chicago')
+                                disp(sesd)
+                                bcal = mlsiemens.BiographCalibration.createFromSession(sesd);
+                                this.verifyTrue(isrow(bcal.invEfficiencyf(sesd)));
+                                bcal.plot()
+                            end
+                        catch ME
+                            handwarning(ME)
+                        end
+                    end
+                end
+            end
+        end
 	end
 
  	methods (TestClassSetup)
 		function setupBiographCalibration(this)
  			import mlsiemens.*;
-            ses = mlraichle.SessionData.create('CCIR_00559/ses-E03056');
- 			this.testObj_ = BiographCalibration.createBySession(ses);
+            this.session = mlraichle.SessionData.create('CCIR_00559/ses-E03056/FDG_DT20190523154204.000000-Converted-AC');
+ 			this.testObj_ = BiographCalibration.createFromSession(this.session);
  		end
 	end
 

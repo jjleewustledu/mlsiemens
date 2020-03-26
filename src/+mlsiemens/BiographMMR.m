@@ -147,7 +147,7 @@ classdef BiographMMR < mlpet.AbstractScannerData
     end
     
     methods (Access = protected)
-        function this = createTimingData(this)
+        function this = constructTimingData(this)
             this.timingData_ = mldata.TimingData( ...
                 'times',     this.sessionData.times, ...
                 'datetimeMeasured', this.sessionData.readDatetime0 - this.manualDataClocksTimeOffsetMMRConsole);

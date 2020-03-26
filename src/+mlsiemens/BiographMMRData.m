@@ -1,4 +1,4 @@
-classdef BiographMMRData < handle & mlpet.AbstractTracerData
+classdef BiographMMRData < handle & mlsiemens.BiographData
 	%% BIOGRAPHMMRDATA  
 
 	%  $Revision$
@@ -10,13 +10,36 @@ classdef BiographMMRData < handle & mlpet.AbstractTracerData
  		
  	end
 
+    methods (Static)
+        function this = createFromSession(sesd)
+            assert(isa(sesd, 'mlpipeline.ISessionData'))
+            this = mlsiemens.BiographMMRData( ...
+                'isotope', sesd.isotope, ...
+                'tracer', sesd.tracer, ...
+                'datetimeMeasured', sesd.datetime, ...
+                'taus', sesd.taus);
+            this = this.read(sesd.tracerResolvedFinal());
+        end
+        function fwhh = petPointSpread
+            fwhh = mlsiemens.MMRRegistry.instance.petPointSpread;
+        end
+    end
+    
 	methods 
 		  
  		function this = BiographMMRData(varargin)
  			%% BIOGRAPHMMRDATA
- 			%  @param .
+            %  @param isotope in mlpet.Radionuclides.SUPPORTED_ISOTOPES.  MANDATORY.
+            %  @param tracer.
+            %  @param datetimeMeasured is the measured datetime for times(1).  Ctor corrects clocks.  MANDATORY.
+ 			%  @param datetimeForDecayCorrection.
+            %  @param dt is numeric and must satisfy Nyquist requirements of the client.
+ 			%  @param taus  are frame durations.
+ 			%  @param time0 >= this.times(1).
+ 			%  @param timeF <= this.times(end).
+ 			%  @param times are frame starts.
 
- 			this = this@mlpet.AbstractTracerData(varargin{:});
+ 			this = this@mlsiemens.BiographData(varargin{:});
  		end
  	end 
 
