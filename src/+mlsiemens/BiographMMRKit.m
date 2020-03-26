@@ -18,9 +18,9 @@ classdef BiographMMRKit < handle & mlpet.ScannerKit
         end
         function obj = createRadMeasurements(varargin) 
             %% Manually curated data spreadsheets.
-            %  See also:  mlpet.CCIRRadMeasurements.createBySession().
+            %  See also:  mlpet.CCIRRadMeasurements.createFromSession().
             
-            obj = mlpet.CCIRRadMeasurements.createBySession(varargin{:});
+            obj = mlpet.CCIRRadMeasurements.createFromSession(varargin{:});
         end
         function obj = createDevice() 
             %% scanner

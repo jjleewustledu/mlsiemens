@@ -1,5 +1,5 @@
 classdef XlsxObjScanData < mlio.AbstractXlsxIO & mldata.IManualMeasurements
-	%% XLSXOBJSCANDATA  
+	%% XLSXOBJSCANDATA is DEPRECATED.   Use mlpet.CCIRRadMeasurements
 
 	%  $Revision$
  	%  was created 11-Jun-2017 15:36:22 by jjlee,

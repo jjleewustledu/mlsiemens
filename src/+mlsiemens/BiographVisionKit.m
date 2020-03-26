@@ -19,9 +19,9 @@ classdef BiographVisionKit < handle & mlpet.ScannerKit
         function obj = createRadMeasurements(varargin) 
             %% Manually curated data spreadsheets.
             %  @param required sessionData is an mlpipeline.ISessionData.
-            %  See also:  mlpet.CCIRRadMeasurements.createBySession().
+            %  See also:  mlpet.CCIRRadMeasurements.createFromSession().
             
-            obj = mlpet.CCIRRadMeasurements.createBySession(varargin{:});
+            obj = mlpet.CCIRRadMeasurements.createFromSession(varargin{:});
         end
         function obj = createDevice() 
             %% scanner
@@ -31,9 +31,9 @@ classdef BiographVisionKit < handle & mlpet.ScannerKit
         function obj = createDeviceCalibration(varargin)
             %% Calibration by phantom.
             %  @param required sessionData is an mlpipeline.ISessionData.
-            %  See also:  mlsiemens.BiographCalibration.createBySession().
+            %  See also:  mlsiemens.BiographCalibration.createFromSession().
             
-            obj = mlsiemens.BiographCalibration.createBySession(varargin{:});
+            obj = mlsiemens.BiographCalibration.createFromSession(varargin{:});
         end
         function obj = createDeviceData() 
             %% reconstructed, resolved

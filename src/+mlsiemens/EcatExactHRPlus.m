@@ -205,7 +205,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             
             this = this.append_descrip('decorated by EcatExactHRPlus');   
             this = this.readRec;
-            this = this.createTimingData;
+            this = this.constructTimingData;
             this = this.readWellMatrix;
             this = this.readPie; % if isempty(this.pie_)
             this = this.shiftTimes(this.scannerTimeShift);
@@ -357,7 +357,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
             names = regexp(this.component.fileprefix, mlpet.PETIO.TRACER_EXPR, 'names');
             t = names.tracer;
         end
-        function this = createTimingData(this)        
+        function this = constructTimingData(this)        
             this.timingData_ = mldata.TimingData( ...
                 'times',     this.times, ...
                 'datetimeMeasured', NaT);
