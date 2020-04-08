@@ -49,12 +49,27 @@ classdef Test_BiographData < matlab.unittest.TestCase
             this.verifyEqual(dipmax(nii.img(:,:,:,end)), 44171.1640625, 'RelTol', 1e-4)
             %this.testObj.imagingContext.fsleyes
         end
+        function test_activityDensity_diff_ho(this)
+            ho = mlsiemens.BiographMMRData.createFromSession(this.sesd_ho);
+            ad = ho.activityDensity('volumeAveraged', true);
+            figure
+            plot(ho.times, ad, ':o')
+            xlabel('times / s')
+            ylabel('activity density / (Bq/mL)')
+            title('volume averaged over FOV')
+            dad = ho.activityDensity('volumeAveraged', true, 'diff', true);
+            figure
+            plot(ho.times, [dad dad(end)], ':o')
+            xlabel('times / s')
+            ylabel('diff activity density / (Bq/mL)')
+            title('volume averaged over FOV')
+        end
         function test_activityDensity_fdg(this)
             fdg = mlsiemens.BiographMMRData.createFromSession(this.sesd_fdg);
             ic = mlfourd.ImagingContext2(fdg.activityDensity);
             this.verifyFalse(fdg.decayCorrected)
             nii = ic.nifti;
-            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 30583.560546875, 'RelTol', 1e-4)
+            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 30410.41015625, 'RelTol', 1e-4)
             %ic.fsleyes
         end
         function test_activityDensity_oc(this)
@@ -62,7 +77,7 @@ classdef Test_BiographData < matlab.unittest.TestCase
             ic = mlfourd.ImagingContext2(oc.activityDensity);
             this.verifyFalse(oc.decayCorrected)
             nii = ic.nifti;
-            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 38153.171875, 'RelTol', 1e-4)
+            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 32427.08203125, 'RelTol', 1e-4)
             ic.fsleyes
         end
         function test_activityDensity_oo(this)
@@ -70,7 +85,7 @@ classdef Test_BiographData < matlab.unittest.TestCase
             ic = mlfourd.ImagingContext2(oo.activityDensity);
             this.verifyFalse(oo.decayCorrected)
             nii = ic.nifti;
-            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 24055.234375, 'RelTol', 1e-4)
+            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 12970.8154296875, 'RelTol', 1e-4)
             ic.fsleyes
         end
         function test_activityDensity_ho(this)
@@ -78,11 +93,59 @@ classdef Test_BiographData < matlab.unittest.TestCase
             ic = mlfourd.ImagingContext2(ho.activityDensity);
             this.verifyFalse(ho.decayCorrected)
             nii = ic.nifti;
-            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 25535.693359375, 'RelTol', 1e-4)
+            this.verifyEqual(dipmax(nii.img(:,:,:,end)), 22115.287109375, 'RelTol', 1e-4)
             ic.fsleyes
+        end
+        function test_countRate_fdg(this)
+            fdg = mlsiemens.BiographMMRData.createFromSession(this.sesd_fdg);
+            ic = mlfourd.ImagingContext2(fdg.countRate);
+            this.verifyTrue(fdg.decayCorrected)
+            ic = ic.volumeAveraged();
+            nii = ic.nifti;
+            this.verifyEqual(nii.img(end), single(5.2259735e+02), 'RelTol', 1e-4)
+            plot(nii.img)
+        end
+        function test_countRate_oc(this)
+            oc = mlsiemens.BiographMMRData.createFromSession(this.sesd_oc);
+            ic = mlfourd.ImagingContext2(oc.countRate);
+            this.verifyTrue(oc.decayCorrected)
+            ic = ic.volumeAveraged();
+            nii = ic.nifti;
+            this.verifyEqual(nii.img(end), single(1.7175701e+03), 'RelTol', 1e-4)
+            plot(nii.img)
+        end
+        function test_countRate_oo(this)
+            oo = mlsiemens.BiographMMRData.createFromSession(this.sesd_oo);
+            ic = mlfourd.ImagingContext2(oo.countRate);
+            this.verifyTrue(oo.decayCorrected)
+            ic = ic.volumeAveraged();
+            nii = ic.nifti;
+            this.verifyEqual(nii.img(end), single(1.7039740e+03), 'RelTol', 1e-4)
+            plot(nii.img)
+        end
+        function test_countRate_ho(this)
+            ho = mlsiemens.BiographMMRData.createFromSession(this.sesd_ho);
+            ic = mlfourd.ImagingContext2(ho.countRate);
+            this.verifyTrue(ho.decayCorrected)
+            ic = ic.volumeAveraged();
+            nii = ic.nifti;
+            this.verifyEqual(nii.img(end), single(3.2051624e+03), 'RelTol', 1e-4)
+            plot(nii.img)
         end
         function test_plot(this)
             this.testObj.plot()
+        end
+        function test_plot_ho(this)
+            o = mlsiemens.BiographMMRData.createFromSession(this.sesd_ho);
+            plot(o)
+        end
+        function test_plot_oo(this)
+            o = mlsiemens.BiographMMRData.createFromSession(this.sesd_oo);
+            plot(o)
+        end
+        function test_plot_oc(this)
+            o = mlsiemens.BiographMMRData.createFromSession(this.sesd_oc);
+            plot(o)
         end
         function test_shiftWorldlines(this)            
             this.testObj.plot()

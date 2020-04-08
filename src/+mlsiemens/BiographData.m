@@ -45,6 +45,11 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             %% Bq
             %  @param decayCorrected, default := false.
  			%  @param datetimeForDecayCorrection updates internal.
+            %  @param index0 is numeric.
+            %  @param indexF is numeric.
+            %  @param timeAveraged is logical.
+            %  @param volumeAveraged is logical.
+            %  @param diff is logical.
             
             a = this.activityDensity(varargin{:})*this.visibleVolume;
         end
@@ -52,12 +57,20 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             %% Bq/mL
             %  @param decayCorrected, default := false.
  			%  @param datetimeForDecayCorrection updates internal.
+            %  @param index0 is numeric.
+            %  @param indexF is numeric.
+            %  @param timeAveraged is logical.
+            %  @param volumeAveraged is logical.
+            %  @param diff is logical.
             
             ip = inputParser;
             addParameter(ip, 'decayCorrected', false, @islogical)
             addParameter(ip, 'datetimeForDecayCorrection', NaT, @(x) isnat(x) || isdatetime(x))
             addParameter(ip, 'index0', this.index0, @isnumeric)
             addParameter(ip, 'indexF', this.indexF, @isnumeric)
+            addParameter(ip, 'timeAveraged', false, @islogical)
+            addParameter(ip, 'volumeAveraged', false, @islogical)
+            addParameter(ip, 'diff', false, @islogical)
             parse(ip, varargin{:})
             ipr = ip.Results;
             
@@ -68,30 +81,44 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             if ~ipr.decayCorrected && this.decayCorrected
                 this = this.decayUncorrect();
             end
-            a = this.imagingContext.nifti.img;
-            switch this.imagingContext.nifti.ndims
-                case 2
-                    a = a(ipr.index0:ipr.indexF);
-                case 3
-                    a = a(:,:,ipr.index0:ipr.indexF);
-                case 4
-                    a = a(:,:,:,ipr.index0:ipr.indexF);
-                otherwise
-                    error('mlsiemens:ValueError', 'BiographData.activityDensity')
+            
+            that = copy(this);
+            if ipr.index0 ~= this.index0 || ipr.indexF ~= this.indexF
+                that = that.selectIndex0IndexF(ipr.index0, ipr.indexF);
+            end
+            if ipr.timeAveraged
+                that.imagingContext_ = that.imagingContext_.timeAveraged();
+            end
+            if ipr.volumeAveraged
+                that.imagingContext_ = that.imagingContext_.volumeAveraged();                
+                a = that.imagingContext_.nifti.img;
+                if ipr.diff
+                    a = diff(a);
+                end
+            else                
+                if ipr.diff
+                    that.imagingContext_ = diff(that.imagingContext_);
+                end
+                a = that.imagingContext_.nifti.img;
             end
         end
         function c = countRate(this, varargin)
-            %% Bq/mL, synonymous with activityDensity
-            %  @param decayCorrected, default := false.
+            %% Bq/mL, decay-corrected.
+            %  @param decayCorrected, default := true.
  			%  @param datetimeForDecayCorrection updates internal.
+            %  @param index0 is numeric.
+            %  @param indexF is numeric.
+            %  @param timeAveraged is logical.
+            %  @param volumeAveraged is logical.
+            %  @param diff is logical.
             
-            c = this.activityDensity(varargin{:});
+            c = this.activityDensity('decayCorrected', true, varargin{:});
         end
         function this = decayCorrect(this)
             if ~this.decayCorrected
                 ifc = this.imagingContext.nifti;
                 mat = this.reshape_native_to_2d(ifc.img);
-                mat = mat .* asrow(2.^( (this.times - this.timeForDecayCorrection)/this.halflife));
+                mat = mat .* this.decayCorrectionFactors;
                 ifc.img = this.reshape_2d_to_native(mat);
                 
                 this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
@@ -99,11 +126,27 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 this.decayCorrected_ = true;
             end
         end
+        function f = decayCorrectionFactors(this, varargin)
+            %% DECAYCORRECTIONFACTORS
+            %  @return f is vector with same shape at this.times.
+            %  See also:  https://niftypet.readthedocs.io/en/latest/tutorials/corrqnt.html
+            
+            ip = inputParser;
+            addParameter(ip, 'timeShift', 0, @isscalar)
+            parse(ip, varargin{:})
+            
+            lambda = log(2)/this.halflife;
+            times1 = this.times - this.timeForDecayCorrection - ip.Results.timeShift;
+            Dtimes = (times1(2:end) - times1(1:end-1));
+            Dtimes = [Dtimes this.taus(end)];
+            f = lambda*Dtimes ./ (exp(-lambda*times1).*(1 - exp(-lambda*Dtimes)));
+            f = reshape(f, size(asrow(times1)));
+        end
         function this = decayUncorrect(this)
             if this.decayCorrected
                 ifc = this.imagingContext.nifti;
                 mat = this.reshape_native_to_2d(ifc.img);
-                mat = mat .* asrow(2.^(-(this.times - this.timeForDecayCorrection)/this.halflife));
+                mat = mat ./ this.decayCorrectionFactors;
                 ifc.img = this.reshape_2d_to_native(mat);
                 
                 this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
@@ -149,16 +192,17 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                     error('mlsiemens:RuntimeError', 'BiographData.reshape_2d_to_native')
             end
         end
-        function this = shiftWorldlines(this, Dt)
+        function this = shiftWorldlines(this, timeShift)
             %% shifts worldline of internal data self-consistently
-            %  @param Dt is numeric.
+            %  @param timeShift is numeric:  timeShift > 0 shifts into future; timeShift < 0 shifts into past.
             
-            assert(isnumeric(Dt))
+            assert(isnumeric(timeShift))
             ifc = this.imagingContext.nifti;
-            ifc.img = ifc.img * 2^(-Dt/this.halflife);            
+            ifc.img = ifc.img * 2^(-timeShift/this.halflife);
+            
             this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
-                'fileprefix', sprintf('%s_shiftWorldlines%g', ifc.fileprefix, Dt));
-            this.datetimeMeasured = this.datetimeMeasured + seconds(Dt);
+                'fileprefix', sprintf('%s_shiftWorldlines%g', ifc.fileprefix, timeShift));
+            this.datetimeMeasured = this.datetimeMeasured + seconds(timeShift);
         end
     end
     
@@ -187,6 +231,20 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 sec = seconds(this.radMeasurements_.clocks.TIMEOFFSETWRTNTS____S('mMR console'));
             end
         end 
+        function this = selectIndex0IndexF(this, index0, indexF)
+            nii = this.imagingContext.nifti;
+            switch nii.ndims
+                case 2
+                    nii.img = nii.img(index0:indexF);
+                case 3
+                    nii.img = nii.img(:,:,index0:indexF);
+                case 4
+                    nii.img = nii.img(:,:,:,index0:indexF);
+                otherwise
+                    error('mlsiemens:ValueError', 'BiographData.selectIndex0IndexF')
+            end
+            this.imagingContext_ = mlfourd.ImagingContext2(nii);
+        end
  	end 
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
