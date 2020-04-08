@@ -41,12 +41,12 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                 this = BiographCalibration.createFromSession(sesd, 'offset', ipr.offset+1);
             end
         end
-        function ie = invEfficiencyf(obj)
+        function ie = invEfficiencyf(sesd)
             %% INVEFFICIENCYF attempts to use calibration data from the nearest possible datetime.
             %  @param obj is an mlpipeline.ISessionData
             
-            assert(isa(obj, 'mlpipeline.ISessionData'))
-            this = mlsiemens.BiographCalibration.createFromSession(obj);
+            assert(isa(sesd, 'mlpipeline.ISessionData'))
+            this = mlsiemens.BiographCalibration.createFromSession(sesd);
             ie = this.invEfficiency;
             ie = asrow(ie);
         end
