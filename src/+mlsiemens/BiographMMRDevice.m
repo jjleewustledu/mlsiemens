@@ -1,4 +1,4 @@
-classdef BiographMMRDevice < handle & mlpet.Device
+classdef BiographMMRDevice < handle & mlsiemens.BiographDevice
 	%% BIOGRAPHMMRDEVICE  
 
 	%  $Revision$
@@ -6,31 +6,28 @@ classdef BiographMMRDevice < handle & mlpet.Device
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
  	%% It was developed on Matlab 9.4.0.813654 (R2018a) for MACI64.  Copyright 2018 John Joowon Lee.
  	
-	properties
- 		
+	properties 		
  	end
     
-    methods (Static)        
-        function checkRangeInvEfficiency(ie)
-            %  @param required ie is numeric.
-            %  @throws mlsiemens:ValueError.
-            
-            assert(all(0.95 < ie) && all(ie < 1.05), ...
-                'mlsiemens:ValueError', ...
-                'BiographMMRDevice.checkRangeInvEfficiency.ie->%s', mat2str(ie));
+    methods (Static)
+        function this = createFromSession(varargin)
+            this = mlsiemens.BiographMMRDevice( ...
+                'calibration', mlsiemens.BiographCalibration.createFromSession(varargin{:}), ...
+                'data', mlsiemens.BiographMMRData.createFromSession(varargin{:}));
+        end
+        function ie = invEfficiencyf(sesd)
+            this = mlsiemens.BiographMMRDevice.createFromSession(sesd);
+            ie = this.invEfficiency_;
         end
     end
 
-	methods 
-		  
+	methods 		  
  		function this = BiographMMRDevice(varargin)
  			%% BIOGRAPHMMRDEVICE
- 			%  @param .
-
- 			this = this@mlpet.Device(varargin{:});
+            
+ 			this = this@mlsiemens.BiographDevice(varargin{:});
  		end
  	end 
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
  end
-
