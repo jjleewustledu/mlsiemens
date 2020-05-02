@@ -33,7 +33,11 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             g = this.calibration_.calibrationAvailable;
         end
         function g = get.imagingContext(this)
-            g = this.data_.iamgingContext;
+            g = this.data_.imagingContext;
+        end
+        function     set.imagingContext(this, s)
+            assert(isa(s, 'mlfourd.ImagingContext2') || isa(s, 'mlfourd.ImagingFormatContext'))
+            this.data_.imagingContext = s;
         end
         
         %%        
@@ -52,6 +56,10 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             a = this.invEfficiency_*this.data_.activityDensity(varargin{:});
         end
+        function that = blurred(this, varargin)
+            that = copy(this);
+            that.imagingContext = that.imagingContext.blurred(varargin{:});
+        end
         function c = countRate(this, varargin)
             %% has no calibrations; Bq/mL
             %  @param decayCorrected, default := false.
@@ -59,6 +67,10 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             c = this.data_.countRate(varargin{:});
         end	
+        function that = masked(this, varargin)
+            that = copy(this);
+            that.imagingContext = that.imagingContext.masked(varargin{:});
+        end
         function h = plot(this, varargin)
             %% PLOT
             %  @param optional abscissa in {'datetime', 'times', 'indices'}
@@ -66,6 +78,17 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             h = this.data_.plot(varargin{:});
         end  
+        function stageResamplingRestricted(this, fqfn)
+            this.data_.stageResamplingRestricted(fqfn)
+        end
+        function that = timeAveraged(this, varargin)
+            that = copy(this);
+            that.imagingContext = that.imagingContext.timeAveraged(varargin{:});
+        end
+        function that = volumeAveraged(this, varargin)
+            that = copy(this);
+            that.imagingContext = that.imagingContext.volumeAveraged(varargin{:});
+        end
     end 
     
     %% PROTECTED
