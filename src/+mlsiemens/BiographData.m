@@ -24,10 +24,14 @@ classdef BiographData < handle & mlpet.AbstractTracerData
 
 	methods 
         
-        %% GET
+        %% GET/SET
         
         function g = get.imagingContext(this)
             g = this.imagingContext_;
+        end
+        function     set.imagingContext(this, s)
+            assert(isa(s, 'mlfourd.ImagingContext2') || isa(s, 'mlfourd.ImagingFormatContext'))
+            this.imagingContext_ = s;
         end
         function g = get.radMeasurements(this)
             g = this.radMeasurements_;
@@ -192,6 +196,10 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                     error('mlsiemens:RuntimeError', 'BiographData.reshape_2d_to_native')
             end
         end
+        function stageResamplingRestricted(this, fqfn)
+            assert(isfile(fqfn))
+            this.imagingContext_ = mlfourd.ImagingContext2(fqfn);
+        end
         function this = shiftWorldlines(this, timeShift)
             %% shifts worldline of internal data self-consistently
             %  @param timeShift is numeric:  timeShift > 0 shifts into future; timeShift < 0 shifts into past.
@@ -218,8 +226,19 @@ classdef BiographData < handle & mlpet.AbstractTracerData
  			%% BIOGRAPHDATA
 
  			this = this@mlpet.AbstractTracerData(varargin{:});
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'radMeasurements', [], @(x) isa(x, 'mlpet.RadMeasurements'))
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            
             this.decayCorrected_ = true;
-            this.radMeasurements_ = mlpet.CCIRRadMeasurements.createFromDate(this.datetimeMeasured);
+            if ~isempty(ipr.radMeasurements)
+                this.radMeasurements_ = ipr.radMeasurements;
+            else
+                this.radMeasurements_ = mlpet.CCIRRadMeasurements.createFromDate(this.datetimeMeasured);
+            end
             this.datetimeMeasured = this.datetimeMeasured - this.clocksTimeOffsetWrtNTS;
         end
          

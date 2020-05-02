@@ -19,9 +19,9 @@ classdef BiographKit < handle & mlpet.ScannerKit
             %  @return ts is time, in sec, of peak from diff(scanner) - time of peak from device.
             
             assert(isa(arterialDev, 'mlpet.AbstractDevice'))
-            [~,idxDev] = max(arterialDev.activityDensity);
+            [~,idxArterial] = max(arterialDev.activityDensity);
             [~,idxScanner] = max(scannerDev.activityDensity('volumeAveraged', true, 'diff', true));
-            ts = seconds(scanner.datetimes(idxScanner) - arterialDev.datetimes(idxDev));            
+            ts = seconds(scannerDev.datetimes(idxScanner) - arterialDev.datetimes(idxArterial));            
         end
     end
     
@@ -33,7 +33,10 @@ classdef BiographKit < handle & mlpet.ScannerKit
             g = this.sessionData_;
         end
         function g = get.radMeasurements(this)
-            g = mlpet.CCIRRadMeasurements.createFromSession(this.sessionData);
+            if isempty(this.radMeasurements_)
+                this.radMeasurements_ = mlpet.CCIRRadMeasurements.createFromSession(this.sessionData);
+            end
+            g = this.radMeasurements_;
         end
         
         %%
@@ -47,12 +50,38 @@ classdef BiographKit < handle & mlpet.ScannerKit
         function d = buildCountingDevice(this)
             d = mlcapintec.CapracDevice.createFromSession(this.sessionData);
         end
+        function d = datetime(this)
+            d = datetime(this.sessionData);
+        end
+        function d = datestr(this)
+            d = datestr(datetime(this), 'yyyymmddHHMMSS');
+        end
+        function this = stageResamplingRestricted(this)
+            fv = mlfourdfp.FourdfpVisitor();
+            pwd0 = pushd(fullfile(this.sessionData.subjectPath, 'resampling_restricted', ''));
+            t4 = [this.tracerResolvedOpSubject('typ', 'fqfp') '_to_T1001_t4'];
+            in = this.tracerResolvedOpSubject('typ', 'fqfp');
+            if ~isfile([this.tracerResolvedOpSubject('typ', 'fqfp') '_on_T1001.4dfp.hdr'])
+                fv.t4img_4dfp(t4, in, 'options', '-OT1001');
+            end
+            popd(pwd0)
+            this.tracerResolvedOpSubject_ = [this.tracerResolvedOpSubject('typ', 'fqfp') '_on_T1001.4dfp.hdr'];
+        end
+        function fn = tracerResolvedOpSubject(this, varargin)
+            if ~isempty(this.tracerResolvedOpSubject_)
+                fn = this.tracerResolvedOpSubject_;
+                return
+            end
+            fn = this.sessionData.tracerResolvedOpSubject(varargin{:});
+        end
     end
 
     %% PROTECTED
     
     properties (Access = protected)
+        radMeasurements_
         sessionData_
+        tracerResolvedOpSubject_ 
     end
     
 	methods (Access = protected)		  

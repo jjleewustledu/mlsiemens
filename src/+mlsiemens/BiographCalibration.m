@@ -24,7 +24,7 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'sesd', @(x) isa(x, 'mlpipeline.ISessionData'))
-            addOptional(ip, 'offset', 1, @isnumeric)
+            addParameter(ip, 'offset', 1, @isnumeric)
             parse(ip, sesd, varargin{:})
             ipr = ip.Results;
             
@@ -86,10 +86,12 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
     
     methods (Access = protected)        
  		function this = BiographCalibration(sesd, varargin)
-            this = this@mlpet.AbstractCalibration( ...
-                'radMeas', mlpet.CCIRRadMeasurements.createFromSession(sesd), varargin{:});
+            this = this@mlpet.AbstractCalibration(varargin{:});
             
             % get activity density from Caprac
+            if isempty(this.radMeasurements_)
+                this.radMeasurements_ = mlpet.CCIRRadMeasurements.createFromSession(sesd);
+            end
             rm = this.radMeasurements_;
             rowSelect = strcmp(rm.wellCounter.TRACER, '[18F]DG') & ...
                 isnice(rm.wellCounter.MassSample_G) & ...
@@ -102,7 +104,7 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                     rm.mMR.scanStartTime_Hh_mm_ss(1) - ...
                     seconds(rm.clocks.TimeOffsetWrtNTS____s('mMR console')) - ...
                     rm.wellCounter.TIMECOUNTED_Hh_mm_ss(rowSelect)); % backwards in time, clock-adjusted            
-                capCal = mlcapintec.CapracCalibration.createFromSession(sesd);
+                capCal = mlcapintec.CapracCalibration.createFromSession(sesd, 'radMeasurements', rm);
                 activityDensityCapr = capCal.activityDensity('mass', mass, 'ge68', ge68, 'solvent', 'water');
                 activityDensityCapr = this.shiftWorldLines(activityDensityCapr, shift, this.radionuclide_.halflife);
                 activityDensityBiograph = 1e3 * rm.mMR.ROIMean_KBq_mL('NiftyPET'); % Bq/mL   
@@ -112,7 +114,7 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                 this.invEfficiency_ = NaN;
             end
             
-            this.biographData_ = mlsiemens.BiographData.createFromSession(sesd);
+            this.biographData_ = mlsiemens.BiographData.createFromSession(sesd, 'radMeasurements', rm);
         end
     end
 
