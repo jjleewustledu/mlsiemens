@@ -57,22 +57,13 @@ classdef BiographKit < handle & mlpet.ScannerKit
             d = datestr(datetime(this), 'yyyymmddHHMMSS');
         end
         function this = stageResamplingRestricted(this)
-            fv = mlfourdfp.FourdfpVisitor();
-            pwd0 = pushd(fullfile(this.sessionData.subjectPath, 'resampling_restricted', ''));
-            t4 = [this.tracerResolvedOpSubject('typ', 'fqfp') '_to_T1001_t4'];
-            in = this.tracerResolvedOpSubject('typ', 'fqfp');
-            if ~isfile([this.tracerResolvedOpSubject('typ', 'fqfp') '_on_T1001.4dfp.hdr'])
-                fv.t4img_4dfp(t4, in, 'options', '-OT1001');
-            end
-            popd(pwd0)
-            this.tracerResolvedOpSubject_ = [this.tracerResolvedOpSubject('typ', 'fqfp') '_on_T1001.4dfp.hdr'];
+            this.sessionData.jitOn222(this.sessionData.tracerOnAtlas());
         end
         function fn = tracerResolvedOpSubject(this, varargin)
-            if ~isempty(this.tracerResolvedOpSubject_)
-                fn = this.tracerResolvedOpSubject_;
-                return
-            end
             fn = this.sessionData.tracerResolvedOpSubject(varargin{:});
+        end
+        function fn = tracerOnAtlas(this, varargin)
+            fn = this.sessionData.tracerOnAtlas(varargin{:});
         end
     end
 
@@ -81,7 +72,6 @@ classdef BiographKit < handle & mlpet.ScannerKit
     properties (Access = protected)
         radMeasurements_
         sessionData_
-        tracerResolvedOpSubject_ 
     end
     
 	methods (Access = protected)		  

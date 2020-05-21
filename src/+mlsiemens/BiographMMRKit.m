@@ -16,11 +16,7 @@ classdef BiographMMRKit < handle & mlsiemens.BiographKit
         function d = buildScannerDevice(this)
             d = mlsiemens.BiographMMRDevice.createFromSession( ...
                 this.sessionData, 'radMeasurements', this.radMeasurements);
-            if isfile(this.tracerResolvedOpSubject('tag', '_on_T1001'))
-                d.stageResamplingRestricted(this.tracerResolvedOpSubject('tag', '_on_T1001'))
-            elseif isfile(this.tracerResolvedOpSubject())
-                d.stageResamplingRestricted(this.tracerResolvedOpSubject())
-            end
+            d.stageResamplingRestricted(this.sessionData.tracerOnAtlas());
         end
     end
 
