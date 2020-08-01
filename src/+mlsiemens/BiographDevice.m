@@ -38,6 +38,7 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
         function     set.imagingContext(this, s)
             assert(isa(s, 'mlfourd.ImagingContext2') || isa(s, 'mlfourd.ImagingFormatContext'))
             this.data_.imagingContext = s;
+            warning('mlsiemens:ValueWarning', 'BiographDevice:set.imagingContext:  setter is DEPRECATED')
         end
         
         %%        
@@ -78,9 +79,6 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             h = this.data_.plot(varargin{:});
         end  
-        function stageResamplingRestricted(this, fqfn)
-            this.data_.stageResamplingRestricted(fqfn)
-        end
         function that = timeAveraged(this, varargin)
             that = copy(this);
             that.imagingContext = that.imagingContext.timeAveraged(varargin{:});
