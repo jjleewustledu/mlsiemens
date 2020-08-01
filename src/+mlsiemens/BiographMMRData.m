@@ -11,8 +11,7 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
  	end
 
     methods (Static)
-        function this = createFromSession(sesd, varargin)
-            assert(isa(sesd, 'mlpipeline.ISessionData'))
+        function this = createFromSession(sesd, varargin)            
             sesd.rnumber = mlnipet.ResourcesRegistry.instance().rnumberFinal;
             this = mlsiemens.BiographMMRData( ...
                 'isotope', sesd.isotope, ...
@@ -20,7 +19,7 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
                 'datetimeMeasured', sesd.datetime, ...
                 'taus', sesd.taus, ...
                 varargin{:});
-            this = this.read(sesd.tracerResolvedFinal());
+            this = this.read(sesd.tracerOnAtlas());
         end
         function fwhh = petPointSpread
             fwhh = mlsiemens.MMRRegistry.instance.petPointSpread;
