@@ -39,7 +39,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         function g = get.visibleVolume(this)
             %% mL
             
-            g = this.imagingContext.nifti;
+            g = this.imagingContext.fourdfp;
             g = prod(g.mmppix)/1e3;
         end
         
@@ -95,7 +95,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             end
             if ipr.volumeAveraged
                 that.imagingContext_ = that.imagingContext_.volumeAveraged();                
-                a = that.imagingContext_.nifti.img;
+                a = that.imagingContext_.fourdfp.img;
                 if ipr.diff
                     a = diff(a);
                 end
@@ -103,7 +103,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 if ipr.diff
                     that.imagingContext_ = diff(that.imagingContext_);
                 end
-                a = that.imagingContext_.nifti.img;
+                a = that.imagingContext_.fourdfp.img;
             end
         end
         function c = countRate(this, varargin)
@@ -120,7 +120,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         end
         function this = decayCorrect(this)
             if ~this.decayCorrected
-                ifc = this.imagingContext.nifti;
+                ifc = this.imagingContext.fourdfp;
                 mat = this.reshape_native_to_2d(ifc.img);
                 mat = mat .* this.decayCorrectionFactors;
                 ifc.img = this.reshape_2d_to_native(mat);
@@ -148,7 +148,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         end
         function this = decayUncorrect(this)
             if this.decayCorrected
-                ifc = this.imagingContext.nifti;
+                ifc = this.imagingContext.fourdfp;
                 mat = this.reshape_native_to_2d(ifc.img);
                 mat = mat ./ this.decayCorrectionFactors;
                 ifc.img = this.reshape_2d_to_native(mat);
@@ -169,9 +169,10 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         end
         function this = read(this, varargin)
             this.imagingContext_ = mlfourd.ImagingContext2(varargin{:});
+            this = this.decayUncorrect();
         end
         function img  = reshape_native_to_2d(this, img)
-            sz  = size(this.imagingContext.nifti);
+            sz  = size(this.imagingContext.fourdfp);
             switch length(sz)
                 case 2
                     return
@@ -184,7 +185,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             end
         end
         function img  = reshape_2d_to_native(this, img)
-            sz  = size(this.imagingContext.nifti);
+            sz  = size(this.imagingContext.fourdfp);
             switch length(sz)
                 case 2
                     return
@@ -196,16 +197,12 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                     error('mlsiemens:RuntimeError', 'BiographData.reshape_2d_to_native')
             end
         end
-        function stageResamplingRestricted(this, fqfn)
-            assert(isfile(fqfn))
-            this.imagingContext_ = mlfourd.ImagingContext2(fqfn);
-        end
         function this = shiftWorldlines(this, timeShift)
             %% shifts worldline of internal data self-consistently
             %  @param timeShift is numeric:  timeShift > 0 shifts into future; timeShift < 0 shifts into past.
             
             assert(isnumeric(timeShift))
-            ifc = this.imagingContext.nifti;
+            ifc = this.imagingContext.fourdfp;
             ifc.img = ifc.img * 2^(-timeShift/this.halflife);
             
             this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
@@ -251,18 +248,18 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             end
         end 
         function this = selectIndex0IndexF(this, index0, indexF)
-            nii = this.imagingContext.nifti;
-            switch nii.ndims
+            fdfp = this.imagingContext.fourdfp;
+            switch fdfp.ndims
                 case 2
-                    nii.img = nii.img(index0:indexF);
+                    fdfp.img = fdfp.img(index0:indexF);
                 case 3
-                    nii.img = nii.img(:,:,index0:indexF);
+                    fdfp.img = fdfp.img(:,:,index0:indexF);
                 case 4
-                    nii.img = nii.img(:,:,:,index0:indexF);
+                    fdfp.img = fdfp.img(:,:,:,index0:indexF);
                 otherwise
                     error('mlsiemens:ValueError', 'BiographData.selectIndex0IndexF')
             end
-            this.imagingContext_ = mlfourd.ImagingContext2(nii);
+            this.imagingContext_ = mlfourd.ImagingContext2(fdfp);
         end
  	end 
 
