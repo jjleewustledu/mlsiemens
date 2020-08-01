@@ -16,7 +16,6 @@ classdef BiographMMRKit < handle & mlsiemens.BiographKit
         function d = buildScannerDevice(this)
             d = mlsiemens.BiographMMRDevice.createFromSession( ...
                 this.sessionData, 'radMeasurements', this.radMeasurements);
-            d.stageResamplingRestricted(this.sessionData.tracerOnAtlas());
         end
     end
 
