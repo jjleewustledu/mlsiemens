@@ -109,6 +109,7 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                 activityDensityCapr = this.shiftWorldLines(activityDensityCapr, shift, this.radionuclide_.halflife);
                 activityDensityBiograph = 1e3 * rm.mMR.ROIMean_KBq_mL('NiftyPET'); % Bq/mL   
                 this.invEfficiency_ = mean(activityDensityCapr)/mean(activityDensityBiograph);
+                assert(isscalar(this.invEfficiency_))
             catch ME
                 handwarning(ME)
                 this.invEfficiency_ = NaN;
