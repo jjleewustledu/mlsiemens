@@ -35,11 +35,6 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
         function g = get.imagingContext(this)
             g = this.data_.imagingContext;
         end
-        function     set.imagingContext(this, s)
-            assert(isa(s, 'mlfourd.ImagingContext2') || isa(s, 'mlfourd.ImagingFormatContext'))
-            this.data_.imagingContext = s;
-            warning('mlsiemens:ValueWarning', 'BiographDevice:set.imagingContext:  setter is DEPRECATED')
-        end
         
         %%        
         
@@ -57,9 +52,8 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             a = this.invEfficiency_*this.data_.activityDensity(varargin{:});
         end
-        function that = blurred(this, varargin)
-            that = copy(this);
-            that.imagingContext = that.imagingContext.blurred(varargin{:});
+        function this = blurred(this, varargin)
+            this.data_ = this.data_.blurred(varargin{:});
         end
         function c = countRate(this, varargin)
             %% has no calibrations; Bq/mL
@@ -68,9 +62,8 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             c = this.data_.countRate(varargin{:});
         end	
-        function that = masked(this, varargin)
-            that = copy(this);
-            that.imagingContext = that.imagingContext.masked(varargin{:});
+        function this = masked(this, varargin)
+            this.data_ = this.data_.masked(varargin{:});
         end
         function h = plot(this, varargin)
             %% PLOT
@@ -79,13 +72,11 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             h = this.data_.plot(varargin{:});
         end  
-        function that = timeAveraged(this, varargin)
-            that = copy(this);
-            that.imagingContext = that.imagingContext.timeAveraged(varargin{:});
+        function this = timeAveraged(this, varargin)
+            this.data_ = this.data_.timeAveraged(varargin{:});
         end
-        function that = volumeAveraged(this, varargin)
-            that = copy(this);
-            that.imagingContext = that.imagingContext.volumeAveraged(varargin{:});
+        function this = volumeAveraged(this, varargin)
+            this.data_ = this.data_.volumeAveraged(varargin{:});
         end
     end 
     

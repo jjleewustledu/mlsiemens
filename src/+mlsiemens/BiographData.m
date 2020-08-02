@@ -106,6 +106,10 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 a = that.imagingContext_.fourdfp.img;
             end
         end
+        function that = blurred(this, varargin)
+            that = copy(this);
+            that.imagingContext_ = that.imagingContext_.blurred(varargin{:});
+        end
         function c = countRate(this, varargin)
             %% Bq/mL, decay-corrected.
             %  @param decayCorrected, default := true.
@@ -158,6 +162,10 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 this.decayCorrected_ = false;
             end
         end
+        function that = masked(this, varargin)
+            that = copy(this);
+            that.imagingContext_ = that.imagingContext_.masked(varargin{:});
+        end
         function h = plot(this, varargin)
             %% PLOT
             %  @param optional abscissa in {'datetime', 'times', 'indices'}
@@ -208,6 +216,14 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
                 'fileprefix', sprintf('%s_shiftWorldlines%g', ifc.fileprefix, timeShift));
             this.datetimeMeasured = this.datetimeMeasured + seconds(timeShift);
+        end
+        function that = timeAveraged(this, varargin)
+            that = copy(this);
+            that.imagingContext_ = that.imagingContext_.timeAveraged(varargin{:});
+        end
+        function that = volumeAveraged(this, varargin)
+            that = copy(this);
+            that.imagingContext_ = that.imagingContext_.volumeAveraged(varargin{:});
         end
     end
     
