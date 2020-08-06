@@ -62,6 +62,28 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             c = this.data_.countRate(varargin{:});
         end	
+        function ic = decayCorrectLike(this, ic)
+            %  @param ic is understood by mlfourd.ImagingContext2.
+            
+            ic = mlfourd.ImagingContext2(ic);
+            ifc = ic.fourdfp;
+            mat = this.data_.reshape_native_to_2d(ifc.img);
+            mat = mat .* this.data_.decayCorrectionFactors;
+            ifc.img = this.data_.reshape_2d_to_native(mat);
+                
+            ic = mlfourd.ImagingContext2(ifc, ...
+                'fileprefix', sprintf('%s_decayCorrect%g', ifc.fileprefix, this.timeForDecayCorrection));
+        end
+        function ic = decayUncorrectLike(this, ic)
+            ic = mlfourd.ImagingContext2(ic);
+            ifc = ic.fourdfp;
+            mat = this.data_.reshape_native_to_2d(ifc.img);
+            mat = mat ./ this.data_.decayCorrectionFactors;
+            ifc.img = this.data_.reshape_2d_to_native(mat);
+                
+            ic = mlfourd.ImagingContext2(ifc, ...
+                'fileprefix', sprintf('%s_decayUncorrect%g', ifc.fileprefix, this.timeForDecayCorrection));
+        end
         function this = masked(this, varargin)
             this.data_ = this.data_.masked(varargin{:});
         end
