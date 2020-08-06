@@ -63,9 +63,10 @@ classdef BiographData < handle & mlpet.AbstractTracerData
  			%  @param datetimeForDecayCorrection updates internal.
             %  @param index0 is numeric.
             %  @param indexF is numeric.
-            %  @param timeAveraged is logical.
-            %  @param volumeAveraged is logical.
-            %  @param diff is logical.
+            %  @param timeAveraged is logical, default false.
+            %  @param volumeAveraged is logical, default false.
+            %  @param diff is logical, default false.
+            %  @param uniformTimes is logical, default false.  Applicable only if volumeAveraged.
             
             ip = inputParser;
             addParameter(ip, 'decayCorrected', false, @islogical)
@@ -75,6 +76,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             addParameter(ip, 'timeAveraged', false, @islogical)
             addParameter(ip, 'volumeAveraged', false, @islogical)
             addParameter(ip, 'diff', false, @islogical)
+            addParameter(ip, 'uniformTimes', false, @islogical)
             parse(ip, varargin{:})
             ipr = ip.Results;
             
@@ -96,6 +98,9 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             if ipr.volumeAveraged
                 that.imagingContext_ = that.imagingContext_.volumeAveraged();                
                 a = that.imagingContext_.fourdfp.img;
+                if ipr.uniformTimes
+                    a = pchip(this.times, a, this.timeInterpolants);
+                end
                 if ipr.diff
                     a = diff(a);
                 end
