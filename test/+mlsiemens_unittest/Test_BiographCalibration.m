@@ -24,7 +24,7 @@ classdef Test_BiographCalibration < matlab.unittest.TestCase
  			this.assertEqual(1,1);
  		end
         function test_ctor(this)
-            this.verifyEqual(this.testObj.invEfficiency, 1, 'RelTol', 1e-4)
+            this.verifyEqual(this.testObj.invEfficiency, 1.1747, 'RelTol', 1e-4)
         end
         
         function test_calibrationAvailable(this)
@@ -33,25 +33,36 @@ classdef Test_BiographCalibration < matlab.unittest.TestCase
         end
         function test_invEfficiencyf(this)
             obj = mlsiemens.BiographCalibration.createFromSession(this.session);
-            this.verifyEqual(obj.invEfficiencyf, [], 'RelTol', 1e-4)
+            this.verifyEqual(obj.invEfficiencyf(this.session), 1.1747, 'RelTol', 1e-4)
         end
         function test_census(this)
             singularity = getenv('SINGULARITY_HOME');
             for proj = globFoldersT(fullfile(singularity, 'CCIR_*'))
                 for ses = globFoldersT(fullfile(proj{1}, 'ses-E*'))
-                    for fdg = globFoldersT(fullfile(ses{1}, 'FDG_DT*-Converted-AC'))
+                    try
+                        fdg = globFoldersT(fullfile(ses{1}, 'FDG_DT*-Converted-AC'));
+                        if isempty(fdg)
+                            continue
+                        end
                         str = fullfile(mybasename(proj{1}), mybasename(ses{1}), mybasename(fdg{end}));
                         sesd = mlraichle.SessionData.create(str);
-                        try
-                            if datetime(sesd) > datetime(2016, 4, 1, 'TimeZone', 'America/Chicago')
-                                disp(sesd)
-                                bcal = mlsiemens.BiographCalibration.createFromSession(sesd);
-                                this.verifyTrue(isrow(bcal.invEfficiencyf(sesd)));
-                                bcal.plot()
-                            end
-                        catch ME
-                            handwarning(ME)
+                        if datetime(sesd) > mlraichle.StudyRegistry.instance().earliestCalibrationDatetime                         
+                            disp(repmat('=', [1 length(str)]))
+                            disp(str)
+                            disp(repmat('=', [1 length(str)]))
+                            bcal = mlsiemens.BiographCalibration.createFromSession(sesd);
+                            sesd1 = bcal.sessionData;
+                            ss = split(sesd.scanPath, 'Singularity/');
+                            ss1 = split(sesd1.scanPath, 'Singularity/');
+                            fprintf('\n')
+                            fprintf('test_census:\n')
+                            fprintf('    requested: %s\n', ss{2})
+                            fprintf('    found:     %s\n', ss1{2})
+                            fprintf('    eff^{-1} = %g\n', bcal.invEfficiency)
+                            fprintf('\n')
                         end
+                    catch ME
+                        handwarning(ME)
                     end
                 end
             end
