@@ -214,10 +214,11 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             %% shifts worldline of internal data self-consistently
             %  @param timeShift is numeric:  timeShift > 0 shifts into future; timeShift < 0 shifts into past.
             
-            assert(isnumeric(timeShift))
-            ifc = this.imagingContext.fourdfp;
-            ifc.img = ifc.img * 2^(-timeShift/this.halflife);
+            assert(isscalar(timeShift))
+            assert(isscalar(this.halflife))
             
+            ifc = this.imagingContext.fourdfp;
+            ifc.img = ifc.img * 2^(-timeShift/this.halflife);            
             this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
                 'fileprefix', sprintf('%s_shiftWorldlines%g', ifc.fileprefix, timeShift));
             this.datetimeMeasured = this.datetimeMeasured + seconds(timeShift);
