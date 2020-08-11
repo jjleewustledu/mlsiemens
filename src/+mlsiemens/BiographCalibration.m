@@ -25,7 +25,7 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
             offset = 0;
             while ~this.calibrationAvailable              
                 offset = offset + 1;
-                sesd1 = sesd.findProximal(offset);                
+                sesd1 = sesd.findProximal(offset);
                 this = BiographCalibration(sesd1, varargin{:});
             end
         end
@@ -76,7 +76,9 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
             this = this@mlpet.AbstractCalibration(varargin{:});
             
             try                
-                if isempty(this.radMeasurements_)
+                % update for new sesd                
+                if isempty(this.radMeasurements_) || ...
+                        ~strcmp(this.radMeasurements_.sessionData.scanPath, sesd.scanPath)
                     this.radMeasurements_ = mlpet.CCIRRadMeasurements.createFromSession(sesd);
                 end
             
