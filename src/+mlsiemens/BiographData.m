@@ -95,7 +95,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             if ipr.timeAveraged
                 that.imagingContext_ = that.imagingContext_.timeAveraged();
             end
-            if ipr.volumeAveraged
+            if ipr.volumeAveraged && ndims(that.imagingContext_) >= 3 %#ok<ISMAT>
                 that.imagingContext_ = that.imagingContext_.volumeAveraged();                
                 a = that.imagingContext_.fourdfp.img;
                 if ipr.uniformTimes
@@ -177,7 +177,11 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             %  @param optional ordinate in {'countRate', 'activity', 'actvityDensity'}.
             
             that = copy(this);
-            that.imagingContext_ = that.imagingContext_.volumeAveraged();
+            try
+                that.imagingContext_ = that.imagingContext_.volumeAveraged();
+            catch ME
+                handwarning(ME)
+            end
             h = plot@mlpet.AbstractTracerData(that, varargin{:});
         end
         function this = read(this, varargin)
