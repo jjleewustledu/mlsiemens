@@ -56,9 +56,6 @@ classdef BiographKit < handle & mlpet.ScannerKit
         function d = datestr(this)
             d = datestr(datetime(this), 'yyyymmddHHMMSS');
         end
-        function this = stageResamplingRestricted(this)
-            this.sessionData.jitOn222(this.sessionData.tracerOnAtlas());
-        end
         function fn = tracerResolvedOpSubject(this, varargin)
             fn = this.sessionData.tracerResolvedOpSubject(varargin{:});
         end
