@@ -196,7 +196,8 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 case 3                    
                     img = reshape(img, [sz(1)*sz(2) sz(3)]);
                 case 4
-                    img = reshape(img, [sz(1)*sz(2)*sz(3) sz(4)]);
+                    szimg = size(img);
+                    img = reshape(img, [sz(1)*sz(2)*sz(3) max(sz(4), szimg(end))]);
                 otherwise
                     error('mlsiemens:RuntimeError', 'BiographData.reshape_native_to_2d')
             end
@@ -209,7 +210,8 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 case 3                    
                     img = reshape(img, [sz(1) sz(2) sz(3)]);
                 case 4
-                    img = reshape(img, [sz(1) sz(2) sz(3) sz(4)]);
+                    szimg = size(img);
+                    img = reshape(img, [sz(1) sz(2) sz(3) max(sz(4), szimg(end))]);
                 otherwise
                     error('mlsiemens:RuntimeError', 'BiographData.reshape_2d_to_native')
             end
