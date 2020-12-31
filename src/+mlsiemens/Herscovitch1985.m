@@ -476,7 +476,7 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             assert(isnumeric(cbf));  
             
             import mlpet.*;
-            f     = AbstractHerscovitch1985.cbfToInvs(cbf);
+            f     = AbstractHerscovitch1985.cbfToF1(cbf);
             lam   = AbstractHerscovitch1985.LAMBDA;
             lamd  = LAMBDA_DECAY;  
             aifti = ensureRowVector(aif.times(           aif.index0:aif.indexF) - aif.times(aif.index0));

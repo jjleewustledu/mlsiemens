@@ -289,6 +289,12 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             end
             this.imagingContext_ = mlfourd.ImagingContext2(fdfp);
         end
+        function that = copyElement(this)
+            %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))
+            
+            that = copyElement@matlab.mixin.Copyable(this);
+            that.imagingContext_ = copy(this.imagingContext_);
+        end
  	end 
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
