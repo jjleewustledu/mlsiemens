@@ -52,8 +52,9 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             a = this.invEfficiency_*this.data_.activityDensity(varargin{:});
         end
-        function this = blurred(this, varargin)
-            this.data_ = this.data_.blurred(varargin{:});
+        function that = blurred(this, varargin)
+            that = copy(this);
+            that.data_ = that.data_.blurred(varargin{:});
         end
         function c = countRate(this, varargin)
             %% has no calibrations; Bq/mL
@@ -84,8 +85,9 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             ic = mlfourd.ImagingContext2(ifc, ...
                 'fileprefix', sprintf('%s_decayUncorrect%g', ifc.fileprefix, this.timeForDecayCorrection));
         end
-        function this = masked(this, varargin)
-            this.data_ = this.data_.masked(varargin{:});
+        function that = masked(this, varargin)
+            that = copy(this);
+            that.data_ = that.data_.masked(varargin{:});
         end
         function h = plot(this, varargin)
             %% PLOT
@@ -94,11 +96,13 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             h = this.data_.plot(varargin{:});
         end  
-        function this = timeAveraged(this, varargin)
-            this.data_ = this.data_.timeAveraged(varargin{:});
+        function that = timeAveraged(this, varargin)
+            that = copy(this);
+            that.data_ = that.data_.timeAveraged(varargin{:});
         end
-        function this = volumeAveraged(this, varargin)
-            this.data_ = this.data_.volumeAveraged(varargin{:});
+        function that = volumeAveraged(this, varargin)
+            that = copy(this);
+            that.data_ = that.data_.volumeAveraged(varargin{:});
         end
     end 
     
