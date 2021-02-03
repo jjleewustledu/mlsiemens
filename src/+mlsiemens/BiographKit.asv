@@ -24,11 +24,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             [~,idxArterial] = max(arterialAct > 0.5*max(arterialAct));
             [~,idxScanner] = max(dscannerAct > 0.5*max(dscannerAct));
             ts = seconds(scannerDev.datetimes(idxScanner) - arterialDev.datetimes(idxArterial));   
-            if abs(ts) > scannerDev.timeWindow
-                error('mlsiemens:ValueError', ...
-                    'BiographKit.estimateTimeshift.ts was %g but scannerDev.timeWindow was %g.', ...
-                    ts, scannerDev.timeWindow)
-            end
+            assert
         end
     end
     
@@ -57,7 +53,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
         function countingDev = buildCountingDevice(this, scannerDev)
             assert(isa(scannerDev, 'mlpet.AbstractDevice'))
             countingDev = mlcapintec.CapracDevice.createFromSession(this.sessionData);
-            countingDev.Dt = this.estimateTimeshift(countingDev, scannerDev);
+            countingDev.Dt = this.estimateTimeshift(arterialDev, scannerDev);
         end
         function d = datetime(this)
             d = datetime(this.sessionData);
