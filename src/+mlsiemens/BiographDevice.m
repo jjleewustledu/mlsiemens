@@ -91,11 +91,38 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
         end
         function h = plot(this, varargin)
             %% PLOT
-            %  @param optional abscissa in {'datetime', 'times', 'indices'}
-            %  @param optional ordinate in {'countRate', 'activity', 'actvityDensity'}.
+            %  @param optional abscissa in {'datetime', 'datetimesMid', 'times', 'indices'}
+            %  @param optional ordinate in {'countRate', 'activity', 'actvityDensity', 'this.activityDensity(''volumeAveraged'', true)'}.
             
-            h = this.data_.plot(varargin{:});
-        end  
+            ip = inputParser;
+            addOptional(ip, 'abscissa', 'this.datetimesMid', @ischar)
+            addOptional(ip, 'ordinate', 'this.activityDensity(''volumeAveraged'', true)', @ischar)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+            if length(eval(ipr.abscissa)) < 100
+                marks = ':o';
+            else
+                marks = '.';                
+            end
+            
+            h = figure;
+            plot(eval(ipr.abscissa), eval(ipr.ordinate), marks);
+            switch strtok(ipr.abscissa, '(')
+                case 'this.times'
+                    xlabel('time / s')
+                otherwise
+            end
+            switch strtok(ipr.ordinate, '(')
+                case 'this.countRate'
+                    ylabel('count rate / cps')
+                case 'this.activity'
+                    ylabel('activity / Bq')
+                case 'this.activityDensity'
+                    ylabel('activity density / (Bq/mL)')
+                otherwise
+            end
+            title(sprintf('%s.plot(%s)', class(this), this.data_.tracer))
+        end 
         function that = timeAveraged(this, varargin)
             that = copy(this);
             that.data_ = that.data_.timeAveraged(varargin{:});
