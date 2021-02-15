@@ -173,8 +173,14 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         end
         function h = plot(this, varargin)
             %% PLOT
-            %  @param optional abscissa in {'datetime', 'times', 'indices'}
+            %  @param optional abscissa in {'datetimesMid' 'datetime', 'times', 'indices'}
             %  @param optional ordinate in {'countRate', 'activity', 'actvityDensity'}.
+            
+            ip = inputParser;
+            addOptional(ip, 'abscissa', 'this.datetimesMid', @ischar)
+            addOptional(ip, 'ordinate', 'this.activityDensity', @ischar)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
             
             that = copy(this);
             try
@@ -182,7 +188,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             catch ME
                 handwarning(ME)
             end
-            h = plot@mlpet.AbstractTracerData(that, varargin{:});
+            h = plot@mlpet.AbstractTracerData(that, ipr.abscissa, ipr.ordinate);
         end
         function this = read(this, varargin)
             this.imagingContext_ = mlfourd.ImagingContext2(varargin{:});
