@@ -99,7 +99,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 that.imagingContext_ = that.imagingContext_.volumeAveraged();                
                 a = that.imagingContext_.fourdfp.img;
                 if ipr.uniformTimes
-                    a = pchip(this.times, a, this.timeInterpolants);
+                    a = pchip(this.timesMid, a, this.timeInterpolants);
                 end
                 if ipr.diff
                     a = diff(a);
