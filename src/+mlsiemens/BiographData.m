@@ -99,7 +99,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 that.imagingContext_ = that.imagingContext_.volumeAveraged();                
                 a = that.imagingContext_.fourdfp.img;
                 if ipr.uniformTimes
-                    a = pchip(this.timesMid, a, this.timeInterpolants);
+                    a = makima(this.timesMid, a, this.timeInterpolants);
                 end
                 if ipr.diff
                     a = diff(a);
@@ -222,18 +222,25 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                     error('mlsiemens:RuntimeError', 'BiographData.reshape_2d_to_native')
             end
         end
-        function this = shiftWorldlines(this, timeShift)
+        function this = shiftWorldlines(this, Dt, varargin)
             %% shifts worldline of internal data self-consistently
-            %  @param timeShift is numeric:  timeShift > 0 shifts into future; timeShift < 0 shifts into past.
+            %  @param required Dt is scalar:  timeShift > 0 shifts into future; timeShift < 0 shifts into past.
+            %  @param shiftDatetimeMeasured is logical.
             
-            assert(isscalar(timeShift))
+            ip = inputParser;
+            addRequired(ip, 'timeShift', @isscalar)
+            addParameter(ip, 'shiftDatetimeMeasured', true, @islogical)
+            parse(ip, Dt, varargin{:})
             assert(isscalar(this.halflife))
             
             ifc = this.imagingContext.fourdfp;
-            ifc.img = ifc.img * 2^(-timeShift/this.halflife);            
+            ifc.img = ifc.img * 2^(-Dt/this.halflife);            
             this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
-                'fileprefix', sprintf('%s_shiftWorldlines%g', ifc.fileprefix, timeShift));
-            this.datetimeMeasured = this.datetimeMeasured + seconds(timeShift);
+                'fileprefix', sprintf('%s_shiftWorldlines%g', ifc.fileprefix, Dt));
+            
+            if ip.Results.shiftDatetimeMeasured
+                this.datetimeMeasured = this.datetimeMeasured + seconds(Dt);
+            end
         end
         function that = timeAveraged(this, varargin)
             that = copy(this);
