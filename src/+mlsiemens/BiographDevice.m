@@ -34,6 +34,9 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
         end
         function g = get.imagingContext(this)
             g = this.data_.imagingContext;
+            ifc = g.fourdfp;
+            ifc.img = this.invEfficiency_*ifc.img;
+            g = mlfourd.ImagingContext2(ifc);
         end
         
         %%        
