@@ -13,31 +13,128 @@ classdef BiographKit < handle & mlpet.ScannerKit
     
     methods (Static)
         function [arterialDev,arterialDatetimePeak] = alignArterialToScanner(varargin)
+            %% ALIGNARTERIALTOSCANNER
+            %  @param required arterialDev is counting device or arterial sampling device, as mlpet.AbstractDevice.
+            %  @param required scannerlDev is mlpet.AbstractDevice.
+            %  @param sameWorldline is logical.
+            %  @return arterialDev, modified if not sameWorldline;
+            %  @return arterialDatetimePeak, updated with alignments.
+            %  @return arterialDev.Dt, always updated.
+            %  @return updates mlraichle.RaichleRegistry.tBuffer.
             
             ip = inputParser;
-            ip.KeepUnmatched = true;
             addRequired(ip, 'arterialDev', @(x) isa(x, 'mlpet.AbstractDevice'))
             addRequired(ip, 'scannerDev', @(x) isa(x, 'mlpet.AbstractDevice'))
+            addParameter(ip, 'sameWorldline', false, @islogical)
             parse(ip, varargin{:})
             ipr = ip.Results;
+            arterialDev = copy(ipr.arterialDev);
+            scannerDev = ipr.scannerDev;
 
-            if strcmpi('15o', ipr.arterialDev.isotope)
-                if ~ipr.arterialDev.deconvCatheter
-                    [arterialDev,arterialDatetimePeak] = ...
-                        mlsiemens.BiographKit.alignArterialToScannerCoarsely(varargin{:});                    
-                    return
-                end
-                [arterialDev,arterialDatetimePeak] = ...
-                    mlsiemens.BiographKit.alignArterialToScannerPrecisely(varargin{:});
-                return
+            % find Dt of carotid bolus from radial-artery bolus, unresolved frames-of-reference
+            unifTimes = 0:max(arterialDev.timeWindow, scannerDev.timesMid(end));
+            arterialDevTimes = arterialDev.times(arterialDev.index0:arterialDev.indexF) - arterialDev.time0;
+            arterialAct = makima(arterialDevTimes, ...
+                                 arterialDev.activityDensity(), ...
+                                 unifTimes);
+            scannerAct = makima(scannerDev.timesMid, ...
+                                scannerDev.activityDensity('volumeAveraged', true), ...
+                                unifTimes);
+            dscannerAct = diff(scannerAct);
+            top = arterialDev.threshOfPeak;
+            [~,idxArterial] = max(arterialAct > top*max(arterialAct));
+            [~,idxScanner] = max(dscannerAct > top*max(dscannerAct));
+            tArterial = seconds(unifTimes(idxArterial));
+            tScanner = seconds(unifTimes(idxScanner));
+            
+            % manage failures of makima()
+            if tArterial > seconds(0.5*arterialDev.timeWindow)
+                warning('mlsiemens:ValueError', ...
+                    'BiographKit.alignArterialToScanner.tArterial was %g but arterialDev.timeWindow was %g.\n', ...
+                    seconds(tArterial), arterialDev.timeWindow)
+                [~,idxArterial] = max(arterialDev.activityDensity() > top*max(arterialDev.activityDensity()));
+                tArterial = seconds(arterialDevTimes(idxArterial));
+                fprintf('tArterial forced-> %g\n', seconds(tArterial))
+            end            
+            if tArterial > seconds(0.5*arterialDev.timeWindow) %%% UNRECOVERABLE
+                error('mlsiemens:ValueError', ...
+                    'BiographKit.alignArterialToScanner.tArterial was %g but arterialDev.timeWindow was %g.', ...
+                    seconds(tArterial), arterialDev.timeWindow)
             end
-            [arterialDev,arterialDatetimePeak] = ...
-                mlsiemens.BiographKit.alignArterialToScannerPrecisely(varargin{:});
+            if tScanner > seconds(0.75*scannerDev.timeWindow)
+                warning('mlsiemens:ValueError', ...
+                    'BiographKit.alignArterialToScanner.tScanner was %g but scannerDev.timeWindow was %g.\n', ...
+                    seconds(tScanner), scannerDev.timeWindow)
+                scannerDevAD = scannerDev.activityDensity('volumeAveraged', true, 'diff', true);
+                [~,idxScanner] = max(scannerDevAD > top*max(scannerDevAD));
+                tScanner = seconds(scannerDev.timesMid(idxScanner));
+                fprintf('tScanner forced -> %g\n', seconds(tScanner))
+            end
+            if tScanner > seconds(0.75*scannerDev.timeWindow) %%% UNRECOVERABLE
+                error('mlsiemens:ValueError', ...
+                    'BiographKit.alignArterialToScanner.tScanner was %g but scannerDev.timeWindow was %g.', ...
+                    seconds(tScanner), scannerDev.timeWindow)
+            end
+            
+            % resolve frames-of-reference, ignoring delay of radial artery from carotid
+            Dbolus = scannerDev.datetime0 + tScanner - (arterialDev.datetime0 + tArterial);
+            arterialDev.datetimeMeasured = -seconds(arterialDev.time0) + scannerDev.datetime0 + ...
+                                            tScanner - ...
+                                            tArterial - ...
+                                            Dbolus;
+                                        
+            % manage failures of Dbolus
+            if Dbolus > seconds(15)
+                warning('mlsiemens:ValueError', ...
+                    'BiographKit.alignArterialToScanner.Dbolus was %g.\n', seconds(Dbolus))
+                fprintf('scannerDev.datetime0 was %s.\n', datestr(scannerDev.datetime0))
+                fprintf('tScanner was %g.\n', seconds(tScanner))
+                fprintf('arterialDev.datetime0 was %s.\n', datestr(arterialDev.datetime0))
+                fprintf('tArterial was %g.\n', seconds(tArterial))
+                Dbolus = seconds(15);
+                arterialDev.datetimeMeasured = -seconds(arterialDev.time0) + scannerDev.datetime0 + ...
+                                                tScanner - ...
+                                                tArterial - ...
+                                                Dbolus;
+                fprintf('Dbolus forced -> %g\n', seconds(Dbolus))
+                fprintf('arterialDev.datetimeMeasured forced -> %s\n', ...
+                        datestr(arterialDev.datetimeMeasured))
+            end
+            if abs(Dbolus) > seconds(0.5*scannerDev.timeWindow) %%% UNRECOVERABLE
+                error('mlsiemens:ValueError', ...
+                    'BiographKit.alignArterialToScanner.Dbolus was %g but scannerDev.timeWindow was %g.', ...
+                    seconds(Dbolus), scannerDev.timeWindow)
+                %Dbolus = seconds(0);
+                %arterialDev.datetimeMeasured = -seconds(arterialDev.time0) + scannerDev.datetime0;
+                %warning('mlsiemens:ValueError', ...
+                %        'BiographKit.alignArterialToScanner.Dbolus forced -> %g', seconds(Dbolus))
+                %warning('mlsiemens:ValueError', ...
+                %        'BiographKit.alignArterialToScanner.arterialDev.datetimeMeasured forced -> %s', ...
+                %        datestr(arterialDev.datetimeMeasured))
+            end
+                                        
+            % adjust arterialDev worldline to describe carotid bolus
+            if ipr.sameWorldline
+                arterialDev.datetimeMeasured = arterialDev.datetimeMeasured + Dbolus;
+            else
+                arterialDev.shiftWorldlines(seconds(Dbolus));
+            end
+            arterialDev.Dt = seconds(Dbolus);
+            arterialDatetimePeak = arterialDev.datetime0 + tArterial;
+            
+            % tBuffer
+            RR = mlraichle.RaichleRegistry.instance();
+            RR.Ddatetime0 = seconds(scannerDev.datetime0 - arterialDev.datetime0);
+
+            % synchronize decay correction times
+            arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;            
         end
         function twi = extrapolateTwilite(twi, scanner)
+            b = mean(twi.baselineCountRate);
             c = twi.countRate();
             [~,idxPeak] = max(c);
-            [~,indexCliff] = max(c(idxPeak:end) < 0.05*c(idxPeak));
+            lowerbound = 0.05*(c(idxPeak) - b) + b;
+            [~,indexCliff] = max(c(idxPeak:end) < lowerbound);
             tauBeforeCliff = idxPeak + indexCliff - 10;
             twi.imputeSteadyStateActivityDensity(twi.time0 + tauBeforeCliff, twi.time0 + scanner.timeWindow);
         end
@@ -105,117 +202,6 @@ classdef BiographKit < handle & mlpet.ScannerKit
     properties (Access = protected)
         radMeasurements_
         sessionData_
-    end
-    
-    methods (Access = protected, Static)        
-        function [arterialDev,arterialDatetimePeak] = alignArterialToScannerPrecisely(varargin)
-            %% ALIGNARTERIALTOSCANNER
-            %  @param required arterialDev is counting device or arterial sampling device, as mlpet.AbstractDevice.
-            %  @param required scannerlDev is mlpet.AbstractDevice.
-            %  @param sameWorldline is logical.
-            %  @return arterialDev, modified if not sameWorldline;
-            %  @return arterialDatetimePeak, updated with alignments.
-            %  @return arterialDev.Dt, always updated.
-            %  @return updates mlraichle.RaichleRegistry.tBuffer.
-            
-            ip = inputParser;
-            addRequired(ip, 'arterialDev', @(x) isa(x, 'mlpet.AbstractDevice'))
-            addRequired(ip, 'scannerDev', @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'sameWorldline', false, @islogical)
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            arterialDev = ipr.arterialDev;
-            scannerDev = ipr.scannerDev;
-
-            % match radial-artery bolus to carotid bolus using scannerDev.threshOfPeak
-            unifTimes = 0:max(arterialDev.timeWindow, scannerDev.timesMid(end));
-            arterialDevTimes = arterialDev.times(arterialDev.index0:arterialDev.indexF) - arterialDev.time0;
-            arterialAct = makima([-1 arterialDevTimes], ...
-                                 [ 0 arterialDev.activityDensity()], ...
-                                 unifTimes);
-            scannerAct = makima([-1 scannerDev.timesMid], ...
-                                [ 0 scannerDev.activityDensity('volumeAveraged', true)], ...
-                                unifTimes);
-            dscannerAct = diff(scannerAct);
-            top = arterialDev.threshOfPeak;
-            [~,idxArterial] = max(arterialAct > top*max(arterialAct));
-            [~,idxScanner] = max(dscannerAct > top*max(dscannerAct));
-            arterialDatetimePeak = arterialDev.datetime0 + seconds(unifTimes(idxArterial));
-            scannerDatetimePeak = scannerDev.datetime0 + seconds(unifTimes(idxScanner));                        
-            Dt = seconds(scannerDatetimePeak - arterialDatetimePeak);
-            
-            % adjust arterialDev worldline to describe carotid bolus
-            if ipr.sameWorldline
-                arterialDev.datetimeMeasured = arterialDev.datetimeMeasured + seconds(Dt);
-            else
-                arterialDev.shiftWorldlines(Dt);
-            end
-            arterialDatetimePeak = arterialDatetimePeak + seconds(Dt);
-            arterialDev.Dt = Dt;
-            
-            % tBuffer
-            RR = mlraichle.RaichleRegistry.instance();
-            RR.Ddatetime0 = seconds(ipr.scannerDev.datetime0 - ipr.arterialDev.datetime0);
-
-            % synchronize decay correction times
-            arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;
-            
-            if abs(Dt) > arterialDev.timeWindow
-                error('mlsiemens:ValueError', ...
-                    'BiographKit.alignArterialToScannerPrecisely.Dt was %g but arterialDev.timeWindow was %g.', ...
-                    Dt, arterialDev.timeWindow)
-            end
-        end
-        function [arterialDev,arterialDatetimePeak] = alignArterialToScannerCoarsely(varargin)
-            %% ALIGNARTERIALTOSCANNER
-            %  @param required arterialDev is counting device or arterial sampling device, as mlpet.AbstractDevice.
-            %  @param required scannerlDev is mlpet.AbstractDevice.
-            %  @param sameWorldline is logical.
-            %  @return arterialDev, modified if not sameWorldline;
-            %  @return arterialDatetimePeak, updated with alignments.
-            %  @return arterialDev.Dt, always updated.
-            %  @return updates mlraichle.RaichleRegistry.tBuffer.
-            
-            ip = inputParser;
-            addRequired(ip, 'arterialDev', @(x) isa(x, 'mlpet.AbstractDevice'))
-            addRequired(ip, 'scannerDev', @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'sameWorldline', false, @islogical)
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            arterialDev = ipr.arterialDev;
-            scannerDev = ipr.scannerDev;
-
-            % match radial-artery bolus to carotid bolus using scannerDev.threshOfPeak
-            top = arterialDev.threshOfPeak; 
-            arterialAct = arterialDev.activityDensity();
-            scannerAct = scannerDev.activityDensity('volumeAveraged', true, 'diff', true);                       
-            [~,idxArterial] = max(arterialAct > top*max(arterialAct));
-            [~,idxScanner] = max(scannerAct > top*max(scannerAct));
-            arterialDatetimePeak = arterialDev.datetime0 + seconds(idxArterial - 1);
-            Dt = seconds(scannerDev.datetimes(idxScanner) - arterialDev.datetimes(idxArterial));
-            
-            % adjust arterialDev worldline to describe carotid bolus
-            if ipr.sameWorldline
-                arterialDev.datetimeMeasured = arterialDev.datetimeMeasured + seconds(Dt);
-            else
-                arterialDev.shiftWorldlines(Dt);
-            end
-            arterialDatetimePeak = arterialDatetimePeak + seconds(Dt);
-            arterialDev.Dt = Dt;
-            
-            % tBuffer
-            RR = mlraichle.RaichleRegistry.instance();
-            RR.Ddatetime0 = seconds(ipr.scannerDev.datetime0 - ipr.arterialDev.datetime0);
-
-            % synchronize decay correction times
-            arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;
-            
-            if abs(Dt) > arterialDev.timeWindow
-                error('mlsiemens:ValueError', ...
-                    'BiographKit.alignArterialToScannerCoarsely.Dt was %g but arterialDev.timeWindow was %g.', ...
-                    Dt, arterialDev.timeWindow)
-            end
-        end
     end
     
 	methods (Access = protected)		  
