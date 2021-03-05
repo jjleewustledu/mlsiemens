@@ -27,7 +27,8 @@ classdef BiographKit < handle & mlpet.ScannerKit
             addRequired(ip, 'scannerDev', @(x) isa(x, 'mlpet.AbstractDevice'))
             addParameter(ip, 'sameWorldline', false, @islogical)
             parse(ip, varargin{:})
-            ipr = ip.Results;
+            ipr = ip.Results;            
+            RR = mlraichle.RaichleRegistry.instance();
             arterialDev = copy(ipr.arterialDev);
             scannerDev = ipr.scannerDev;
 
@@ -48,15 +49,16 @@ classdef BiographKit < handle & mlpet.ScannerKit
             tScanner = seconds(unifTimes(idxScanner));
             
             % manage failures of makima()
-            if tArterial > seconds(0.5*arterialDev.timeWindow)
+            if tArterial > seconds(0.5*scannerDev.timeWindow)
                 warning('mlsiemens:ValueError', ...
                     'BiographKit.alignArterialToScanner.tArterial was %g but arterialDev.timeWindow was %g.\n', ...
                     seconds(tArterial), arterialDev.timeWindow)
+                RR.stableToInterpolation = false;
                 [~,idxArterial] = max(arterialDev.activityDensity() > top*max(arterialDev.activityDensity()));
                 tArterial = seconds(arterialDevTimes(idxArterial));
                 fprintf('tArterial forced-> %g\n', seconds(tArterial))
             end            
-            if tArterial > seconds(0.5*arterialDev.timeWindow) %%% UNRECOVERABLE
+            if tArterial > seconds(0.5*scannerDev.timeWindow) %%% UNRECOVERABLE
                 error('mlsiemens:ValueError', ...
                     'BiographKit.alignArterialToScanner.tArterial was %g but arterialDev.timeWindow was %g.', ...
                     seconds(tArterial), arterialDev.timeWindow)
@@ -65,6 +67,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
                 warning('mlsiemens:ValueError', ...
                     'BiographKit.alignArterialToScanner.tScanner was %g but scannerDev.timeWindow was %g.\n', ...
                     seconds(tScanner), scannerDev.timeWindow)
+                RR.stableToInterpolation = false;
                 scannerDevAD = scannerDev.activityDensity('volumeAveraged', true, 'diff', true);
                 [~,idxScanner] = max(scannerDevAD > top*max(scannerDevAD));
                 tScanner = seconds(scannerDev.timesMid(idxScanner));
