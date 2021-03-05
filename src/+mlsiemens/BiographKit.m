@@ -123,20 +123,38 @@ classdef BiographKit < handle & mlpet.ScannerKit
             arterialDatetimePeak = arterialDev.datetime0 + tArterial;
             
             % tBuffer
-            RR = mlraichle.RaichleRegistry.instance();
             RR.Ddatetime0 = seconds(scannerDev.datetime0 - arterialDev.datetime0);
 
             % synchronize decay correction times
             arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;            
         end
-        function twi = extrapolateTwilite(twi, scanner)
-            b = mean(twi.baselineCountRate);
-            c = twi.countRate();
-            [~,idxPeak] = max(c);
-            lowerbound = 0.05*(c(idxPeak) - b) + b;
-            [~,indexCliff] = max(c(idxPeak:end) < lowerbound);
-            tauBeforeCliff = idxPeak + indexCliff - 10;
-            twi.imputeSteadyStateActivityDensity(twi.time0 + tauBeforeCliff, twi.time0 + scanner.timeWindow);
+        function twi = extrapolateTwilite(twi, scanner, varargin)
+            %% EXTRAPOLATETWILITE
+            %  @param optional indexCliff is # time indices from max of countrate at which to start extrapolating
+            
+            ip = inputParser;
+            addRequired(ip, 'twi', @(x) isa(x, 'mlswisstrace.TwiliteDevice'))
+            addRequired(ip, 'scanner', @(x) isa(x, 'mlpet.AbstractDevice'))
+            addOptional(ip, 'indexCliff', [], @isnumeric)
+            parse(ip, twi, scanner, varargin{:})
+            ipr = ip.Results;
+            
+            try
+                b = mean(twi.baselineCountRate);
+                c = twi.countRate();
+                c(c < 0) = 0;
+                [~,idxPeak] = max(c);
+                lowerbound = 0.05*(c(idxPeak) - b) + b;
+                if isempty(ipr.indexCliff)
+                    [~,ipr.indexCliff] = max(c(idxPeak:end) < lowerbound);
+                end
+                tauBeforeCliff = idxPeak + ipr.indexCliff - 10;
+                twi.imputeSteadyStateActivityDensity( ...
+                    twi.time0 + tauBeforeCliff, ...
+                    min(twi.time0 + scanner.timeWindow, max(twi.times)));
+            catch ME
+                handwarning(ME)
+            end
         end
     end
     
@@ -161,6 +179,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             addRequired(ip, 'scannerDev', @(x) isa(x, 'mlpet.AbstractDevice'))
             addParameter(ip, 'deconvCatheter', true, @islogical)
             addParameter(ip, 'sameWorldline', false, @islogical)
+            addParameter(ip, 'indexCliff', [], @isnumeric)
             parse(ip, scannerDev, varargin{:})
             ipr = ip.Results;
             
@@ -168,7 +187,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             arterialDev.deconvCatheter = ipr.deconvCatheter;
             arterialDev = this.alignArterialToScanner( ...
                 arterialDev, scannerDev, 'sameWorldline', ipr.sameWorldline);
-            this.extrapolateTwilite(arterialDev, scannerDev);
+            this.extrapolateTwilite(arterialDev, scannerDev, ipr.indexCliff);
         end
         function countingDev = buildCountingDevice(this, varargin)
             ip = inputParser;
