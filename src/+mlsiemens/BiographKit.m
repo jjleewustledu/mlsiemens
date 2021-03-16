@@ -131,8 +131,8 @@ classdef BiographKit < handle & mlpet.ScannerKit
             % synchronize decay correction times
             arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;            
         end
-        function twi = extrapolateTwilite(twi, scanner, varargin)
-            %% EXTRAPOLATETWILITE
+        function twi = inspectTwiliteCliff(twi, scanner, varargin)
+            %% INSPECTTWILITECLIFF
             %  @param optional indexCliff is # time indices from max of countrate at which to start extrapolating
             
             ip = inputParser;
@@ -143,18 +143,17 @@ classdef BiographKit < handle & mlpet.ScannerKit
             ipr = ip.Results;
             
             try
-                b = mean(twi.baselineCountRate);
-                c = twi.countRate();
-                c(c < 0) = 0;
-                [~,idxPeak] = max(c);
-                lowerbound = 0.05*(c(idxPeak) - b) + b;
-                if isempty(ipr.indexCliff)
-                    [~,ipr.indexCliff] = max(c(idxPeak:end) < lowerbound);
+                ad = twi.activityDensity();
+                ad(ad < 0) = 0;
+                [~,idxPeak] = max(ad);
+                [~,likelyCliff_] = min(ad(idxPeak:end));
+                if ~isempty(ipr.indexCliff)
+                    ipr.indexCliff = min(ipr.indexCliff, likelyCliff_);
+                else
+                    ipr.indexCliff = likelyCliff_;
                 end
-                tauBeforeCliff = idxPeak + ipr.indexCliff - 10;
-                twi.imputeSteadyStateActivityDensity( ...
-                    twi.time0 + tauBeforeCliff, ...
-                    min(twi.time0 + scanner.timeWindow, max(twi.times)));
+                twi.timeCliff = idxPeak + ipr.indexCliff - 11;
+                assert(twi.timeCliff > 60)
             catch ME
                 handwarning(ME)
             end
@@ -190,7 +189,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             arterialDev.deconvCatheter = ipr.deconvCatheter;
             arterialDev = this.alignArterialToScanner( ...
                 arterialDev, scannerDev, 'sameWorldline', ipr.sameWorldline);
-            this.extrapolateTwilite(arterialDev, scannerDev, ipr.indexCliff);
+            this.inspectTwiliteCliff(arterialDev, scannerDev, ipr.indexCliff);
         end
         function countingDev = buildCountingDevice(this, varargin)
             ip = inputParser;
