@@ -35,10 +35,10 @@ classdef BiographKit < handle & mlpet.ScannerKit
             % find Dt of carotid bolus from radial-artery bolus, unresolved frames-of-reference
             unifTimes = 0:max(arterialDev.timeWindow, scannerDev.timesMid(end));
             arterialDevTimes = arterialDev.times(arterialDev.index0:arterialDev.indexF) - arterialDev.time0;
-            arterialAct = makima(arterialDevTimes, ...
+            arterialAct = interp1(arterialDevTimes, ...
                                  arterialDev.activityDensity(), ...
                                  unifTimes);
-            scannerAct = makima(scannerDev.timesMid, ...
+            scannerAct = interp1(scannerDev.timesMid, ...
                                 scannerDev.activityDensity('volumeAveraged', true), ...
                                 unifTimes);
             dscannerAct = diff(scannerAct);
@@ -48,7 +48,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             tArterial = seconds(unifTimes(idxArterial));
             tScanner = seconds(unifTimes(idxScanner));
             
-            % manage failures of makima()
+            % manage failures of interp1()
             if tArterial > seconds(0.5*scannerDev.timeWindow)
                 warning('mlsiemens:ValueError', ...
                     'BiographKit.alignArterialToScanner.tArterial was %g but arterialDev.timeWindow was %g.\n', ...
@@ -189,7 +189,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             arterialDev.deconvCatheter = ipr.deconvCatheter;
             arterialDev = this.alignArterialToScanner( ...
                 arterialDev, scannerDev, 'sameWorldline', ipr.sameWorldline);
-            this.inspectTwiliteCliff(arterialDev, scannerDev, ipr.indexCliff);
+            %this.inspectTwiliteCliff(arterialDev, scannerDev, ipr.indexCliff);
         end
         function countingDev = buildCountingDevice(this, varargin)
             ip = inputParser;
