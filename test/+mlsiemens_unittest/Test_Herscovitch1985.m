@@ -25,7 +25,6 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
         ooPeakTime  = 0  
         
         aif
-        ccirRadMeasurementsDir = fullfile(getenv('HOME'), 'Documents', 'private', '')
         crv = 'HYGLY28_VISIT_2_23sep2016_D1.crv'
         crvCal = 'HYGLY28_VISIT_2_23sep2016_twilite_cal_D1.crv'
         mand
@@ -255,7 +254,6 @@ classdef Test_Herscovitch1985 < matlab.unittest.TestCase
  	methods (TestClassSetup)
 		function setupHerscovitch1985(this)
             import mlraichle.* mlsiemens.*;
-            setenv('CCIR_RAD_MEASUREMENTS_DIR', this.ccirRadMeasurementsDir);
             setenv('TEST_HERSCOVITCH1985', '1');
             this.sessd = HerscovitchContext( ...
                 'studyData', mlraichle.StudyData, ...

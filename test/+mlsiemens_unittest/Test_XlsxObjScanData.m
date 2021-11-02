@@ -11,7 +11,7 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
 	properties
-        fqfilename = fullfile(getenv('HOME'), 'Documents/private/CCIRRadMeasurements 2016sep9.xlsx')
+        fqfilename = fullfile(getenv('CCIR_RAD_MEASUREMENTS_DIR'), 'CCIRRadMeasurements 2016sep9.xlsx')
  		registry
         sessd
         subjectsDir = '/data/nil-bluearc/raichle/PPGdata/jjlee2'
@@ -85,7 +85,7 @@ classdef Test_XlsxObjScanData < matlab.unittest.TestCase
             sessd_ = this.sessd;
             obj = XlsxObjScanData('sessionData', sessd_);
             this.verifyEqual(obj.fqfilename, ...
-                fullfile(getenv('HOME'), 'Documents/private/CCIRRadMeasurements 2016sep23.xlsx'));
+                fullfile(getenv('CCIR_RAD_MEASUREMENTS_DIR'), 'CCIRRadMeasurements 2016sep23.xlsx'));
         end
         function test_mMR(this)
             disp(this.testObj.mMR);

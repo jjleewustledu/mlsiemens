@@ -69,6 +69,8 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             popd(pwd0);
         end
         function [m,ref] = configMask(sessd)
+            %% aparcaseg, excluding ventricles, registered to fdg
+            
             assert(isa(sessd, 'mlpipeline.ISessionData'));
             pwd0 = pushd(sessd.vallLocation);
             fv = mlfourdfp.FourdfpVisitor;
@@ -290,7 +292,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             addRequired(ip, 'sessd', @(x) isa(x, 'mlpipeline.ISessionData'));
             parse(ip, sessd, varargin{:});
 
-            setenv('CCIR_RAD_MEASUREMENTS_DIR', fullfile(getenv('HOME'), 'Documents', 'private', ''));
             pwd0 = pushd(sessd.vallLocation);
             
             import mlsiemens.*;
@@ -315,7 +316,6 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             addRequired(ip, 'sessd', @(x) isa(x, 'mlpipeline.ISessionData'));
             parse(ip, sessd, varargin{:});
             
-            setenv('CCIR_RAD_MEASUREMENTS_DIR', fullfile(getenv('HOME'), 'Documents', 'private', ''));
             pwd0 = pushd(sessd.vallLocation);
 
             import mlsiemens.*;
@@ -393,6 +393,9 @@ classdef Herscovitch1985 < mlpet.AbstractHerscovitch1985
             this.product_ = mlfourd.ImagingContext(sc.component);
         end
         function this = buildCbvMap(this)
+            %% rescales to a reference normal value for whole brain.
+            %  Intent is for use with OC emissions data that have inadequate calibration.
+            
             this.scanner_.isDecayCorrected = false; % decay-uncorrected with zero-time at bolus inflow
             sc = this.scanner;
             sc.time0 = sc.time0 + 120;

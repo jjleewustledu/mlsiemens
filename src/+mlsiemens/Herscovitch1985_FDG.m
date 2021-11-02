@@ -70,7 +70,6 @@ classdef Herscovitch1985_FDG < mlsiemens.Herscovitch1985
             addRequired(ip, 'sessd', @(x) isa(x, 'mlpipeline.ISessionData'));
             parse(ip, sessd, varargin{:});
 
-            setenv('CCIR_RAD_MEASUREMENTS_DIR', fullfile(getenv('HOME'), 'Documents', 'private', ''));
             pwd0 = pushd(sessd.vallLocation);
             
             import mlsiemens.*;

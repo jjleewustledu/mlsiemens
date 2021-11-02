@@ -16,7 +16,7 @@ classdef Test_BiographData < matlab.unittest.TestCase
         doseAdminDatetimeOO  = datetime(2019,5,23,12,40,17, 'TimeZone', mlpipeline.ResourcesRegistry.instance().preferredTimeZone);
         doseAdminDatetimeHO  = datetime(2019,5,23,13,0,52,  'TimeZone', mlpipeline.ResourcesRegistry.instance().preferredTimeZone);
         doseAdminDatetimeFDG = datetime(2019,5,23,13,30,09, 'TimeZone', mlpipeline.ResourcesRegistry.instance().preferredTimeZone);        
-        fqfnRadMeas = fullfile(getenv('HOME'), 'Documents/private/CCIRRadMeasurements 2019may23.xlsx')
+        fqfnRadMeas = fullfile(getenv('CCIR_RAD_MEASUREMENTS_DIR'), 'CCIRRadMeasurements 2019may23.xlsx')
         radMeas
  		registry        
         sesd_fdg
