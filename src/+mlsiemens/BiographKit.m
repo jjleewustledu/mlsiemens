@@ -42,9 +42,9 @@ classdef BiographKit < handle & mlpet.ScannerKit
                                 scannerDev.activityDensity('volumeAveraged', true), ...
                                 unifTimes);
             dscannerAct = diff(scannerAct);
-            top = arterialDev.threshOfPeak;
-            [~,idxArterial] = max(arterialAct > top*max(arterialAct));
-            [~,idxScanner] = max(dscannerAct > top*max(dscannerAct));
+            thresh = arterialDev.threshOfPeak;
+            [~,idxArterial] = max(arterialAct > thresh*max(arterialAct));
+            [~,idxScanner] = max(dscannerAct > thresh*max(dscannerAct));
             tArterial = seconds(unifTimes(idxArterial));
             tScanner = seconds(unifTimes(idxScanner));
             
@@ -54,7 +54,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
                     'BiographKit.alignArterialToScanner.tArterial was %g but arterialDev.timeWindow was %g.\n', ...
                     seconds(tArterial), arterialDev.timeWindow)
                 RR.stableToInterpolation = false;
-                [~,idxArterial] = max(arterialDev.activityDensity() > top*max(arterialDev.activityDensity()));
+                [~,idxArterial] = max(arterialDev.activityDensity() > thresh*max(arterialDev.activityDensity()));
                 tArterial = seconds(arterialDevTimes(idxArterial));
                 fprintf('tArterial forced-> %g\n', seconds(tArterial))
             end            
@@ -69,7 +69,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
                     seconds(tScanner), scannerDev.timeWindow)
                 RR.stableToInterpolation = false;
                 scannerDevAD = scannerDev.activityDensity('volumeAveraged', true, 'diff', true);
-                [~,idxScanner] = max(scannerDevAD > top*max(scannerDevAD));
+                [~,idxScanner] = max(scannerDevAD > thresh*max(scannerDevAD));
                 tScanner = seconds(scannerDev.timesMid(idxScanner));
                 fprintf('tScanner forced -> %g\n', seconds(tScanner))
             end
