@@ -11,7 +11,7 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
  	end
 
     methods (Static)
-        function this = createFromSession(sesd, varargin)            
+        function this = createFromSession(sesd, varargin)
             sesd.rnumber = mlnipet.ResourcesRegistry.instance().rnumberFinal;
             this = mlsiemens.BiographMMRData( ...
                 'isotope', sesd.isotope, ...
