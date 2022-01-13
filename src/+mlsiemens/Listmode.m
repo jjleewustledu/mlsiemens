@@ -1,4 +1,4 @@
-classdef Listmode < mlsiemens.AbstractIOHandle
+classdef Listmode < mlsiemens.AbstractHandleIO
 	%% LISTMODE supports listmode data from the Siemens Biograph mMR. 
 
 	%  $Revision$
@@ -14,6 +14,7 @@ classdef Listmode < mlsiemens.AbstractIOHandle
     end
     
     properties (Dependent)
+        DEBUGGING
         lhdrParser
         max_ring_difference
         mhdrParser
@@ -37,6 +38,9 @@ classdef Listmode < mlsiemens.AbstractIOHandle
         
         %% GET/SET
         
+        function g = get.DEBUGGING(this)
+            g = ~isempty(getenv('DEBUG'));
+        end
         function g = get.lhdrParser(this)
             g = this.lhdrParser_;
         end
