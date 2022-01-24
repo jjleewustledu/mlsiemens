@@ -6,13 +6,13 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
  	%% It was developed on Matlab 9.4.0.813654 (R2018a) for MACI64.  Copyright 2018 John Joowon Lee.
  	
-	properties
- 		
+	properties (Constant)
+ 		R_NUMBER_FINAL = 2
  	end
 
     methods (Static)
         function this = createFromSession(sesd, varargin)
-            sesd.rnumber = mlnipet.ResourcesRegistry.instance().rnumberFinal;
+            sesd.rnumber = mlsiemens.BiographMMRData.R_NUMBER_FINAL;
             this = mlsiemens.BiographMMRData( ...
                 'isotope', sesd.isotope, ...
                 'tracer', sesd.tracer, ...

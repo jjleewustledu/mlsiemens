@@ -20,7 +20,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             %  @return arterialDev, modified if not sameWorldline;
             %  @return arterialDatetimePeak, updated with alignments.
             %  @return arterialDev.Dt, always updated.
-            %  @return updates mlraichle.RaichleRegistry.tBuffer.
+            %  @return updates mlraichle.StudyRegistry.tBuffer.
             
             ip = inputParser;
             addRequired(ip, 'arterialDev', @(x) isa(x, 'mlpet.AbstractDevice'))
@@ -28,7 +28,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             addParameter(ip, 'sameWorldline', false, @islogical)
             parse(ip, varargin{:})
             ipr = ip.Results;            
-            RR = mlraichle.RaichleRegistry.instance();
+            RR = mlraichle.StudyRegistry.instance();
             arterialDev = copy(ipr.arterialDev);
             scannerDev = ipr.scannerDev;
 
