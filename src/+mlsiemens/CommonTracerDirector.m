@@ -47,8 +47,10 @@ classdef CommonTracerDirector < mlpipeline.AbstractDirector
                             sess.mri_convert([fullfile(sess.mriLocation, fsd{f}) '.mgz'], [safefsd{f} '.nii']);
                             fsd{f} = safefsd{f};
                         end
-                        fv.nifti_4dfp_4(fsd{f});
-                        lst{f} = fullfile(pwd, fsd{f});
+                        ic = mlfourd.ImagingContext2(myniftiname(fsd{f}));
+                        ic.selectFourdfpTool();
+                        ic.save();
+                        lst{f} = ic.fqfileprefix;
                     catch ME
                         dispwarning(ME);
                     end
