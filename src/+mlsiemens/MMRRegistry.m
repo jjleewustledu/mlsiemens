@@ -34,6 +34,7 @@ classdef MMRRegistry < mlpatterns.Singleton
             %  @param optional dispersion may be "fwhh" (default) or "sigma".
             %  @param optional mean is logical (default is true).
             %  @param imgblur_4dfp is logical for returning char suffix (default is false).
+            %  @param tag is logical for returning char suffix (default is false).
             %  @return a scalar (mean == true) or 3-vector in mm.
             %  @return char suffix, e.g., '_b43'.
         
@@ -41,6 +42,7 @@ classdef MMRRegistry < mlpatterns.Singleton
             addOptional( ip, 'dispersion',   'fwhh', @(s) lstrfind(lower(s), this.DISPERSION_LIST));
             addParameter(ip, 'mean',         true, @islogical);
             addParameter(ip, 'imgblur_4dfp', false, @islogical);
+            addParameter(ip, 'tag',          false, @islogical);
             parse(ip, varargin{:});
             ipr = ip.Results;
             
@@ -51,7 +53,7 @@ classdef MMRRegistry < mlpatterns.Singleton
             if ipr.mean
                 ps = mean(ps);
             end
-            if ipr.imgblur_4dfp
+            if ipr.imgblur_4dfp || ipr.tag
                 ps = sprintf('_b%i', floor(10*mean(ps)));
             end
         end     
