@@ -1,5 +1,5 @@
 classdef BiographKit < handle & mlpet.ScannerKit
-	%% BIOGRAPHKIT  
+	%% BIOGRAPHKIT is an abstract factory pattern.
 
 	%  $Revision$
  	%  was created 23-Feb-2020 16:09:01 by jjlee,
@@ -203,6 +203,15 @@ classdef BiographKit < handle & mlpet.ScannerKit
                 countingDev = this.alignArterialToScanner( ...
                     countingDev, ipr.scannerDev, 'sameWorldline', ipr.sameWorldline);
             end
+        end
+        function idif = buildIdif(~, varargin)
+            ip = inputParser;
+            addRequired(ip, 'scannerDev', @(x) isa(x, 'mlsiemens.BiographDevice'))
+            addParameter(ip, 'idifMethod', 'idifmask', @istext)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+
+            idif = ipr.scannerDev.idif('idifMethod', ipr.idifMethod);
         end
         function d = datetime(this)
             d = datetime(this.sessionData);

@@ -1,5 +1,5 @@
 classdef BiographDevice < handle & mlpet.AbstractDevice
-	%% BIOGRAPHDEVICE  
+	%% BIOGRAPHDEVICE represents Siemens Biograph scanners.
 
 	%  $Revision$
  	%  was created 26-Mar-2020 10:24:14 by jjlee,
@@ -87,6 +87,18 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
                 
             ic = mlfourd.ImagingContext2(ifc, ...
                 'fileprefix', sprintf('%s_decayUncorrect%g', ifc.fileprefix, this.timeForDecayCorrection));
+        end
+        function arterial = idif(this, idifMethod)
+            assert(istext(idifMethod))
+            ic = this.imagingContext;
+            fqfn = strcat(ic.fqfp, '_idifmask', ic.filesuffix);
+            if ~isfile(fqfn)
+                fqfn = fullfile(ic.filepath, 'idifmask', ...
+                    strcat(ic.fileprefix, '_idifmask', ic.filesuffix));
+            end
+            assert(isfile(fqfn))
+            msk = mlfourd.ImagingContext2(fqfn);
+            arterial = this.volumeAveraged(msk);
         end
         function that = masked(this, varargin)
             that = copy(this);
