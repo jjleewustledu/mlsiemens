@@ -1,5 +1,5 @@
 classdef BiographMMRKit < handle & mlsiemens.BiographKit
-	%% BIOGRAPHMMRKIT  
+	%% BIOGRAPHMMRKIT is a factory implementing the Biograph mMR.
 
 	%  $Revision$
  	%  was created 23-Feb-2020 16:09:01 by jjlee,

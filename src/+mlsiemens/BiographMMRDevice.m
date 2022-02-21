@@ -1,15 +1,11 @@
 classdef BiographMMRDevice < handle & mlsiemens.BiographDevice
-	%% BIOGRAPHMMRDEVICE  
+	%% BIOGRAPHMMRDEVICE represents the Siemens Biograph mMR scanner.
 
 	%  $Revision$
  	%  was created 18-Oct-2018 14:00:41 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
  	%% It was developed on Matlab 9.4.0.813654 (R2018a) for MACI64.  Copyright 2018 John Joowon Lee.
- 	
-	properties (Constant)
-        MAX_NORMAL_BACKGROUND = 20 % Bq/mL
- 	end
-    
+
     methods (Static)
         function this = createFromSession(varargin)
             this = mlsiemens.BiographMMRDevice( ...
@@ -20,12 +16,14 @@ classdef BiographMMRDevice < handle & mlsiemens.BiographDevice
             this = mlsiemens.BiographMMRDevice.createFromSession(sesd);
             ie = this.invEfficiency_;
         end
-    end
+    end 	
+
+	properties (Constant)
+        MAX_NORMAL_BACKGROUND = 20 % Bq/mL
+ 	end
 
 	methods 		  
  		function this = BiographMMRDevice(varargin)
- 			%% BIOGRAPHMMRDEVICE
-            
  			this = this@mlsiemens.BiographDevice(varargin{:});
  		end
  	end 
