@@ -307,6 +307,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             
             that = copyElement@matlab.mixin.Copyable(this);
             that.imagingContext_ = copy(this.imagingContext_);
+            that.radMeasurements_ = copy(this.radMeasurements_);
         end
  	end 
 
