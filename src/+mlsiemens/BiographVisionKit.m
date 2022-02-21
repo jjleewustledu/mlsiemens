@@ -1,5 +1,5 @@
 classdef BiographVisionKit < handle & mlsiemens.BiographKit
-	%% BIOGRAPHVISIONKIT  
+	%% BIOGRAPHVISIONKIT is a factory implementing the Biograph Vision.
 
 	%  $Revision$
  	%  was created 23-Feb-2020 16:08:48 by jjlee,
@@ -14,7 +14,8 @@ classdef BiographVisionKit < handle & mlsiemens.BiographKit
     
     methods
         function g = buildScannerDevice(this)
-            g = mlsiemens.BiographVisionDevice.createFromSession(this.sessionData);
+            g = mlsiemens.BiographVisionDevice.createFromSession( ...
+                this.sessionData, 'radMeasurements', this.radMeasurements);
         end
     end
 

@@ -25,8 +25,7 @@ classdef BiographVisionData < handle & mlsiemens.BiographData
         end
     end
 
-	methods 
-		  
+	methods 		  
  		function this = BiographVisionData(varargin)
  			%% BIOGRAPHVISIONDATA
             %  @param isotope in mlpet.Radionuclides.SUPPORTED_ISOTOPES.  MANDATORY.
