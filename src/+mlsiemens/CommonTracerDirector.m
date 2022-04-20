@@ -1,5 +1,5 @@
 classdef CommonTracerDirector < mlpipeline.AbstractDirector
-	%% TRACERDIRECTOR supports Siemens e7 tools and JSRecon12
+	%% TRACERDIRECTOR supports Siemens e7 tools and JSRecon12.  It is deprecated.
 
 	%  $Revision$
  	%  was created 01-Jan-2017 19:29:04
