@@ -16,7 +16,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             %% ALIGNARTERIALTOSCANNER
             %  @param required arterialDev is counting device or arterial sampling device, as mlpet.AbstractDevice.
             %  @param required scannerlDev is mlpet.AbstractDevice.
-            %  @param sameWorldline is logical.
+            %  @param sameWorldline is logical.  Set true to avoid worldline shifts between arterial & scanner data.
             %  @return arterialDev, modified if not sameWorldline;
             %  @return arterialDatetimePeak, updated with alignments.
             %  @return arterialDev.Dt, always updated.
@@ -28,7 +28,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             addParameter(ip, 'sameWorldline', false, @islogical)
             parse(ip, varargin{:})
             ipr = ip.Results;            
-            RR = mlraichle.StudyRegistry.instance();
+            ad = mlaif.AifData.instance();
             arterialDev = copy(ipr.arterialDev);
             scannerDev = ipr.scannerDev;
 
@@ -41,10 +41,19 @@ classdef BiographKit < handle & mlpet.ScannerKit
             scannerAct = interp1(scannerDev.timesMid, ...
                                 scannerDev.activityDensity('volumeAveraged', true), ...
                                 unifTimes);
-            dscannerAct = diff(scannerAct);
-            thresh = arterialDev.threshOfPeak;
-            [~,idxArterial] = max(arterialAct > thresh*max(arterialAct));
+            dscannerAct = movmean(diff(scannerAct), 9);
+            if ~isempty(getenv('DEBUG'))
+                figure; plot(unifTimes(1:end-1), diff(scannerAct));
+                hold on
+                plot(unifTimes(1:end-1), dscannerAct);
+                hold off
+                ylabel('activity density (Bq/mL)')
+                title('mlsiemens.BiographKit.alignArterialToScanner')
+            end
+
+            thresh = 0.9; %arterialDev.threshOfPeak;
             [~,idxScanner] = max(dscannerAct > thresh*max(dscannerAct));
+            [~,idxArterial] = max(arterialAct > thresh*max(arterialAct));
             tArterial = seconds(unifTimes(idxArterial));
             tScanner = seconds(unifTimes(idxScanner));
             
@@ -53,7 +62,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
                 warning('mlsiemens:ValueError', ...
                     'BiographKit.alignArterialToScanner.tArterial was %g but arterialDev.timeWindow was %g.\n', ...
                     seconds(tArterial), arterialDev.timeWindow)
-                RR.stableToInterpolation = false;
+                ad.stableToInterpolation = false;
                 [~,idxArterial] = max(arterialDev.activityDensity() > thresh*max(arterialDev.activityDensity()));
                 tArterial = seconds(arterialDevTimes(idxArterial));
                 fprintf('tArterial forced-> %g\n', seconds(tArterial))
@@ -67,7 +76,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
                 warning('mlsiemens:ValueError', ...
                     'BiographKit.alignArterialToScanner.tScanner was %g but scannerDev.timeWindow was %g.\n', ...
                     seconds(tScanner), scannerDev.timeWindow)
-                RR.stableToInterpolation = false;
+                ad.stableToInterpolation = false;
                 scannerDevAD = scannerDev.activityDensity('volumeAveraged', true, 'diff', true);
                 [~,idxScanner] = max(scannerDevAD > thresh*max(scannerDevAD));
                 tScanner = seconds(scannerDev.timesMid(idxScanner));
@@ -126,7 +135,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
             arterialDatetimePeak = arterialDev.datetime0 + tArterial;
             
             % tBuffer
-            RR.Ddatetime0 = seconds(scannerDev.datetime0 - arterialDev.datetime0);
+            ad.Ddatetime0 = seconds(scannerDev.datetime0 - arterialDev.datetime0);
 
             % synchronize decay correction times
             arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;            
