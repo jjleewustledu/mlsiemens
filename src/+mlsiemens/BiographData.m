@@ -14,8 +14,12 @@ classdef BiographData < handle & mlpet.AbstractTracerData
     
     methods (Static)
         function this = createFromSession(sesd, varargin)
-            if isa(sesd, 'mlraichle.SessionData')
+            if isa(sesd, 'mlnifti.SessionData')
                 this = mlsiemens.BiographMMRData.createFromSession(sesd, varargin{:});
+                return
+            end
+            if isa(sesd, 'mlpipeline.ImagingMediator')
+                this = mlsiemens.BiographVisionData.createFromSession(sesd, varargin{:});
                 return
             end
             this = [];
@@ -39,7 +43,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         function g = get.visibleVolume(this)
             %% mL
             
-            g = this.imagingContext.fourdfp;
+            g = this.imagingContext.imagingFormat;
             g = prod(g.mmppix)/1e3;
         end
         
@@ -97,7 +101,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             end
             if ipr.volumeAveraged && ndims(that.imagingContext_) >= 3 %#ok<ISMAT>
                 that.imagingContext_ = that.imagingContext_.volumeAveraged();                
-                a = that.imagingContext_.fourdfp.img;
+                a = that.imagingContext_.imagingFormat.img;
                 if ipr.uniformTimes
                     a = interp1(this.timesMid, a, this.timeInterpolants);
                 end
@@ -108,7 +112,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 if ipr.diff
                     that.imagingContext_ = diff(that.imagingContext_);
                 end
-                a = that.imagingContext_.fourdfp.img;
+                a = that.imagingContext_.imagingFormat.img;
             end
         end
         function that = blurred(this, varargin)
@@ -129,7 +133,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         end
         function this = decayCorrect(this)
             if ~this.decayCorrected
-                ifc = this.imagingContext.fourdfp;
+                ifc = this.imagingContext.imagingFormat;
                 mat = this.reshape_native_to_2d(ifc.img);
                 mat = mat .* this.decayCorrectionFactors;
                 ifc.img = this.reshape_2d_to_native(mat);
@@ -157,13 +161,14 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         end
         function this = decayUncorrect(this)
             if this.decayCorrected
-                ifc = this.imagingContext.fourdfp;
+                ifc = this.imagingContext.imagingFormat;
                 mat = this.reshape_native_to_2d(ifc.img);
                 mat = mat ./ this.decayCorrectionFactors;
                 ifc.img = this.reshape_2d_to_native(mat);
                 
-                this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
-                    'fileprefix', sprintf('%s_decayUncorrect%g', ifc.fileprefix, this.timeForDecayCorrection));
+                this.imagingContext_ = mlfourd.ImagingContext2(ifc);
+                this.imagingContext_.fileprefix = ...
+                    sprintf('%s_decayUncorrect%g', ifc.fileprefix, this.timeForDecayCorrection);
                 this.decayCorrected_ = false;
             end
         end
@@ -195,7 +200,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             this = this.decayUncorrect();
         end
         function img  = reshape_native_to_2d(this, img)
-            sz  = size(this.imagingContext.fourdfp);
+            sz  = size(this.imagingContext.imagingFormat);
             switch length(sz)
                 case 2
                     return
@@ -209,7 +214,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             end
         end
         function img  = reshape_2d_to_native(this, img)
-            sz  = size(this.imagingContext.fourdfp);
+            sz  = size(this.imagingContext.imagingFormat);
             switch length(sz)
                 case 2
                     return
@@ -233,7 +238,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             parse(ip, Dt, varargin{:})
             assert(isscalar(this.halflife))
             
-            ifc = this.imagingContext.fourdfp;
+            ifc = this.imagingContext.imagingFormat;
             ifc.img = ifc.img * 2^(-Dt/this.halflife);            
             this.imagingContext_ = mlfourd.ImagingContext2(ifc, ...
                 'fileprefix', sprintf('%s_shiftWorldlines%g', ifc.fileprefix, Dt));
@@ -289,7 +294,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             end
         end 
         function this = selectIndex0IndexF(this, index0, indexF)
-            fdfp = this.imagingContext.fourdfp;
+            fdfp = this.imagingContext.imagingFormat;
             switch fdfp.ndims
                 case 2
                     fdfp.img = fdfp.img(index0:indexF);

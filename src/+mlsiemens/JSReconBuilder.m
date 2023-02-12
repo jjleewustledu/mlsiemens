@@ -67,9 +67,12 @@ classdef JSReconBuilder < handle
 
         %% 
 
-        function this = call(this)
+        function check_env(this)
             assert(strcmpi('PCWIN64', computer), ...
                 'mlsiemens.JSReconBuilder requires e7 on PC Windows')
+            assert(isfolder(fullfile('C:', 'Siemens', 'PET')))
+        end
+        function this = call(this)
 
             pwd0 = pushd(this.workdir);
             this.unpack_listmode();

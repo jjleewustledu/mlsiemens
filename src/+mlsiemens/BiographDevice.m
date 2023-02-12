@@ -9,6 +9,7 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
 	properties (Dependent)
  		calibrationAvailable
         imagingContext
+        invEfficiency
  	end
 
     methods (Static)
@@ -34,12 +35,15 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
         end
         function g = get.imagingContext(this)
             g = this.data_.imagingContext;
-            ifc = g.fourdfp;
+            ifc = g.imagingFormat;
             ifc.img = this.invEfficiency_*ifc.img;
             g = mlfourd.ImagingContext2(ifc);
         end
+        function g = get.invEfficiency(this)
+            g = this.invEfficiency_;
+        end
         
-        %%        
+        %%
         
         function a = activity(this, varargin)
             %% is calibrated to ref-source; Bq
@@ -70,7 +74,7 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             %  @param ic is understood by mlfourd.ImagingContext2.
             
             ic = mlfourd.ImagingContext2(ic);
-            ifc = ic.fourdfp;
+            ifc = ic.imagingFormat;
             mat = this.data_.reshape_native_to_2d(ifc.img);
             mat = mat .* this.data_.decayCorrectionFactors;
             ifc.img = this.data_.reshape_2d_to_native(mat);
@@ -80,7 +84,7 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
         end
         function ic = decayUncorrectLike(this, ic)
             ic = mlfourd.ImagingContext2(ic);
-            ifc = ic.fourdfp;
+            ifc = ic.imagingFormat;
             mat = this.data_.reshape_native_to_2d(ifc.img);
             mat = mat ./ this.data_.decayCorrectionFactors;
             ifc.img = this.data_.reshape_2d_to_native(mat);
@@ -88,17 +92,33 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             ic = mlfourd.ImagingContext2(ifc, ...
                 'fileprefix', sprintf('%s_decayUncorrect%g', ifc.fileprefix, this.timeForDecayCorrection));
         end
-        function arterial = idif(this, idifMethod)
-            assert(istext(idifMethod))
-            ic = this.imagingContext;
-            fqfn = strcat(ic.fqfp, '_idifmask', ic.filesuffix);
-            if ~isfile(fqfn)
-                fqfn = fullfile(ic.filepath, 'idifmask', ...
-                    strcat(ic.fileprefix, '_idifmask', ic.filesuffix));
+        function arterial = idif(this, ~)
+            %  Returns:
+            %      arterial:  an ImagingContext2->MatlabTool
+
+            ic = mlfourd.ImagingContext2(0);
+            ic.fqfp = strcat(this.fqfp, '_BiographDevice_idif');
+            N = 0;
+            for g = globT(fullfile( ...
+                    this.filepath, ...
+                    sprintf('ArterialInputFunction_sample_input_function1_%s_on_*-*IC-*to*.nii.gz', this.fileprefix)))
+                try
+                    if isfile(g{1})
+                        ifc = mlfourd.ImagingFormatContext2(g{1});
+                        img = ifc.img;
+                        assert(max(img(1:length(img)/2)) > max(img(length(img)/2+1:end)))
+
+                        % interpolate temporally
+                        ifc.img = interp1(this.data_.timesMid, ifc.img, this.data_.timeInterpolants);
+
+                        ic = ic + mlfourd.ImagingContext2(ifc);
+                        N = N + 1;
+                    end
+                catch 
+                end
             end
-            assert(isfile(fqfn))
-            msk = mlfourd.ImagingContext2(fqfn);
-            arterial = this.volumeAveraged(msk);
+              
+            arterial = ic ./ N;
         end
         function that = masked(this, varargin)
             that = copy(this);
@@ -167,5 +187,5 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
- end
+end
 

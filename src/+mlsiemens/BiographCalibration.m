@@ -12,18 +12,37 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
     end
     
     methods (Static)        
-        function buildCalibration()
+        function dispCalibration(cal)
+            cal = mlfourd.ImagingContext2(cal);
+            assert(isfile(cal.fqfn))
+            cal.nifti;
+            json = cal.json_metadata;
+            b8 = cal.blurred(8);
+            b8 = b8.thresh(0.9*dipmax(b8));
+            vec = b8.nifti.img(b8.nifti.img > 0);
+            dvol = prod(b8.nifti.mmppix); % \muL
+            
+            fprintf('scan start: %s\n', json.AcquisitionTime)
+            fprintf('roi mean (kBq/mL): %g\n', mean(vec)/1e3)
+            fprintf('roi std (kBq/mL): %g\n', std(vec)/1e3)
+            fprintf('roi vol (mL): %g\n', numel(vec)*dvol/1e3)
+            fprintf('roi voxels: %g\n', numel(vec))
+            fprintf('roi min (kBq/mL): %g\n', min(vec)/1e3)
+            fprintf('roi max (kBq/mL): %g\n', max(vec)/1e3)
         end
         function this = createFromSession(sesd, varargin)
             %% CREATEBYSESSION
-            %  @param required sessionData is an mlpipeline.ISessionData.
+            %  @param required sessionData is an mlpipeline.{ISessionData,ImagingData}.
             
             import mlsiemens.BiographCalibration
             
             this = BiographCalibration(sesd, varargin{:});  
             
             offset = 0;
-            while ~this.calibrationAvailable              
+            while ~this.calibrationAvailable
+                if isa(sesd, 'mlpipeline.ImagingMediator')
+                    error('mlswisstrace:ValueError', stackstr())
+                end
                 offset = offset + 1;
                 sesd1 = sesd.findProximal(offset);
                 this = BiographCalibration(sesd1, varargin{:});
@@ -31,9 +50,8 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
         end
         function ie = invEfficiencyf(sesd)
             %% INVEFFICIENCYF attempts to use calibration data from the nearest possible datetime.
-            %  @param obj is an mlpipeline.ISessionData
-            
-            assert(isa(sesd, 'mlpipeline.ISessionData'))
+            %  @param obj is an mlpipeline.{ISessionData,ImagingData}
+
             this = mlsiemens.BiographCalibration.createFromSession(sesd);
             ie = this.invEfficiency;
             ie = asrow(ie);

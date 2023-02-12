@@ -158,7 +158,6 @@ classdef MMRBuilder
         end
         
         function this = set.sessionData(this, s)
-            assert(isa(s, 'mlpipeline.SessionData'));
             this.sessionData_ = s;
         end
         
@@ -166,10 +165,10 @@ classdef MMRBuilder
         
  		function this = MMRBuilder(varargin)
  			%% MMRBUILDER
- 			%  @param named sessionData is an mlpipeline.SessionData.
+ 			%  @param named sessionData is an mlpipeline.{ISessionData,ImagingData}.
 
  			ip = inputParser;
-            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'));
+            addParameter(ip, 'sessionData');
             parse(ip, varargin{:});
             
             this.buildVisitor_ = mlfourdfp.FourdfpVisitor;
@@ -265,8 +264,8 @@ classdef MMRBuilder
                 bv.sif_4dfp(sd.tracerListmodeMhdr( 'typ', 'fp'));
                 popd(pwd0);                    
             %end
-            if (~isdir(sd.tracerSif('typ', 'path')))
-                mlfourdfp.FourdfpVisitor.mkdir( sd.tracerSif('typ', 'path'));
+            if (~isfolder(sd.tracerSif('typ', 'path')))
+                mlfourdfp.FourdfpVisitor.mkdir(sd.tracerSif('typ', 'path'));
             end
             %if (~lexist(sd.tracerSif('typ', 'fqfn'), 'file'))
                 pwd0 = pushd(sd.tracerSif('typ', 'path'));

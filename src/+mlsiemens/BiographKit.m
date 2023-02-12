@@ -7,8 +7,11 @@ classdef BiographKit < handle & mlpet.ScannerKit
  	%% It was developed on Matlab 9.7.0.1296695 (R2019b) Update 4 for MACI64.  Copyright 2020 John Joowon Lee.
  	
 	properties (Dependent) 		
-        sessionData
+        arterialDev
+        countingDev
         radMeasurements
+        scannerDev
+        sessionData
     end
     
     methods (Static)
@@ -173,14 +176,23 @@ classdef BiographKit < handle & mlpet.ScannerKit
         
         %% GET
         
-        function g = get.sessionData(this)
-            g = this.sessionData_;
+        function g = get.arterialDev(this)
+            g = this.arterialDev_;
+        end
+        function g = get.countingDev(this)
+            g = this.countingDev_;
         end
         function g = get.radMeasurements(this)
             if isempty(this.radMeasurements_)
                 this.radMeasurements_ = mlpet.CCIRRadMeasurements.createFromSession(this.sessionData);
             end
             g = this.radMeasurements_;
+        end
+        function g = get.scannerDev(this)
+            g = this.scannerDev_;
+        end
+        function g = get.sessionData(this)
+            g = this.sessionData_;
         end
         
         %%
@@ -198,7 +210,14 @@ classdef BiographKit < handle & mlpet.ScannerKit
             arterialDev.deconvCatheter = ipr.deconvCatheter;
             arterialDev = this.alignArterialToScanner( ...
                 arterialDev, scannerDev, 'sameWorldline', ipr.sameWorldline);
-            %this.inspectTwiliteCliff(arterialDev, scannerDev, ipr.indexCliff);
+            if scannerDev.timeWindow > arterialDev.timeWindow
+                warning('mlsiemens:ValueWarning', ...
+                    'scannerDev.timeWindow->%g; arterialDev.timeWindow->%g', ...
+                    scannerDev.timeWindow, arterialDev.timeWindow)
+                %this.inspectTwiliteCliff(arterialDev, scannerDev, ipr.indexCliff);
+            end
+            this.scannerDev_ = scannerDev;
+            this.arterialDev_ = arterialDev;
         end
         function countingDev = buildCountingDevice(this, varargin)
             ip = inputParser;
@@ -212,6 +231,7 @@ classdef BiographKit < handle & mlpet.ScannerKit
                 countingDev = this.alignArterialToScanner( ...
                     countingDev, ipr.scannerDev, 'sameWorldline', ipr.sameWorldline);
             end
+            this.countingDev_ = countingDev;
         end
         function idif = buildIdif(~, varargin)
             ip = inputParser;
@@ -239,19 +259,22 @@ classdef BiographKit < handle & mlpet.ScannerKit
     %% PROTECTED
     
     properties (Access = protected)
+        arterialDev_
+        countingDev_
         radMeasurements_
         sessionData_
+        scannerDev_
     end
     
 	methods (Access = protected)		  
  		function this = BiographKit(varargin)
             ip = inputParser;
-            addParameter(ip, 'sessionData', [], @(x) isa(x, 'mlpipeline.ISessionData'))
+            addParameter(ip, 'sessionData', []);
             parse(ip, varargin{:})
             this.sessionData_ = ip.Results.sessionData;
  		end
  	end 
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
- end
+end
 

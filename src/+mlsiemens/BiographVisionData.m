@@ -11,14 +11,16 @@ classdef BiographVisionData < handle & mlsiemens.BiographData
  	end
 
     methods (Static)
-        function this = createFromSession(sesd)
-            assert(isa(sesd, 'mlpipeline.ISessionData'))
+        function consoleTaus(varargin)
+            error('mlvg:NotImplementedError', stackstr());
+        end 
+        function this = createFromSession(sesd, varargin)
             this = mlsiemens.BiographVisionData( ...
                 'isotope', sesd.isotope, ...
                 'tracer', sesd.tracer, ...
                 'datetimeMeasured', sesd.datetime, ...
                 'taus', sesd.taus);
-            this = this.read(sesd.tracerResolvedToSubject());
+            this = this.read(sesd.tracerOnAtlas());
         end
         function fwhh = petPointSpread
             fwhh = mlsiemens.VisionRegistry.instance.petPointSpread;

@@ -136,7 +136,7 @@ classdef Listmode < mlsiemens.AbstractHandleIO
             %  @param 'Nbin', 1, @isnumeric);
 
  			ip = inputParser;
-            addParameter(ip, 'filepath', pwd, @isdir);
+            addParameter(ip, 'filepath', pwd, @isfolder);
             addParameter(ip, 'fileprefix', '', @ischar);
             addParameter(ip, 'Nbin', 1, @isnumeric);
             addParameter(ip, 'nlook', this.NLOOK, @isnumeric);
