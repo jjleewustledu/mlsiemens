@@ -210,7 +210,8 @@ classdef BiographKit < handle & mlpet.ScannerKit
             arterialDev.deconvCatheter = ipr.deconvCatheter;
             arterialDev = this.alignArterialToScanner( ...
                 arterialDev, scannerDev, 'sameWorldline', ipr.sameWorldline);
-            if scannerDev.timeWindow > arterialDev.timeWindow
+            if scannerDev.timeWindow > arterialDev.timeWindow && ...
+                    contains(this.sessionData.isotope, '15O')
                 warning('mlsiemens:ValueWarning', ...
                     'scannerDev.timeWindow->%g; arterialDev.timeWindow->%g', ...
                     scannerDev.timeWindow, arterialDev.timeWindow)
@@ -223,11 +224,12 @@ classdef BiographKit < handle & mlpet.ScannerKit
             ip = inputParser;
             addOptional(ip, 'scannerDev', [], @(x) isa(x, 'mlpet.AbstractDevice'))
             addParameter(ip, 'sameWorldline', false, @islogical)
+            addParameter(ip, 'alignToScanner', false, @islogical)
             parse(ip, varargin{:})
             ipr = ip.Results;
             
             countingDev = mlcapintec.CapracDevice.createFromSession(this.sessionData);
-            if ~isempty(ipr.scannerDev)
+            if ~isempty(ipr.scannerDev) && ipr.alignToScanner
                 countingDev = this.alignArterialToScanner( ...
                     countingDev, ipr.scannerDev, 'sameWorldline', ipr.sameWorldline);
             end
