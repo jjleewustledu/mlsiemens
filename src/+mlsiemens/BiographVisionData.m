@@ -6,20 +6,29 @@ classdef BiographVisionData < handle & mlsiemens.BiographData
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
  	%% It was developed on Matlab 9.7.0.1296695 (R2019b) Update 4 for MACI64.  Copyright 2020 John Joowon Lee.
  	
-	properties
- 		
+	properties 		
  	end
 
     methods (Static)
         function consoleTaus(varargin)
             error('mlvg:NotImplementedError', stackstr());
-        end 
+        end
+        function this = create(bids_med, counter)
+            this = mlsiemens.BiographVisionData( ...
+                'isotope', bids_med.isotope, ...
+                'tracer', bids_med.tracer, ...
+                'datetimeMeasured', bids_med.datetime, ...
+                'taus', bids_med.taus, ...
+                'radMeasurements', counter);
+            this.imagingContext_ = bids_med.imagingContext;
+        end
         function this = createFromSession(sesd, varargin)
             this = mlsiemens.BiographVisionData( ...
                 'isotope', sesd.isotope, ...
                 'tracer', sesd.tracer, ...
                 'datetimeMeasured', sesd.datetime, ...
-                'taus', sesd.taus);
+                'taus', sesd.taus, ...
+                varargin{:});
             this = this.read(sesd.tracerOnAtlas());
         end
         function fwhh = petPointSpread
