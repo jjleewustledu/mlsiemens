@@ -6,18 +6,18 @@ classdef JSReconDirector < handle
     %  Developed on Matlab 9.13.0.2105380 (R2022b) Update 2 for MACI64.  Copyright 2022 John J. Lee.
     
     methods
-        function this = JSReconDirector(study_bldr, jsr_bldr)
+        function this = JSReconDirector(opts)
             %% JSRECONDIRECTOR 
             %  Args:
-            %      study_bldr {mustBeNonMissing}
-            %      jsr_bldr mlsiemens.JSReconBuilder = mlsiemens.JSReconBuilder()
+            %  opts.study_bldr {mustBeNonMissing}
+            %  opts.jsr_bldr mlsiemens.JSReconBuilder = mlsiemens.JSReconBuilder()
             
             arguments
-                study_bldr {mustBeNonmissing}
-                jsr_bldr mlsiemens.JSReconBuilder = mlsiemens.JSReconBuilder()
+                opts.study_bldr = []
+                opts.jsr_bldr mlsiemens.JSReconBuilder = mlsiemens.JSReconBuilder()
             end
-            this.study_builder_ = study_bldr;
-            this.jsr_builder_ = jsr_bldr;
+            this.study_builder_ = opts.study_bldr;
+            this.jsr_builder_ = opts.jsr_bldr;
             this.jsr_builder_.director = this;
         end
     end

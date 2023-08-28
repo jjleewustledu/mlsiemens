@@ -22,10 +22,7 @@ classdef JSReconBuilder < handle
         study_builder
     end
 
-    methods
-
-        %% GET
-
+    methods %% GET, SET
         function g = get.dicomExt(this)
             g = this.study_builder.dicomExt;
         end
@@ -58,15 +55,13 @@ classdef JSReconBuilder < handle
             g = this.director_.study_builder;
         end
 
-        %% SET
-
         function set.director(this, s)
             assert(isa(s, 'mlsiemens.JSReconDirector'))
             this.director_ = s;
         end
+    end
 
-        %% 
-
+    methods
         function check_env(this)
             assert(strcmpi('PCWIN64', computer), ...
                 'mlsiemens.JSReconBuilder requires e7 on PC Windows')
@@ -261,17 +256,17 @@ classdef JSReconBuilder < handle
             end
         end
 
-        function this = JSReconBuilder(dtor, opts)
+        function this = JSReconBuilder(opts)
             %% JSRECONBUILDER 
             %  Args:
-            %      dtor mlsiemens.JSReconDirector = []:  references objects including study_builder, workdir.
-            %      opts.workdir {mustBeFolder} = pwd:  trunk of filetree containing packed listmode.
+            %  opts.dtor mlsiemens.JSReconDirector = []:  references objects including study_builder, workdir.
+            %  opts.workdir {mustBeFolder} = pwd:  trunk of filetree containing packed listmode.
                         
             arguments
-                dtor = []
+                opts.dtor = []
                 opts.workdir {mustBeFolder} = pwd
-            end            
-            this.director_ = dtor;
+            end
+            this.director_ = opts.dtor;
             this.workdir_ = opts.workdir;
         end
     end
