@@ -10,8 +10,27 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
  		invEfficiency
         calibrationAvailable
     end
+
+	methods %% GET        
+        function g = get.calibrationAvailable(this)
+            try
+                rm = this.radMeasurements_;
+                g1 = isnice(rm.mMR{'NiftyPET','ROIMean_KBq_mL'});                
+                g2 = any(strcmp(rm.wellCounter.TRACER, '[18F]DG') & ...
+                     isnice(rm.wellCounter.MassSample_G) & ...
+                     isnice(rm.wellCounter.Ge_68_Kdpm));
+                g = g1 && g2 && ~isnan(this.invEfficiency);
+            catch ME %#ok<NASGU>
+                %handwarning(ME)
+                g = false;
+            end
+        end
+        function g = get.invEfficiency(this)
+            g = this.invEfficiency_;
+        end
+    end     
     
-    methods (Static)        
+    methods (Static)
         function dispCalibration(cal)
             cal = mlfourd.ImagingContext2(cal);
             assert(isfile(cal.fqfn))
@@ -59,31 +78,6 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
         end
     end
 
-	methods 
-        
-        %% GET
-        
-        function g = get.calibrationAvailable(this)
-            try
-                rm = this.radMeasurements_;
-                g1 = isnice(rm.mMR{'NiftyPET','ROIMean_KBq_mL'});                
-                g2 = any(strcmp(rm.wellCounter.TRACER, '[18F]DG') & ...
-                     isnice(rm.wellCounter.MassSample_G) & ...
-                     isnice(rm.wellCounter.Ge_68_Kdpm));
-                g = g1 && g2 && ~isnan(this.invEfficiency);
-            catch ME %#ok<NASGU>
-                %handwarning(ME)
-                g = false;
-            end
-        end
-        function g = get.invEfficiency(this)
-            g = this.invEfficiency_;
-        end
-        
-        %%
-        
-    end 
-    
     %% PROTECTED
     
     properties (Access = protected)
