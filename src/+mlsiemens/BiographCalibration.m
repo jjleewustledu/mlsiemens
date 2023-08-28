@@ -30,19 +30,20 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
             fprintf('roi min (kBq/mL): %g\n', min(vec)/1e3)
             fprintf('roi max (kBq/mL): %g\n', max(vec)/1e3)
         end
+        function this = create(bids_med, counter, radionuclide)
+            this = mlsiemens.BiographCalibration(bids_med, ...
+                'radMeasurements', counter, ...
+                'radionuclide', radionuclide);
+            assert(this.calibrationAvailable)
+        end
         function this = createFromSession(sesd, varargin)
             %% CREATEBYSESSION
-            %  @param required sessionData is an mlpipeline.{ISessionData,ImagingData}.
+            %  @param required sessionData is an mlpipeline.{ISessionData,ImagingMediator}.
             
-            import mlsiemens.BiographCalibration
-            
-            this = BiographCalibration(sesd, varargin{:});  
+            this = mlsiemens.BiographCalibration(sesd, varargin{:});  
             
             offset = 0;
             while ~this.calibrationAvailable
-                if isa(sesd, 'mlpipeline.ImagingMediator')
-                    error('mlswisstrace:ValueError', stackstr())
-                end
                 offset = offset + 1;
                 sesd1 = sesd.findProximal(offset);
                 this = BiographCalibration(sesd1, varargin{:});
