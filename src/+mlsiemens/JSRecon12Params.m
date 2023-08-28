@@ -277,19 +277,18 @@ classdef JSRecon12Params
 
         %%
 
-        function this = JSRecon12Params(varargin)
-            %% JSRECON12PARAMS 
-            %  Args:
-            %      model (text): Description of scanner model
+        function this = JSRecon12Params(opts)
+            %% Args:
+            %  opts.model {mustBeTextScalar} = "Vision"
             
-            ip = inputParser;
-            addParameter(ip, "model", "Vision", @(x) matches(x, ["Vision", "mMR", "mCT"]))
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            
-            this.model_ = ipr.model;
+            arguments
+                opts.model {mustBeTextScalar} = "Vision"
+            end            
+            this.model_ = opts.model;
         end
     end
+
+    %% PRIVATE
 
     properties (Access = private)
         model_

@@ -1,4 +1,4 @@
-classdef JSRecon12
+classdef JSRecon12 < handle
     %% line1
     %  line2
     %  
@@ -6,19 +6,31 @@ classdef JSRecon12
     %  Developed on Matlab 9.12.0.2009381 (R2022a) Update 4 for MACI64.  Copyright 2022 Judson Jones, John J. Lee.
     
     properties
+        ListmodeFolder
         ParamsFile
         ParentFolder
-
+        UmapFolder
+        
+        bin_version_folder = 'bin.win64-VG80'
         discontinuities % last time prior to discontinuity, in sec
         dt % sec
+        jsrecon12_js
+        scanner
+        tracer
         window % sec
     end
 
-    methods
-        function call_sliding_dynamic(this, varargin)
-            write_params_file(this)
+    properties (Dependent)
+        DataFolder
+    end
 
+    methods %% GET
+        function g = get.DataFolder(this)
+            g = fullfile(this.ParentFolder, this.tracer);
         end
+    end
+
+    methods
         function call(this, varargin)
             %% CALL:  generic call for running JSRecon
             %
@@ -184,22 +196,60 @@ classdef JSRecon12
                 sum(COMPLETED),length(Scans2Process));
             fprintf('JSReconScript.m completed\n');
         end
-
-        function this = JSRecon12(varargin)
+        function check_env(this)
+            assert(strcmpi('PCWIN64', computer), ...
+                'mlsiemens.JSRecon12 requires e7 on PC Windows')
+            assert(isfolder(fullfile('C:', 'JSRecon12')))
+            assert(isfolder(fullfile('C:', 'Service')))
+            assert(isfolder(fullfile('C:', 'Siemens', 'PET', this.bin_version_folder)))
+        end
+        function eval_jsrecon12(this, opts)
+            arguments
+                this mlsiemens.JSRecon12
+                opts.DataFolder {mustBeFolder} = this.DataFolder
+                opts.ParamsFile {mustBeFile} = this.ParamsFile
+            end
+            cmd = sprintf("!cscript %s %s %s", this.jsrecon12_js, opts.DataFolder, opts.ParamsFile);
+            eval(cmd)
+        end
+        function this = JSRecon12(dtor, opts)
             %% JSRECON12 
             %  Args:
-            %      ParentFolder (folder): contains folders of listmode + umap, e.g., PET_Raw_Data_0602
-            %      ParamsFile (file): supercedes C:\\JSRecon12\JSRecon_params.txt
+            %  dtor = []
+            %  opts.ListmodeFolder {mustBeTextScalar} = ""
+            %  opts.ParentFolder {mustBeFolder} = "D:\MyProject\+Input\sub-id\ses-id"
+            %  opts.ParamsFile {mustBeFiles} = "C:\JSRecon12\JSRecon_params.txt"
+            %  opts.scanner {mustBeTextScalar} = "vision"
+            %  opts.tracer {mustBeTextScalar} = "fdg"
+            %  opts.UmapFolder {mustBeTextScalar} = ""
             
-            ip = inputParser;
-            addParameter(ip, 'ParentFolder', 'D:\\CCIR_01211\\cnda.wustl.edu\\108007', @isfolder);
-            addParameter(ip, 'ParamsFile', 'C:\\JSRecon12\\JSRecon_params.txt', @isfile);
-            parse(ip, varargin{:})
-            ipr = ip.Results;
+            arguments
+                dtor = []
+                opts.ListmodeFolder {mustBeTextScalar} = ""
+                opts.ParentFolder {mustBeFolder} = "D:\MyProject\+Input\sub-108293\ses-20210421"
+                opts.ParamsFile {mustBeFiles} = "C:\JSRecon12\JSRecon_params.txt"
+                opts.scanner {mustBeTextScalar} = "vision"
+                opts.tracer {mustBeTextScalar} = "fdg"
+                opts.UmapFolder {mustBeTextScalar} = ""
+            end
             
-            this.ParentFolder = ipr.ParentFolder;
-            this.ParamsFile = ipr.ParamsFile;
+            this.director_ = dtor;
+            this.jsrecon12_js = "C:\JSRecon12\JSRecon12.js";
+            this.ParentFolder = opts.ParentFolder;
+            if "" ~= opts.tracer
+                this.ParamsFile = fullfile("D:", sprintf("params_%s_%s.txt", opts.scanner, opts.tracer));
+            else
+                this.ParamsFile = opts.ParamsFile;
+            end
+            this.scanner = opts.scanner;
+            this.tracer = opts.tracer;
         end
+    end
+
+    %% PROTECTED
+
+    properties (Access = protected)
+        director_
     end
     
     %  Created with mlsystem.Newcl, inspired by Frank Gonzalez-Morphy's newfcn.
