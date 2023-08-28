@@ -104,7 +104,7 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                 
                 rm = this.radMeasurements_;
                 rowSelect = ...
-                    strcmp(rm.wellCounter.TRACER, '[18F]DG') & ...
+                    strcmp(rm.wellCounter.TRACER, this.CAL_TRACER) & ...
                     isnice(rm.wellCounter.MassSample_G) & ...
                     isnice(rm.wellCounter.Ge_68_Kdpm);
                 mass = rm.wellCounter.MassSample_G(rowSelect);
@@ -115,9 +115,11 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                     rm.wellCounter.TIMECOUNTED_Hh_mm_ss(rowSelect)); % backwards in time, clock-adjusted            
                 capCal = mlcapintec.CapracCalibration.createFromSession(sesd, 'radMeasurements', rm, 'exactMatch', true);
                 activityDensityCapr = capCal.activityDensity('mass', mass, 'ge68', ge68, 'solvent', 'water');
-                activityDensityCapr = this.shiftWorldLines(activityDensityCapr, shift, this.radionuclide_.halflife);
+                activityDensityCapr = this.shiftWorldLines(activityDensityCapr, shift, this.calibration_halflife);
                 
                 % get activity density from rad measurement NiftyPET field && form efficiency^{-1}
+
+                % branching ratios cancel for this.invEfficiency_
                 
                 activityDensityBiograph = 1e3 * rm.mMR.ROIMean_KBq_mL('NiftyPET'); % Bq/mL   
                 this.invEfficiency_ = mean(activityDensityCapr)/mean(activityDensityBiograph);
