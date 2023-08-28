@@ -91,35 +91,7 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
                 
             ic = mlfourd.ImagingContext2(ifc, ...
                 'fileprefix', sprintf('%s_decayUncorrect%g', ifc.fileprefix, this.timeForDecayCorrection));
-        end
-        function arterial = idif(this, ~)
-            %  Returns:
-            %      arterial:  an ImagingContext2->MatlabTool
-
-            ic = mlfourd.ImagingContext2(0);
-            ic.fqfp = strcat(this.fqfp, '_BiographDevice_idif');
-            N = 0;
-            for g = globT(fullfile( ...
-                    this.filepath, ...
-                    sprintf('ArterialInputFunction_sample_input_function1_%s_on_*-*IC-*to*.nii.gz', this.fileprefix)))
-                try
-                    if isfile(g{1})
-                        ifc = mlfourd.ImagingFormatContext2(g{1});
-                        img = ifc.img;
-                        assert(max(img(1:length(img)/2)) > max(img(length(img)/2+1:end)))
-
-                        % interpolate temporally
-                        ifc.img = interp1(this.data_.timesMid, ifc.img, this.data_.timeInterpolants);
-
-                        ic = ic + mlfourd.ImagingContext2(ifc);
-                        N = N + 1;
-                    end
-                catch 
-                end
-            end
-              
-            arterial = ic ./ N;
-        end
+        end        
         function that = masked(this, varargin)
             that = copy(this);
             that.data_ = that.data_.masked(varargin{:});
@@ -184,6 +156,45 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             
             this.invEfficiency_ = mean(this.calibration_.invEfficiency) * RefSourceCalibration.invEfficiencyf();
  		end
+    end
+
+    %% HIDDEN, DEPRECATED
+
+    methods (Hidden)
+        function arterial = idif(this, ~)
+            %  Returns:
+            %      arterial:  an ImagingContext2->MatlabTool
+
+            ic = mlfourd.ImagingContext2(0);
+            ic.fqfp = strcat(this.fqfp, '_BiographDevice_idif');
+            N = 0;
+            for g = globT(fullfile( ...
+                    this.filepath, ...
+                    sprintf('ArterialInputFunction_sample_input_function1_%s_on_*-*IC-*to*.nii.gz', this.fileprefix)))
+                try
+                    if isfile(g{1})
+                        ifc = mlfourd.ImagingFormatContext2(g{1});
+                        img = ifc.img;
+                        assert(max(img(1:length(img)/2)) > max(img(length(img)/2+1:end)))
+
+                        % interpolate temporally
+                        ifc.img = interp1(this.data_.timesMid, ifc.img, this.data_.timeInterpolants);
+
+                        ic = ic + mlfourd.ImagingContext2(ifc);
+                        N = N + 1;
+                    end
+                catch 
+                end
+            end
+              
+            arterial = ic ./ N;
+        end
+        function ic = imagingContext(this)
+            ic = this.data_.imagingContext;
+            ifc = ic.imagingFormat;
+            ifc.img = this.invEfficiency_*ifc.img;
+            ic = mlfourd.ImagingContext2(ifc);
+        end
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
