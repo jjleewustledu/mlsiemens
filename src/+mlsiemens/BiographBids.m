@@ -15,7 +15,202 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
         tof_toglob
     end
 
-    %%
+    methods (Abstract)
+        registry(this)
+    end
+
+    properties (Dependent)
+        atlas_ic
+        dlicv_ic
+        flair_ic
+        T1_ic % FreeSurfer
+        T1_on_t1w_ic
+        t1w_ic
+        t2w_ic
+        tof_ic
+        tof_mask_ic
+        tof_on_t1w_ic
+        wmparc_ic % FreeSurfer
+        wmparc_on_t1w_ic
+    end
+
+	methods % GET
+        function g = get.atlas_ic(~)
+            g = mlfourd.ImagingContext2( ...
+                fullfile(getenv('FSLDIR'), 'data', 'standard', 'MNI152_T1_1mm.nii.gz'));
+        end
+        function g = get.dlicv_ic(this)
+            if ~isempty(this.dlicv_ic_)
+                g = copy(this.dlicv_ic_);
+                return
+            end
+            try
+                this.dlicv_ic_ = mlfourd.ImagingContext2( ...
+                    sprintf('%s_%s.nii.gz', this.t1w_ic.fqfileprefix, this.DLICV_TAG));
+                if ~isfile(this.dlicv_ic_.fqfn)
+                    this.build_dlicv(this.t1w_ic, this.dlicv_ic_);
+                    assert(isfile(this.dlicv_ic_))
+                end
+                g = copy(this.dlicv_ic_);
+            catch ME %#ok<NASGU>
+                g = [];
+            end
+        end
+        function g = get.flair_ic(this)
+            if ~isempty(this.flair_ic_)
+                g = copy(this.flair_ic_);
+                return
+            end
+            globbed = globT(this.flair_toglob);
+            fn = globbed{end};
+            fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
+            if ~isfile(fn)
+                this.build_orientstd(this.t1w_toglob);
+            end
+            this.flair_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.flair_ic_);
+        end
+        function g = get.T1_ic(this)
+            if ~isempty(this.T1_ic_)
+                g = copy(this.T1_ic_);
+                return
+            end
+            fn = fullfile(this.mriPath, 'T1.mgz');
+            assert(isfile(fn))
+            this.T1_ic_ = mlfourd.ImagingContext2(fn);
+            this.T1_ic_.selectNiftiTool();
+            this.T1_ic_.filepath = this.anatPath;
+            this.T1_ic_.save();
+            g = copy(this.T1_ic_);
+        end
+        function g = get.T1_on_t1w_ic(this)
+            if ~isempty(this.T1_on_t1w_ic_)
+                g = copy(this.T1_on_t1w_ic_);
+                return
+            end
+            fn = strcat(this.T1_ic.fqfp, '_on_T1w.nii.gz');
+            if isfile(fn)
+                this.T1_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
+                g = copy(this.T1_on_t1w_ic_);
+                return
+            end
+            f = mlfsl.Flirt( ...
+                'in', this.T1_ic.fqfn, ...
+                'ref', this.t1w_ic.fqfn, ...
+                'out', fn, ...
+                'noclobber', true);
+            f.flirt();
+            this.T1_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.T1_on_t1w_ic_);
+        end
+        function g = get.t1w_ic(this)
+            if ~isempty(this.t1w_ic_)
+                g = copy(this.t1w_ic_);
+                return
+            end
+            globbed = globT(this.t1w_toglob);
+            globbed = globbed(~contains(globbed, this.DLICV_TAG));
+            fn = globbed{end};
+            fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
+            if ~isfile(fn)
+                this.build_orientstd(this.t1w_toglob);
+            end
+            this.t1w_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.t1w_ic_);
+        end
+        function g = get.t2w_ic(this)
+            if ~isempty(this.t2w_ic_)
+                g = copy(this.t2w_ic_);
+                return
+            end
+            globbed = globT(this.t2w_toglob);
+            fn = globbed{end};
+            fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
+            assert(isfile(fn))
+            this.t2w_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.t2w_ic_);
+        end
+        function g = get.tof_ic(this)
+            if ~isempty(this.tof_ic_)
+                g = copy(this.tof_ic_);
+                return
+            end
+            globbed = globT(this.tof_toglob);
+            fn = globbed{end};
+            fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
+            if ~isfile(fn)
+                this.build_orientstd(this.tof_toglob);
+            end
+            this.tof_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.tof_ic_);
+        end
+        function g = get.tof_mask_ic(this)
+            if ~isempty(this.tof_mask_ic_)
+                g = copy(this.tof_mask_ic_);
+                return
+            end
+            tmp_ = this.tof_ic.blurred(6);
+            tmp_ = tmp_.thresh(30);
+            tmp_ = tmp_.binarized();
+            this.tof_mask_ic_ = tmp_;
+            g = copy(this.tof_mask_ic_);
+        end
+        function g = get.tof_on_t1w_ic(this)
+            if ~isempty(this.tof_on_t1w_ic_)
+                g = copy(this.tof_on_t1w_ic_);
+                return
+            end
+            fn = strcat(this.tof_ic.fqfp, '_on_T1w.nii.gz');
+            if isfile(fn)
+                this.tof_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
+                g = copy(this.tof_on_t1w_ic_);
+                return
+            end
+            f = mlfsl.Flirt( ...
+                'in', this.tof_ic.fqfn, ...
+                'ref', this.t1w_ic.fqfn, ...
+                'out', fn, ...
+                'noclobber', true);
+            f.flirt();
+            this.tof_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.tof_on_t1w_ic_);
+        end        
+        function g = get.wmparc_ic(this)
+            if ~isempty(this.wmparc_ic_)
+                g = copy(this.wmparc_ic_);
+                return
+            end
+            fn = fullfile(this.mriPath, 'wmparc.mgz');
+            assert(isfile(fn))
+            this.wmparc_ic_ = mlfourd.ImagingContext2(fn);
+            this.wmparc_ic_.selectNiftiTool();
+            this.wmparc_ic_.filepath = this.anatPath;
+            this.wmparc_ic_.save();
+            g = copy(this.wmparc_ic_);
+        end
+        function g = get.wmparc_on_t1w_ic(this)
+            if ~isempty(this.wmparc_on_t1w_ic_)
+                g = copy(this.wmparc_on_t1w_ic_);
+                return
+            end
+            fn = strcat(this.wmparc_ic.fqfp, '_on_T1w.nii.gz');
+            if isfile(fn)
+                this.wmparc_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
+                g = copy(this.wmparc_on_t1w_ic_);
+                return
+            end
+            f = mlfsl.Flirt( ...
+                'in', this.T1_ic.fqfn, ...
+                'ref', this.t1w_ic.fqfn, ...
+                'out', this.T1_on_t1w_ic.fqfn, ...
+                'noclobber', true);
+            f.in = this.wmparc_ic.fqfn;
+            f.out = fn;
+            f.applyXfm();
+            this.wmparc_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.wmparc_on_t1w_ic_);
+        end
+    end
 
     methods
         function this = BiographBids(varargin)
@@ -30,9 +225,12 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
         function [s,r] = build_dlicv(~, t1w, dlicv)
             %% nvidia-docker run -it -v $(pwd):/data --rm jjleewustledu/deepmrseg_image:20220615 --task dlicv --inImg fileprefix.nii.gz --outImg fileprefix_DLICV.nii.gz
             image = 'jjleewustledu/deepmrseg_image:20220615';
+            pwd0 = pushd(t1w.filepath);
             cmd = sprintf('nvidia-docker run -it -v %s:/data --rm %s --task dlicv --inImg %s --outImg %s', ...
-                t1w.filepath, image, t1w.fqfn, dlicv.fqfn);
+                t1w.filepath, image, t1w.filename, dlicv.filename);
             [s,r] = mlbash(cmd);
+            popd(pwd0);
+            %[s,r] = mlbash(cmd);
         end
         function [s,r] = build_orientstd(this, varargin)
             %  Args:
@@ -169,6 +367,12 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
 
             f = strcat(a.fqfp, '_on_', b.fileprefix, a.filesuffix);
         end
+        function j = json(this)
+            j = this.json_;
+        end
+        function g = taus(this, trc)
+            g = this.registry.consoleTaus(trc);
+        end
     end
 
     %% PROTECTED
@@ -207,6 +411,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
         atlas_ic_
         dlicv_ic_
         flair_ic_
+        json_
         T1_ic_
         T1_on_t1w_ic_
         t1w_ic_
