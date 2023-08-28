@@ -4,60 +4,40 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
 	%  $Revision$
  	%  was created 26-Mar-2020 10:24:14 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
- 	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee.
- 	
+ 	%% It was developed on Matlab 9.7.0.1319299 (R2019b) Update 5 for MACI64.  Copyright 2020 John Joowon Lee. 	
+    
+	properties (Constant)
+        MAX_NORMAL_BACKGROUND = 20 % Bq/mL
+    end
+
 	properties (Dependent)
  		calibrationAvailable
-        imagingContext
         invEfficiency
- 	end
-
-    methods (Static)
-        function this = createFromSession(varargin)
-            if isa(sesd, 'mlraichle.SessionData')
-                this = mlsiemens.BiographMMRDevice.createFromSession(sesd, varargin{:});
-                return
-            end
-            this = [];
-        end
-        function ie = invEfficiencyf(sesd)
-            this = mlsiemens.BiographDevice.createFromSession(sesd);
-            ie = this.invEfficiency_;
-        end
     end
     
-	methods 
-        
-        %% GET
-        
+	methods %% GET
         function g = get.calibrationAvailable(this)
             g = this.calibration_.calibrationAvailable;
-        end
-        function g = get.imagingContext(this)
-            g = this.data_.imagingContext;
-            ifc = g.imagingFormat;
-            ifc.img = this.invEfficiency_*ifc.img;
-            g = mlfourd.ImagingContext2(ifc);
-        end
+        end        
         function g = get.invEfficiency(this)
             g = this.invEfficiency_;
         end
-        
-        %%
-        
+    end
+
+    methods
         function a = activity(this, varargin)
             %% is calibrated to ref-source; Bq
             %  @param decayCorrected, default := false.
  			%  @param datetimeForDecayCorrection updates internal.
             
-            a = this.invEfficiency_*this.data_.activity(varargin{:});
+            a = this.data_.activity(varargin{:})*this.invEfficiency_;
         end
         function a = activityDensity(this, varargin)
             %% is calibrated to ref-source; Bq/mL
             %  @param decayCorrected, default := false.
  			%  @param datetimeForDecayCorrection updates internal.
             
-            a = this.invEfficiency_*this.data_.activityDensity(varargin{:});
+            a = this.data_.activityDensity(varargin{:})*this.invEfficiency_;
         end
         function that = blurred(this, varargin)
             that = copy(this);
@@ -139,6 +119,24 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             that.data_ = that.data_.volumeAveraged(varargin{:});
         end
     end 
+    methods (Static)        
+        function sesd = findCalibrationSession(sesd0, varargin)
+            %% assumed calibration is performed at end of session
+
+            if isa(sesd0, 'mlnipet.SessionData')
+                scanfold = globFoldersT(fullfile(sesd0.sessionPath, 'FDG_DT*-Converted-AC'));
+                sesd = sesd0.create(fullfile(sesd0.projectFolder, sesd0.sessionFolder, mybasename(scanfold{end})));
+                return
+            end
+            if isa(sesd0, 'mlpipeline.ImagingMediator')
+                scans = glob(fullfile(sesd0.scanPath, '*trc-fdg_proc-static-phantom*_pet.nii.gz'))';
+                assert(~isempty(scans), stackstr())
+                sesd = sesd0.create(scans{end}); 
+                return
+            end
+            error('mlpet:RuntimeError', stackstr())
+        end
+    end
     
     %% PROTECTED
     
@@ -148,13 +146,10 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
     
     methods (Access = protected)
  		function this = BiographDevice(varargin)
- 			%% BIOGRAPHDEVICE
-            
-            import mlcapintec.RefSourceCalibration
-
- 			this = this@mlpet.AbstractDevice(varargin{:});
-            
-            this.invEfficiency_ = mean(this.calibration_.invEfficiency) * RefSourceCalibration.invEfficiencyf();
+ 			this = this@mlpet.AbstractDevice(varargin{:});            
+            this.invEfficiency_ = ...
+                mean(this.calibration_.invEfficiency)* ...
+                mlcapintec.RefSourceCalibration.invEfficiencyf();
  		end
     end
 
