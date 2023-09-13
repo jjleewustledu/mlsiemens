@@ -1,4 +1,4 @@
-classdef JSReconBuilder < handle
+classdef JSReconBuilder < handle & mlsystem.IHandle
     %% builds PET imaging with JSRecon12 & e7
     %  
     %  Created 07-Sep-2022 00:28:15 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
@@ -11,23 +11,28 @@ classdef JSReconBuilder < handle
 
     properties (Dependent)
         dicomExt
-        director
         hasBf
         hasPtd
         hasPtr
-        rawdataDir
+
+        listmodePath
+        projectPath
+        rawdataPath
+        sourcedataPath
+        sourcePetPath
         studyFolder
+        subject_id % always char for compatibility with glob()
+        subjectFolder
+        subjectPath
         workdir
 
-        study_builder
+        mediator
+        product
     end
 
     methods %% GET, SET
         function g = get.dicomExt(this)
-            g = this.study_builder.dicomExt;
-        end
-        function g = get.director(this)
-            g = this.director_;
+            g = '.dcm';
         end
         function g = get.hasBf(this)
             g = glob(fullfile(this.workdir, '**.bf'));
@@ -41,23 +46,43 @@ classdef JSReconBuilder < handle
             g = glob(fullfile(this.workdir, '**.ptr'));
             g = ~isempty(g);
         end
-        function g = get.rawdataDir(this)
-            g = this.study_builder.rawdataDir;
+
+        function g = get.listmodePath(this)
+            g = this.mediator.listmodePath;
+        end
+        function g = get.projectPath(this)
+            g = this.mediator.projectPath;
+        end
+        function g = get.rawdataPath(this)
+            g = this.mediator.rawdataPath;
+        end        
+        function g = get.sourcedataPath(this)
+            g = this.mediator.sourcedataPath;
+        end  
+        function g = get.sourcePetPath(this)
+            g = this.mediator.sourcePetPath;
         end
         function g = get.studyFolder(this)
-            g = this.study_builder.studyFolder;
+            g = this.mediator.studyFolder;
+        end
+        function g = get.subject_id(this)
+            g = convertStringsToChars(this.subject_id_);
+        end
+        function g = get.subjectFolder(this)
+            g = this.mediator.subjectFolder;
+        end
+        function g = get.subjectPath(this)
+            g = this.mediator.subjectPath;
         end
         function g = get.workdir(this)
             g = this.workdir_;
         end
 
-        function g = get.study_builder(this)
-            g = this.director_.study_builder;
+        function g = get.mediator(this)
+            g = this.director_.mediator;
         end
-
-        function set.director(this, s)
-            assert(isa(s, 'mlsiemens.JSReconDirector'))
-            this.director_ = s;
+        function g = get.product(this)
+            g = this.product_;
         end
     end
 
@@ -124,11 +149,52 @@ classdef JSReconBuilder < handle
                 g = glob(fullfile(this.workdir, '**.bf'))';                
             end
             if this.hasPtd
-                g = glob(fullfile(this.workdir, '**.ptd'))';
+                g1 = glob(fullfile(this.workdir, '**.ptr'))';
+                g2 = glob(fullfile(this.workdir, '**.ptd'))';
+                g = [g1; g2];
             end
             lmdir = unique(cellfun(@(x) myfileparts(x), g, 'UniformOutput', false));
         end        
-        function dns = unpack_dcm(this, workdir)
+        function unpack_dcm_folders(this, opts)
+            arguments
+                this mlsiemens.JSReconBuilder
+                opts.source {mustBeFolder}
+                opts.dest {mustBeTextScalar} = ""
+            end
+            ensuredir(this.sourcePetPath)
+
+            g = glob(fullfile(opts.source, sprintf('*%s*', this.subject_id)));
+            g = unique(g);
+            for gi = 1:length(g) % folders containing DICOMs
+                try
+                    pwd0 = pushd(g{gi});
+                    [~,r] = mlpipeline.Bids.dcm2niix(g{gi});
+                    fprintf("%s:\n", stackstr())
+                    disp(r)
+
+                    gnii = glob(fullfile(g{gi}, "**.nii.gz"));
+                    for gniii = 1:length(gnii) % files.nii.gz
+
+                        json = strrep(gnii{gniii}, ".nii.gz", ".json");
+                        if this.has_pet(json)
+                            movefile(json, this.sourcePetPath);
+                            movefile(gnii{gniii}, this.sourcePetPath);
+                        end    
+                        sourceAnatPath = fullfile( ...
+                            this.sourcedataPath, this.subjectFolder, this.session_folder(gnii{gniii}), "anat", "");
+                        ensuredir(sourceAnatPath)
+                        if this.has_anat(json)
+                            movefile(json, sourceAnatPath);
+                            movefile(gnii{gniii}, sourceAnatPath);
+                        end
+                    end
+                    popd(pwd0);
+                catch ME
+                    handwarning(ME, "%s: run-time error for %s", stackstr(), g{gi})
+                end
+            end
+        end
+        function dns = unpack_dcm_zip(this, workdir)
             %% Unpacks DICOMs from pwd, which must be the trunk of a filetree containing packed DICOMs.
             arguments
                 this mlsiemens.JSReconBuilder
@@ -160,7 +226,30 @@ classdef JSReconBuilder < handle
                 popd(pwd0);
             end
         end 
-        function this = unpack_listmode(this, workdir)
+        function unpack_listmode_folders(this, opts)
+            arguments
+                this mlsiemens.JSReconBuilder
+                opts.source {mustBeFolder}
+                opts.dest {mustBeTextScalar}
+            end
+            ensuredir(opts.dest);
+            g = glob(fullfile(opts.source, sprintf('*%s*', this.subject_id), '**.bf'));
+            for gi = 1:length(g)
+                this.has_bf_ = true;
+                movefile(g{gi}, opts.dest);
+            end
+            g = glob(fullfile(opts.source, sprintf('*%s*', this.subject_id), '**.ptr'));
+            for gi = 1:length(g)
+                this.has_ptr_ = true;
+                movefile(g{gi}, opts.dest);
+            end
+            g = glob(fullfile(opts.source, sprintf('*%s*', this.subject_id), '**.ptd'));
+            for gi = 1:length(g)
+                this.has_ptd_ = true;
+                movefile(g{gi}, opts.dest);
+            end
+        end
+        function unpack_listmode_zip(this, workdir)
             %% Unpacks listmode from pwd, which must be the trunk of a filetree containing packed listmode.
             %  ptd ~ e.g., 108007.PT.Head_CCIR_1211_FDG_(Adult).602.PET_LISTMODE.2021.02.23.14.04.04.508000.2.0.105550091.ptd
             %        PET_CALIBRATION
@@ -215,6 +304,10 @@ classdef JSReconBuilder < handle
                 end
                 popd(pwd0);
             end
+        end        
+        function unpack_rawdata(this)
+            this.unpack_dcm_folders(source=fullfile(this.rawdataPath, "dcm", ""));
+            %this.unpack_listmode_folders(source=fullfile(this.rawdataPath, "lm",""), dest=this.listmodePath);
         end
         function d = unpacking_dir(this, d0, tag)
             arguments
@@ -259,7 +352,7 @@ classdef JSReconBuilder < handle
         function this = JSReconBuilder(opts)
             %% JSRECONBUILDER 
             %  Args:
-            %  opts.dtor mlsiemens.JSReconDirector = []:  references objects including study_builder, workdir.
+            %  opts.dtor mlsiemens.JSReconDirector = []:  references objects including bids_kit.
             %  opts.workdir {mustBeFolder} = pwd:  trunk of filetree containing packed listmode.
                         
             arguments
@@ -267,6 +360,7 @@ classdef JSReconBuilder < handle
                 opts.workdir {mustBeFolder} = pwd
             end
             this.director_ = opts.dtor;
+            this.subject_id_ = convertStringsToChars(strrep(this.mediator.subjectFolder, 'sub-', ''));
             this.workdir_ = opts.workdir;
         end
     end
@@ -293,6 +387,11 @@ classdef JSReconBuilder < handle
 
     properties (Access = protected)
         director_
+        has_bf_ = false
+        has_ptr_ = false
+        has_ptd_ = false
+        product_
+        subject_id_
         workdir_
     end
 
@@ -304,6 +403,22 @@ classdef JSReconBuilder < handle
                 contains(info.SeriesDescription, 'CT') && ...
                 contains(info.ImageType, 'CT') && ...
                 contains(info.Modality, 'CT');
+        end
+        function tf = has_anat(~, json)
+            j = jsondecode(fileread(json));
+            tf = contains(j.ManufacturersModelName, "Prisma", IgnoreCase=true);
+        end        
+        function tf = has_pet(~, json)
+            j = jsondecode(fileread(json));
+            tf = contains(j.ManufacturersModelName, "Biograph128", IgnoreCase=true) || ...
+                contains(j.ManufacturersModelName, "Vision", IgnoreCase=true) || ...
+                contains(j.Modality, "CT") || ...
+                contains(j.Modality, "PT");
+        end        
+        function fold = session_folder(~, fqfn)
+            fp = mybasename(fqfn);
+            re = regexp(fp, "sub-\S+_(?<sesfold>ses-\d{8})\d{6}\S+", "names");
+            fold = re.sesfold;
         end
     end
     

@@ -1,11 +1,11 @@
-classdef BrainMoCo < handle & mlsystem.IHandle
+classdef BrainMoCo2 < handle & mlsystem.IHandle
     %% builds PET imaging with JSRecon12 & e7 & Inki Hong's BrainMotionCorrection
     %  
     %  Created 03-Jan-2023 01:19:28 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
     %  Developed on Matlab 9.13.0.2105380 (R2022b) Update 2 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Constant)
-        N_PROC = 10
+        N_PROC = 5
     end
 
     properties
@@ -13,6 +13,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
     end
 
     properties (Dependent)
+        bmc_js
         inki_home
         jsrecon_home
         jsrecon_js
@@ -29,6 +30,9 @@ classdef BrainMoCo < handle & mlsystem.IHandle
     end
 
     methods %% GET
+        function g = get.bmc_js(this)
+            g = fullfile(this.jsrecon_home, "BrainMotionCorrection", "BMC.js");
+        end
         function g = get.inki_home(this)
             g = fullfile("C:", "Inki");
         end
@@ -36,7 +40,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             g = fullfile("C:", "JSRecon12");
         end
         function g = get.jsrecon_js(this)
-            g = fullfile(this.jsrecon_home, "BrainMotionCorrection", "BMC.js");
+            g = fullfile(this.jsrecon_home, "JSRecon12.js");
         end
         function g = get.output_path(this)
             g = fullfile( ...
@@ -76,7 +80,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
     end
 
     methods
-        function this = BrainMoCo(opts)
+        function this = BrainMoCo2(opts)
             %  Args:
             %  opts.source_lm_path {mustBeFolder} = pwd
 
@@ -88,13 +92,14 @@ classdef BrainMoCo < handle & mlsystem.IHandle
         end
         function call(this, opts)
             arguments
-                this mlsiemens.BrainMoCo
+                this mlsiemens.BrainMoCo2
                 opts.Skip {mustBeInteger} = 0
-                opts.LMFrames {mustBeTextScalar} = "0:10,10,10"
+                opts.LMFrames {mustBeTextScalar} = "0:120"
                 opts.model {mustBeTextScalar} = "Vision"
-                opts.tracer {mustBeTextScalar} = "fdg"
+                opts.tracer {mustBeTextScalar} = "oo"
                 opts.filepath {mustBeFolder} = this.source_pet_path % for BMC params file (.txt)
-                opts.tag {mustBeTextScalar} = ""
+                opts.tag {mustBeTextScalar} = "-start"
+                opts.tag0 {mustBeTextScalar} = "-start0"
                 opts.is_dyn logical = true
             end
             copts = namedargs2cell(opts);
@@ -102,29 +107,22 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             if ~isemptytext(opts.tag) && ~startsWith(opts.tag, "-")
                 opts.tag = "-"+opts.tag;
             end
-
             this.check_env();
 
+            % cscript BMC.js
             pwd0 = pushd(this.source_pet_path);
-            bmcp = mlsiemens.BrainMoCoParams(copts{:});
+            bmcp = mlsiemens.BrainMoCoParams2(copts{:});
             bmcp.writelines();
             [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                this.jsrecon_js, ...
+                this.bmc_js, ...
                 this.source_lm_path, ...
                 bmcp.fqfilename));
             disp(r)
-            try
-                rmdir(fullfile(this.source_ses_path, "lm"+opts.tag), "s");
-                rmdir(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC"), "s");
-            catch ME
-                handwarning(ME)
-            end
-            try
-                delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.l"));
-                delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.v"));
-            catch ME
-                handwarning(ME)
-            end
+            
+            % delete large files
+            this.call_clean(tag=opts.tag);
+
+            % move output/* to source_ses_path
             g = asrow(globFolders(fullfile(this.output_path, '*')));
             for gidx = 1:length(g)
                 try
@@ -134,6 +132,83 @@ classdef BrainMoCo < handle & mlsystem.IHandle
                 end
             end
             popd(pwd0);
+        end
+        function call_clean(this, opts)
+            arguments
+                this mlsiemens.BrainMoCo2
+                opts.tag {mustBeTextScalar} = ""
+            end
+            opts.tag = string(opts.tag);
+            if ~isemptytext(opts.tag) && ~startsWith(opts.tag, "-")
+                opts.tag = "-"+opts.tag;
+            end
+
+            if isfolder(fullfile(this.source_ses_path, "lm"+opts.tag))
+                rmdir(fullfile(this.source_ses_path, "lm"+opts.tag), "s");
+            end
+            if isfolder(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC"))
+                rmdir(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC"), "s");
+            end
+            try
+                delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.i"));
+                delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.l"));                
+                delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.s"));                
+                delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.s.hdr"));
+                %delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.v"));
+            catch ME
+                handwarning(ME)
+            end            
+        end
+        function call_jsr(this, opts)
+            arguments
+                this mlsiemens.BrainMoCo2
+                opts.Skip {mustBeInteger} = 0
+                opts.LMFrames {mustBeTextScalar} = "0:120"
+                opts.model {mustBeTextScalar} = "Vision"
+                opts.tracer {mustBeTextScalar} = "oo"
+                opts.filepath {mustBeFolder} = this.source_pet_path % for BMC params file (.txt)
+                opts.tag {mustBeTextScalar} = ""
+                opts.is_dyn logical = false
+            end
+            copts = namedargs2cell(opts);
+            opts.tag = string(opts.tag);
+            if ~isemptytext(opts.tag) && ~startsWith(opts.tag, "-")
+                opts.tag = "-"+opts.tag;
+            end
+
+            this.check_env();
+
+            % cscript JSRecon12.js
+            pwd0 = pushd(this.source_pet_path);
+            jsrp = mlsiemens.JSReconParams(copts{:});
+            jsrp.writelines();
+            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
+                this.jsrecon_js, ...
+                this.source_lm_path, ...
+                jsrp.fqfilename));
+            disp(r)
+            popd(pwd0);
+
+            % run Run-99-lm-start*-LM-00-All.bat
+            bat_path = fullfile( ...
+                this.source_ses_path, "lm"+opts.tag+"-Converted", "lm"+opts.tag+"-LM=00");
+            pwd1 = pushd(bat_path);
+            [~,r] = mysystem("Run-99-lm-"+opts.tag+"-LM-00-All.bat");
+            disp(r)
+
+            try
+                % rmdir(fullfile(this.source_ses_path, "lm"+opts.tag), "s");
+                % rmdir(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC"), "s");
+            catch ME
+                handwarning(ME)
+            end
+            try
+                % delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.l"));
+                % delete(fullfile(this.source_ses_path, "lm"+opts.tag+"-BMC-Converted", "lm"+opts.tag+"-BMC-LM-00", "*.v"));
+            catch ME
+                handwarning(ME)
+            end
+            popd(pwd1);
         end
         function call_static(this)
             pwd0 = pushd(this.source_pet_path);
@@ -145,11 +220,13 @@ classdef BrainMoCo < handle & mlsystem.IHandle
         end
         function this = call_test(this, opts)
             arguments
-                this mlsiemens.BrainMoCo
+                this mlsiemens.BrainMoCo2
                 opts.LMFrames {mustBeTextScalar} = "0:60,60,60,60,60"
                 opts.model {mustBeTextScalar} = "Vision"
                 opts.tracer {mustBeTextScalar} = "fdg"
                 opts.filepath {mustBeFolder} = this.test_project_path
+                opts.tag {mustBeTextScalar} = "-start"
+                opts.tag0 {mustBeTextScalar} = "-start0"
             end
             copts = namedargs2cell(opts);
 
@@ -157,7 +234,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             this.check_test_env();
 
             pwd0 = pushd(this.test_project_path);
-            bmcp = mlsiemens.BrainMoCoParams(copts{:});
+            bmcp = mlsiemens.BrainMoCoParams2(copts{:});
             bmcp.writelines();
             [~,r] = mysystem(sprintf("cscript %s %s %s", ...
                 this.jsrecon_js, ...
@@ -169,7 +246,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
         function check_env(this)
             % e7 requirements
             assert(strcmpi('PCWIN64', computer), ...
-                'mlsiemens.{JSRecon,BrainMoCo} require e7 in Microsoft Windows 64-bit')
+                'mlsiemens.{JSRecon,BrainMoCo2} require e7 in Microsoft Windows 64-bit')
             assert(isfolder(fullfile('C:', 'JSRecon12')))
             assert(isfolder(fullfile('C:', 'Service')))
             assert(isfolder(fullfile('C:', 'Siemens', 'PET', this.bin_version_folder)))
@@ -188,14 +265,52 @@ classdef BrainMoCo < handle & mlsystem.IHandle
     end
 
     methods (Static)
-        function ic = create_nifti_hires(sub, ses)
+        function ic = createNiftiCumul(sub, ses, opts)
+            arguments
+                sub {mustBeTextScalar}
+                ses {mustBeTextScalar}
+                opts.taus double = [10 10 10 30]
+                opts.tag {mustBeTextScalar} = "-start"
+                opts.tag0 {mustBeTextScalar} = "-start0"
+                opts.folder_tag {mustBeTextScalar} = "-StaticBMC"
+                opts.v_tag {mustBeTextScalar} = "-BMC-LM-00-ac_mc"
+            end
+            M = length(opts.taus);
+
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);
+            pwd0 = pushd(ses_path);
+
+            % build ifc prototype vrom lm-start0
+            v0_fqfn = fullfile(ses_path, "lm"+opts.tag0+opts.folder_tag, ...
+                "lm"+opts.tag0+opts.v_tag+"_000_000.v");
+            [~,~,nii0_fqfn] = mlsiemens.BrainMoCoBuilder.dcm2niix(myfileparts(v0_fqfn));
+            nii0_ifc = mlfourd.ImagingFormatContext2(nii0_fqfn);
+            nii0_ifc.fileprefix = nii0_ifc.fileprefix+"_proc-"+stackstr();
+            nii0_ifc.img = zeros([size(nii0_ifc) M]);
+
+            for tagi = 0:(M-1)
+                lmtag = opts.tag+tagi;
+                cumpath = fullfile(getenv("SINGULARITY_HOME"), ...
+                    "CCIR_01211", "sourcedata", sub, ses, "lm"+lmtag+opts.folder_tag);
+             
+                vglobbed = glob(convertStringsToChars( ...
+                    fullfile(cumpath, "lm"+lmtag+"-LM-00", "lm"+lmtag+"-LM-00-OPTOF_*_*.v")));
+                assert(~isempty(vglobbed))
+                nii0_ifc.img(:,:,:,tagi+1) = mlsiemens.BrainMoCo2.vread(vglobbed{1});
+            end
+            ic = mlfourd.ImagingContext2(nii0_ifc);
+            ic = mlsiemens.BrainMoCo.cumul2frames(ic, taus);
+
+            popd(pwd0);
+        end
+        function ic = createNiftiMovingAverage(sub, ses)
             arguments
                 sub {mustBeTextScalar}
                 ses {mustBeTextScalar}
             end
 
             % get nifti static as prototype
-            ic_static = mlsiemens.BrainMoCo.create_nifti_static(sub, ses);
+            ic_static = mlsiemens.BrainMoCo2.create_nifti_static(sub, ses);
             ifc_static = ic_static.imagingFormat;
 
             ics = cell(1, 10);
@@ -210,20 +325,21 @@ classdef BrainMoCo < handle & mlsystem.IHandle
                 ifc.img = zeros([size(ifc) length(vglobbed)]);
                 ifc.fileprefix = strrep(ifc_static.fileprefix, "static", "dyn-"+stackstr()+lmtag);
                 for vi = 1:length(vglobbed)
-                    ifc.img(:,:,:,vi) = mlsiemens.BrainMoCo.vread(vglobbed{vi});                    
+                    ifc.img(:,:,:,vi) = mlsiemens.BrainMoCo2.vread(vglobbed{vi});                    
                 end
                 ics{tagi} = mlfourd.ImagingContext2(ifc);
             end
             ic = ics{1}.timeInterleaved(ics(2:end));
             ic.fileprefix = strrep(ic.fileprefix, "lm"+lmtag, "lm-all-starts");
         end
-        function ic = create_nifti_static(sub, ses)
+        function ic = createNiftiStatic(sub, ses, opts)
             arguments
                 sub {mustBeTextScalar}
                 ses {mustBeTextScalar}
+                opts.tag {mustBeTextScalar} = "-start"
             end    
 
-            lmtag = "-start0";
+            lmtag = opts.tag+0;
             dicompath = fullfile(getenv("SINGULARITY_HOME"), ...
                 "CCIR_01211", "sourcedata", sub, ses, "lm"+lmtag+"-StaticBMC", "lm"+lmtag+"-BMC-LM-00-ac_mc_000_000.v-DICOM");
             staticpath = myfileparts(dicompath);
@@ -238,7 +354,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             ic.addJsonMetadata(struct(afield, info));
             popd(pwd0);
         end
-        function [ic_dyn,ic_static] = create_nifti(sub, ses, trc)
+        function [ic_dyn,ic_static] = createNifti(sub, ses, trc)
             arguments
                 sub {mustBeTextScalar}
                 ses {mustBeTextScalar}
@@ -269,86 +385,126 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             ic_dyn.fileprefix = sprintf('%s_%s_trc-%s_proc-bmc-dyn_pet', sub, ses, trc);
             ic_dyn.save();
         end       
-        function create_co(source_lm_path)
+        function create_co(source_lm_path, opts)
             arguments
                 source_lm_path {mustBeFolder}
+                opts.tag {mustBeTextScalar} = "-start"
             end
 
-            parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
-                this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
+            parfor (start = 0:9, mlsiemens.BrainMoCo2.N_PROC)
+                this = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag+start); %#ok<PFBNS>
                 lmframes = this.mat2lmframes(10*ones(1,29), start=start);
-                this.call(LMFrames=lmframes, tracer="co", tag="-start"+start);
+                this.call(LMFrames=lmframes, tracer="co", tag=opts.tag+start);
             end
         end
-        function create_oo(source_lm_path)
+        function create_oo(source_lm_path, opts)
             arguments
                 source_lm_path {mustBeFolder}
+                opts.tag {mustBeTextScalar} = "-start"
             end
 
-            parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
-                this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
+            T = 120; % sec
+            starts = [0 10 20 30]; % sec
+            M = length(starts); 
+
+            parfor (si = 1:M, mlsiemens.BrainMoCo2.N_PROC)
+                try
+                    this = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag+starts(si)); %#ok<PFBNS>
+                    lmframes = sprintf("%i:%i", starts(si), T-starts(si));
+                    this.call(LMFrames=lmframes, tracer="oo", tag=opts.tag+starts(si));
+                catch ME
+                    handwarning(ME)
+                end
+            end
+        end
+        function create_ho(source_lm_path, opts)
+            arguments
+                source_lm_path {mustBeFolder}
+                opts.tag {mustBeTextScalar} = "-start"
+            end
+
+            parfor (start = 0:9, mlsiemens.BrainMoCo2.N_PROC)
+                this = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag+start); %#ok<PFBNS>
                 lmframes = this.mat2lmframes(10*ones(1,12), start=start);
-                this.call(LMFrames=lmframes, tracer="oo", tag="-start"+start);
+                this.call(LMFrames=lmframes, tracer="ho", tag=opts.tag+start);
             end
         end
-        function create_ho(source_lm_path)
+        function create_fdg(source_lm_path, opts)
             arguments
                 source_lm_path {mustBeFolder}
+                opts.tag {mustBeTextScalar} = "-start"
             end
 
-            parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
-                this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
-                lmframes = this.mat2lmframes(10*ones(1,12), start=start);
-                this.call(LMFrames=lmframes, tracer="ho", tag="-start"+start);
-            end
-        end
-        function create_fdg(source_lm_path)
-            arguments
-                source_lm_path {mustBeFolder}
-            end
-
-            parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
-                this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
+            parfor (start = 0:9, mlsiemens.BrainMoCo2.N_PROC)
+                this = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag+start); %#ok<PFBNS>
                 lmframes = this.mat2lmframes(10*ones(1,30), start=start);
-                this.call(LMFrames=lmframes, tracer="fdg", tag="-start"+start);
+                this.call(LMFrames=lmframes, tracer="fdg", tag=opts.tag+start);
             end
-            that = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+300);
+            that = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag+300);
             lmframes = that.mat2lmframes(60*ones(1,55), start=300);
-            that.call(LMFrames=lmframes, tracer="fdg", tag="-start"+300);
+            that.call(LMFrames=lmframes, tracer="fdg", tag=opts.tag+300);
         end
-        function create_fdg_hires(source_lm_path)
+        function create_fdg_hires(source_lm_path, opts)
             arguments
                 source_lm_path {mustBeFolder}
+                opts.tag {mustBeTextScalar} = "-start"
             end
 
-            parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
-                this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
+            parfor (start = 0:9, mlsiemens.BrainMoCo2.N_PROC)
+                this = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag+start); %#ok<PFBNS>
                 lmframes = this.mat2lmframes(10*ones(1,359), start=start);
                 this.call(LMFrames=lmframes, tracer="fdg", tag="-hires-start"+start);
             end
         end
-        function create_fdg_phantom(source_lm_path)
+        function create_fdg_phantom(source_lm_path, opts)
             arguments
                 source_lm_path {mustBeFolder}
+                opts.tag {mustBeTextScalar} = "-start"
             end
 
-            parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
-                this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
+            parfor (start = 0:9, mlsiemens.BrainMoCo2.N_PROC)
+                this = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag+start); %#ok<PFBNS>
                 lmframes = this.mat2lmframes(10*ones(1,29), start=start);
-                this.call(LMFrames=lmframes, tracer="fdg", tag="-start"+start);
+                this.call(LMFrames=lmframes, tracer="fdg", tag=opts.tag+start);
             end
         end
-        function this = create_tagged(source_lm_path, tag)
+        function this = create_tagged(source_lm_path, opts)
             arguments
                 source_lm_path string
-                tag string = ""
+                opts.tag string = "-start0"
             end
 
-            source_lm_path_tagged = source_lm_path+tag;
+            source_lm_path_tagged = source_lm_path+opts.tag;
             if ~isfolder(source_lm_path_tagged)
                 copyfile(source_lm_path, source_lm_path_tagged)
             end
-            this = mlsiemens.BrainMoCo(source_lm_path=source_lm_path_tagged);
+            this = mlsiemens.BrainMoCo2(source_lm_path=source_lm_path_tagged);
+        end
+        function ic = cumul2frames(ic, taus)
+            arguments
+                ic mlfourd.ImagingContext2
+                taus double
+            end
+
+            M = length(taus);
+            L = zeros(M, M);
+            for m = 1:M
+                for n = m:M
+                    L(m,n) = taus(n);
+                end
+                T = sum(taus(m:M));
+                L(m,:) = L(m,:)/T;
+            end
+            pL = pinv(L);
+
+            ifc = ic.imagingFormat;
+            mat = reshape(double(ifc.img), [440*440*159 M]); % voxels x \hat{alpha}
+            for row = 1:size(mat,1)
+                mat(row,:) = pL*mat(row,:); % \hat{alpha} =: a
+            end
+            ifc.img = reshape(mat, [440 440 159 M]);
+            ic = mlfourd.ImagingContext2(ifc);
+            ic.fileprefix = strcat(ic.fileprefix, "_", stackstr());
         end
         function s = mat2lmframes(taus, opts)
             arguments
@@ -360,7 +516,18 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             frame_durations = frame_durations(2:end-1);
             s = num2str(opts.start)+":"+frame_durations;
         end
+        function ic = v2ic(varargin)
+            %% Args follow vread.
+            ifc = mlfourd.ImagingFormatContext2(fullfile( ...
+                getenv("SINGULARITY_HOME"), "CCIR_01211", "vision_zeros_440x440x159.nii.gz"));
+            ifc.img = mlsiemens.BrainMoCo2.vread(varargin{:});
+            ic = mlfourd.ImagingContext2(ifc);
+        end
         function v = vread(filename, shape)
+            %% Args:
+            %     filename {mustBeFile}
+            %     shape double = [440 440 159]
+
             arguments
                 filename {mustBeFile}
                 shape double = [440 440 159]
@@ -369,6 +536,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             fid = fopen(filename, "r", "ieee-le");
             v = fread(fid, Inf, "single");
             v = reshape(v, shape);
+            v = flip(flip(v, 1), 2);
         end
     end
 

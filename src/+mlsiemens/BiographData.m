@@ -311,8 +311,9 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             if ipr.diff
                 ic = diff(ic);
             end
+            ic.addJsonMetadata(ip);
             m = imagingType(ipr.typ, ic);
-            % m = m/this.branchingRatio; % already performed by Siemens scanners
+            % m = m/this.branchingRatio; % BUG FIX: this is already performed by Siemens Biograph scanners
         end
         function ic = selectIndex0IndexF(this, ic, index0, indexF)
             arguments

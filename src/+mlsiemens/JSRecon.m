@@ -1,4 +1,4 @@
-classdef JSRecon12 < handle
+classdef JSRecon < handle & mlsystem.IHandle
     %% line1
     %  line2
     %  
@@ -14,7 +14,7 @@ classdef JSRecon12 < handle
         bin_version_folder = 'bin.win64-VG80'
         discontinuities % last time prior to discontinuity, in sec
         dt % sec
-        jsrecon12_js
+        jsrecon_js
         scanner
         tracer
         window % sec
@@ -198,22 +198,22 @@ classdef JSRecon12 < handle
         end
         function check_env(this)
             assert(strcmpi('PCWIN64', computer), ...
-                'mlsiemens.JSRecon12 requires e7 on PC Windows')
+                'mlsiemens.JSRecon requires e7 on PC Windows')
             assert(isfolder(fullfile('C:', 'JSRecon12')))
             assert(isfolder(fullfile('C:', 'Service')))
             assert(isfolder(fullfile('C:', 'Siemens', 'PET', this.bin_version_folder)))
         end
-        function eval_jsrecon12(this, opts)
+        function eval_jsrecon(this, opts)
             arguments
-                this mlsiemens.JSRecon12
+                this mlsiemens.JSRecon
                 opts.DataFolder {mustBeFolder} = this.DataFolder
                 opts.ParamsFile {mustBeFile} = this.ParamsFile
             end
-            cmd = sprintf("!cscript %s %s %s", this.jsrecon12_js, opts.DataFolder, opts.ParamsFile);
+            cmd = sprintf("!cscript %s %s %s", this.jsrecon_js, opts.DataFolder, opts.ParamsFile);
             eval(cmd)
         end
-        function this = JSRecon12(dtor, opts)
-            %% JSRECON12 
+        function this = JSRecon(dtor, opts)
+            %% JSRECON
             %  Args:
             %  dtor = []
             %  opts.ListmodeFolder {mustBeTextScalar} = ""
@@ -226,7 +226,7 @@ classdef JSRecon12 < handle
             arguments
                 dtor = []
                 opts.ListmodeFolder {mustBeTextScalar} = ""
-                opts.ParentFolder {mustBeFolder} = "D:\MyProject\+Input\sub-108293\ses-20210421"
+                opts.ParentFolder {mustBeFolder} = "D:\MyBMCProject\+Input\sub-108293\ses-20210421"
                 opts.ParamsFile {mustBeFiles} = "C:\JSRecon12\JSRecon_params.txt"
                 opts.scanner {mustBeTextScalar} = "vision"
                 opts.tracer {mustBeTextScalar} = "fdg"
@@ -234,7 +234,7 @@ classdef JSRecon12 < handle
             end
             
             this.director_ = dtor;
-            this.jsrecon12_js = "C:\JSRecon12\JSRecon12.js";
+            this.jsrecon_js = "C:\JSRecon12\JSRecon12.js";
             this.ParentFolder = opts.ParentFolder;
             if "" ~= opts.tracer
                 this.ParamsFile = fullfile("D:", sprintf("params_%s_%s.txt", opts.scanner, opts.tracer));

@@ -1,4 +1,4 @@
-classdef BrainMoCoParams
+classdef BrainMoCoParams2
     %% line1
     %  line2
     %  
@@ -35,7 +35,7 @@ classdef BrainMoCoParams
         Gaussian              =     0          %FWHM in mm for Gaussian postfilter. If both Gaussian
                                                %and Hanning are non-zero, Gaussian is used
         Hanning               =     0          %FWHM in mm for Hanning postfilter
-        PSF                   =     1
+        PSF                   =     0
         TOF                   =     1          %automatically set to 0 for mMR & Horizon
         Iterations            =     4
         Subsets               =     5          %automatically set to 5 for Vision
@@ -134,7 +134,7 @@ classdef BrainMoCoParams
     end
 
     methods
-        function this = BrainMoCoParams(opts)
+        function this = BrainMoCoParams2(opts)
             %% Args:
             %  opts.LMFrames {mustBeTextScalar} = "0:10,10,10,..." using "start:len,len,len,..." in sec
             %  opts.model {mustBeTextScalar} = "Vision"
@@ -143,11 +143,12 @@ classdef BrainMoCoParams
             
             arguments
                 opts.Skip {mustBeInteger} = 0
-                opts.LMFrames {mustBeTextScalar} = "0:60,60,60,60,60"
+                opts.LMFrames {mustBeTextScalar} = "0:120"
                 opts.model {mustBeTextScalar} = "Vision"
                 opts.tracer {mustBeTextScalar} = "fdg"
                 opts.filepath {mustBeFolder} = pwd
-                opts.tag {mustBeTextScalar} = ""
+                opts.tag {mustBeTextScalar} = "-start"
+                opts.tag0 {mustBeTextScalar} = "-start0"
                 opts.is_dyn logical = true
             end
             this.Skip = opts.Skip;
@@ -156,14 +157,10 @@ classdef BrainMoCoParams
             this.tracer_ = convertCharsToStrings(opts.tracer);
             this.filepath_ = convertCharsToStrings(opts.filepath);
 
-            if ~opts.is_dyn
-                this.doBMCRecon = 1;     % static BMC recon
-                this.doBMCDynamic = 0;   % dynamic BMC recon
-            end
-            if contains(opts.tag, "0")
-                this.doBMCRecon = 1;
-                this.doBMCMakeDicom = 1;
-            end
+            this.doBMCMakeDicom = double(contains(opts.tag, opts.tag0) && ~opts.is_dyn);
+            this.doDYNMakeDicom = double(contains(opts.tag, opts.tag0) && opts.is_dyn);
+            this.doBMCRecon = double(~opts.is_dyn);  % static BMC recon
+            this.doBMCDynamic = double(opts.is_dyn); % dynamic BMC recon
         end
         function fn = fqfilename(this)
             ss = strsplit(this.LMFrames_, ":");
@@ -181,7 +178,7 @@ classdef BrainMoCoParams
         end
         function writelines(this, fqfn)
             arguments
-                this mlsiemens.BrainMoCoParams
+                this mlsiemens.BrainMoCoParams2
                 fqfn {mustBeTextScalar} = this.fqfilename()
             end
 
