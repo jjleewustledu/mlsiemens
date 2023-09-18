@@ -5,6 +5,10 @@ classdef BrainMoCoParams2
     %  Created 19-Apr-2023 00:15:19 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiements/src/+mlsiements.
     %  Developed on Matlab 9.14.0.2206163 (R2023a) for MACI64.  Copyright 2023 John J. Lee.
     
+    properties (Constant)
+        SHAPE = [440 440 159]
+    end
+
     properties (Dependent)
         %---------------------------------------
         % SECTION 1 -- Reconstruction Parameters
@@ -122,7 +126,7 @@ classdef BrainMoCoParams2
                 case "mct"
                     g = 400;
                 case "vision"
-                    g = 440;
+                    g = this.SHAPE(1);
                 case "mmr"
                     g = 344;
                 case "horizon"
@@ -150,6 +154,8 @@ classdef BrainMoCoParams2
                 opts.tag {mustBeTextScalar} = "-start"
                 opts.tag0 {mustBeTextScalar} = "-start0"
                 opts.is_dyn logical = true
+                opts.doIF2Dicom logical = false
+                opts.clean_up logical = false
             end
             this.Skip = opts.Skip;
             this.LMFrames_ = convertCharsToStrings(opts.LMFrames);
@@ -157,9 +163,6 @@ classdef BrainMoCoParams2
             this.tracer_ = convertCharsToStrings(opts.tracer);
             this.filepath_ = convertCharsToStrings(opts.filepath);
 
-            this.doBMCMakeDicom = double(contains(opts.tag, opts.tag0) && ~opts.is_dyn);
-            this.doDYNMakeDicom = double(contains(opts.tag, opts.tag0) && opts.is_dyn);
-            this.doBMCRecon = double(~opts.is_dyn);  % static BMC recon
             this.doBMCDynamic = double(opts.is_dyn); % dynamic BMC recon
         end
         function fn = fqfilename(this)

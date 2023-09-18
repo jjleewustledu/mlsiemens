@@ -7,6 +7,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
     
     properties
         testObj
+        bar_alpha_smaller_fqfn
     end
     
     methods (Test)
@@ -41,7 +42,8 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             parpool(mlsiemens.BrainMoCo2.N_PROC)
 
             % oo
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421150523\lm");
+            pwd0 = pushd(fullfile( ...
+                "D:", "CCIR_01211", "sourcedata", "sub-108293", "aaaases-20210421150523", "lm"));
             tic
             mlsiemens.BrainMoCo2.create_oo(pwd);
             toc
@@ -64,11 +66,11 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             % Elapsed time is 10988.011654 seconds.
 
             % oo
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421150523\lm");
-            tic
-            mlsiemens.BrainMoCo2.create_oo(pwd);
-            toc
-            popd(pwd0);
+            % pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421150523\lm");
+            % tic
+            % mlsiemens.BrainMoCo2.create_oo(pwd);
+            % toc
+            % popd(pwd0);
             % Elapsed time is 29512.260563 seconds.
 
             % ho
@@ -214,6 +216,11 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             xlabel("times (s)")
             ylabel("activity density (Bq/mL)")
         end
+        function test_cumul2frames_4D(this)
+            ic = mlfourd.ImagingContext2(this.bar_alpha_smaller_fqfn);
+            ic = mlsiemens.BrainMoCo2.cumul2frames4d(ic);
+            ic.view()
+        end
         function test_diff_cumul(this)
             a = [0 1e3 1e4 5e4 10e4 7e4 6e4 5e4 4e4 3e4 linspace(20e3, 10e3, 10) linspace(10e3, 5e3, 10)]; % len ~ 30
             a = a + 1e4*rand(1,30);
@@ -278,6 +285,8 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
         function setupJSReconBuilder_Win(this)
             import mlsiemens.*
             %this.testObj_ = BrainMoCoBuilder();
+            this.bar_alpha_smaller_fqfn = ...
+                fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "bar_alpha_smaller.nii.gz");
         end
     end
     

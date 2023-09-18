@@ -471,7 +471,7 @@ classdef JSReconParams
         function g = get.outimagesize(this)
             switch this.model_
                 case "Vision"
-                    g = 440;
+                    g = 220; % 440;
                 case "mMR"
                     g = 344;
                 case "mCT"
