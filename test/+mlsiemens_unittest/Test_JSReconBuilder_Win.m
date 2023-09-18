@@ -25,59 +25,75 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             popd(pwd0);
         end
         function test_BMC_create_fdg_phantom(this)
+
+            parpool(mlsiemens.BrainMoCo2.N_PROC)
+
             % calib. phantom
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421171325\lm");
             tic
-            mlsiemens.BrainMoCo.create_fdg_phantom(pwd);
+            mlsiemens.BrainMoCo2.create_fdg_phantom(pwd);
             toc
-            this.verifyEqual(1,1);            
             popd(pwd0);
+            % Elapsed time is 3148.839220 seconds for 54 cumulative, N_PROC == 5, parpool(5).
         end
         function test_BMC_create_oo(this)
+
+            parpool(mlsiemens.BrainMoCo2.N_PROC)
+
             % oo
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421150523\lm");
             tic
             mlsiemens.BrainMoCo2.create_oo(pwd);
             toc
             popd(pwd0);
-            % Elapsed time is 6974.721815 seconds for interleaved (with drop-outs).
-            % Elapsed time 
+            % Elapsed time is 6974.721815 seconds for moving-average (with drop-outs).
+            % Elapsed time is 1389.936770 seconds for 2 cumulative, N_PROC == 5
+            % Elapsed time is 2662.566290 seconds for 5 cumulative, N_PROC == 5
+            % Elapsed time is 4482.024104 seconds for 10 moving-average, N_PROC == 5, parpool(5)
         end
         function test_BMC_create_for_agi(this)
+            
+            parpool(mlsiemens.BrainMoCo2.N_PROC)
+
             % co
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421144815\lm");
             tic
-            mlsiemens.BrainMoCo.create_co(pwd);
+            mlsiemens.BrainMoCo2.create_co(pwd);
             toc
             popd(pwd0);
+            % Elapsed time is 10988.011654 seconds.
 
             % oo
-            % pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421150523\lm");
-            % tic
-            % mlsiemens.BrainMoCo.create_oo(pwd);
-            % toc
-            % popd(pwd0);
+            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421150523\lm");
+            tic
+            mlsiemens.BrainMoCo2.create_oo(pwd);
+            toc
+            popd(pwd0);
+            % Elapsed time is 29512.260563 seconds.
 
             % ho
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421152358\lm");
             tic
-            mlsiemens.BrainMoCo.create_ho(pwd);
+            mlsiemens.BrainMoCo2.create_ho(pwd);
             toc
             popd(pwd0);
+            % Elapsed time is 7146.333194 seconds.
 
             % oo
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421154248\lm");
             tic
-            mlsiemens.BrainMoCo.create_oo(pwd);
+            mlsiemens.BrainMoCo2.create_oo(pwd);
             toc
             popd(pwd0);
+            % Elapsed time is 11010.605297 seconds.
 
             % fdg
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421155709\lm");
             tic
-            mlsiemens.BrainMoCo.create_fdg(pwd);
+            mlsiemens.BrainMoCo2.create_fdg(pwd);
             toc
             popd(pwd0);
+            % Elapsed time is 40264.135840 seconds.
         end
         function test_build_niftis(this)
             lm_path = "D:\CCIR_01211\sourcedata\sub-108306\ses-20230227134149\lm";
@@ -114,6 +130,147 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             end
 
             popd(pwd0);
+        end
+        function test_cumul2frames(this)
+            a = [0 1e3 1e4 5e4 10e4 7e4 6e4 5e4 4e4 3e4 linspace(20e3, 10e3, 10) linspace(10e3, 5e3, 10)]; % len ~ 30
+            a = a + 1e4*rand(1,30);
+            a(a<0) = 5e3;
+            taus = [ones(1,20) 10*ones(1,10)];
+            timesMid = cumsum(taus) - taus/2;
+            alpha_bar = zeros(1,30);
+            alpha = zeros(1,30);
+            for i = 1:30
+                T = sum(taus(i:30));
+                alpha_bar(i) = sum(taus(i:30).*a(i:30))/T; % time-interval averages
+                alpha(i) = sum(taus(i:30).*a(i:30));
+            end
+
+            figure;
+            plot(timesMid, a)
+            legend("a")
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
+
+            figure; 
+            plot(timesMid, alpha_bar)
+            legend("bar \alpha")
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
+
+            figure; 
+            ic_alpha_bar = mlfourd.ImagingContext2(alpha_bar);
+            ic_a_hat = mlsiemens.BrainMoCo2.cumul2frames(ic_alpha_bar, taus=taus);
+            a_hat = ic_a_hat.imagingFormat.img;
+            plot(timesMid, a, timesMid, alpha_bar, timesMid, a_hat);            
+            legend(["a", "bar \alpha", "a hat"], Interpreter="tex")
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
+        end
+        function test_cumul2frames_2D(this)
+            a = [0 1e3 1e4 5e4 10e4 7e4 6e4 5e4 4e4 3e4 linspace(20e3, 10e3, 10) linspace(10e3, 5e3, 10)]; % len ~ 30
+            %a = [a; a; a; a];
+            a = a + 1e4*rand(4,30);
+            a(a<0) = 5e3;
+            taus = [ones(1,20) 10*ones(1,10)];
+            timesMid = cumsum(taus, 2) - taus/2;
+            alpha_bar = zeros(4,30);
+            alpha = zeros(4,30);
+            for i = 1:30
+                T = sum(taus(i:30), 2);
+                alpha_bar(:, i) = sum(taus(i:30).*(a(:, i:30)./T), 2); % time-interval averages
+                alpha(:, i) = sum(taus(i:30).*a(:, i:30), 2);
+            end
+            
+            figure; 
+            hold on
+            for i = 1:4
+                plot(timesMid, a(i,:))
+            end
+            hold off
+            legend(["a", "a", "a", "a"])
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
+
+            figure; 
+            hold on
+            for i = 1:4
+                plot(timesMid, alpha_bar(i,:))
+            end
+            hold off
+            legend(["bar \alpha", "bar \alpha", "bar \alpha", "bar \alpha"])
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
+
+            figure; 
+            ic_alpha_bar = mlfourd.ImagingContext2(alpha_bar);
+            ic_a_hat = mlsiemens.BrainMoCo2.cumul2frames(ic_alpha_bar, taus=taus);
+            a_hat = ic_a_hat.imagingFormat.img;
+            hold on
+            for i = 1:4
+                plot(timesMid, a(i,:), timesMid, alpha_bar(i,:), timesMid, a_hat(i,:));
+            end
+            hold off
+            legend(["a", "bar \alpha", "a hat", "a", "bar \alpha", "a hat", "a", "bar \alpha", "a hat", "a", "bar \alpha", "a hat"], Interpreter="tex")
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
+        end
+        function test_diff_cumul(this)
+            a = [0 1e3 1e4 5e4 10e4 7e4 6e4 5e4 4e4 3e4 linspace(20e3, 10e3, 10) linspace(10e3, 5e3, 10)]; % len ~ 30
+            a = a + 1e4*rand(1,30);
+            a(a<0) = 5e3;
+            taus = [ones(1,20) 10*ones(1,10)];
+            timesMid = cumsum(taus) - taus/2;
+            alpha_bar = zeros(1,30);
+            alpha = zeros(1,30);
+            for i = 1:30
+                T = sum(taus(1:i));
+                alpha_bar(i) = sum(taus(1:i).*a(1:i))/T; % time-interval averages
+                alpha(i) = sum(taus(1:i).*a(1:i));
+            end
+
+            figure;
+            plot(timesMid, a)
+
+            figure; 
+            ic_alpha = mlfourd.ImagingContext2(alpha);
+            ic_a_hat = mlsiemens.BrainMoCo2.diff_cumul(ic_alpha, taus=taus);     
+            timesMid_ = timesMid(1:end-1);  
+            timesMid__ = timesMid(2:end);
+            a_hat = ic_a_hat.imagingFormat.img;
+            plot(timesMid, a, timesMid, alpha_bar, timesMid, alpha, timesMid_, a_hat, timesMid__, a_hat);            
+            legend(["a", "\alpha bar", "\alpha", "a hat", "a(t++) hat"], Interpreter="tex")
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
+        end
+        function test_diff_cumul_time_rev(this)
+            a = [0 1e3 1e4 5e4 10e4 7e4 6e4 5e4 4e4 3e4 linspace(20e3, 10e3, 10) linspace(10e3, 5e3, 10)]; % len ~ 30
+            a = a + 1e4*rand(1,30);
+            a(a<0) = 5e3;
+            a__ = flip(a);
+            taus = [ones(1,20) 10*ones(1,10)];
+            taus__ = flip(taus);
+            timesMid = cumsum(taus) - taus/2;
+            alpha_bar = zeros(1,30);
+            alpha = zeros(1,30);
+            for i = 1:30
+                T = sum(taus__(1:i));
+                alpha_bar(i) = sum(taus__(1:i).*a__(1:i))/T; % time-interval averages
+                alpha(i) = sum(taus__(1:i).*a__(1:i));
+            end
+
+            figure;
+            plot(timesMid, a)
+
+            figure; 
+            ic_alpha = mlfourd.ImagingContext2(alpha);
+            ic_a_hat = mlsiemens.BrainMoCo2.diff_cumul(ic_alpha, taus=flip(taus));   
+            ic_a_hat = flip(ic_a_hat, 2);
+            timesMid_ = timesMid(1:end-1);  
+            a_hat = ic_a_hat.imagingFormat.img;
+            plot(timesMid, a, timesMid, flip(alpha_bar), timesMid, flip(alpha), timesMid_, a_hat);            
+            legend(["a", "\alpha bar", "\alpha", "a hat"], Interpreter="tex")
+            xlabel("times (s)")
+            ylabel("activity density (Bq/mL)")
         end
     end
     

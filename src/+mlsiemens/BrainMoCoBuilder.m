@@ -267,6 +267,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.v {mustBeInteger} = 0
                 opts.version {mustBeNumeric} = []
                 opts.w {mustBeInteger} = 1
+                opts.toglob_mhdr {mustBeTextScalar} = "*.mhdr"
+                opts.toglob_vhdr {mustBeTextScalar} = "*.v.hdr"
             end
             
             % select executable dcm2niix & pigz
@@ -310,29 +312,25 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             fp = myfileprefix(fn);
 
             % jsonrecode using .mhdr & .v.hdr
-            if ~contains(folder, ".v-DICOM")
-                folder = fullfile(folder, "**.v-DICOM");
-            end
             dcm_path = globFolders(convertStringsToChars(folder)); 
             hdr_path = myfileparts(dcm_path); 
             hdr_path = ensureCell(hdr_path);
             for fidx = 1:length(fp)
                 try
-                    mhdr_glob = glob(convertStringsToChars(fullfile(hdr_path{fidx}, "*.mhdr"))); assert(~isempty(mhdr_glob));
-                    vhdr_glob = glob(convertStringsToChars(fullfile(hdr_path{fidx}, "*.v.hdr"))); assert(~isempty(vhdr_glob));
+                    mhdr_glob = glob(convertStringsToChars(fullfile(hdr_path{fidx}, opts.toglob_mhdr))); assert(~isempty(mhdr_glob));
+                    vhdr_glob = glob(convertStringsToChars(fullfile(hdr_path{fidx}, opts.toglob_vhdr))); assert(~isempty(vhdr_glob));
                     if isempty(mhdr_glob); continue; end
+                    if isempty(vhdr_glob); continue; end
                     tags = mybasename(mhdr_glob);
                     tags = strrep(tags, '-', '_');
     
-                    % gather multiple .mhdr & .v.hdr to build json
-                    for midx = 1:length(mhdr_glob)
-                        try
-                            mhdr = readlines(mhdr_glob{midx});                    
-                            vhdr = readlines(vhdr_glob{midx});
-                            st.(tags{midx}) = struct("mhdr", mhdr, "vhdr", vhdr);
-                        catch ME
-                            handwarning(ME)
-                        end
+                    % gather exemplar .mhdr & .v.hdr to build json
+                    try
+                        mhdr = readlines(mhdr_glob{1});                    
+                        vhdr = readlines(vhdr_glob{1});
+                        st.(tags{1}) = struct("mhdr", mhdr, "vhdr", vhdr);
+                    catch ME
+                        handwarning(ME)
                     end
                     fqfn_json = convertStringsToChars(fp(fidx)+".json");
                     jsonrecode(fqfn_json, st, filenameNew=fqfn_json);

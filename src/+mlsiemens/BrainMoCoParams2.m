@@ -35,7 +35,7 @@ classdef BrainMoCoParams2
         Gaussian              =     0          %FWHM in mm for Gaussian postfilter. If both Gaussian
                                                %and Hanning are non-zero, Gaussian is used
         Hanning               =     0          %FWHM in mm for Hanning postfilter
-        PSF                   =     0
+        PSF                   =     1
         TOF                   =     1          %automatically set to 0 for mMR & Horizon
         Iterations            =     4
         Subsets               =     5          %automatically set to 5 for Vision
