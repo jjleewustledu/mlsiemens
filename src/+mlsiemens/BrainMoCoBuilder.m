@@ -5,35 +5,41 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
     %  Created 29-Aug-2023 15:00:03 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
     
+    properties
+        sessions
+    end
+
     properties (Dependent)
         output_path % determined by Judd's BMC.js
-        project_path
-        raw_lm_path
-        raw_pet_path
-        source_lm_path
-        source_pet_path
+
+        raw_dcm_path % initially unstructured, from external sources
+        raw_lm_path % initially unstructured, from external sources
+        raw_sub_path
+
+        source_ses_paths
+        source_sub_path
     end
 
     methods % GET
         function g = get.output_path(this)
-            g = myfileparts(myfileparts(this.source_lm_path));
+            g = myfileparts(this.source_sub_path);
             g = fullfile(g, "+Output");
+            ensuredir(g)
         end
-        function g = get.project_path(this)
-            ss = split(this.raw_lm_path, filesep);
-            g = fullfile(ss(1), ss(2));
+        function g = get.raw_dcm_path(this)
+            g = fullfile(this.raw_sub_path, "dcm");
         end
         function g = get.raw_lm_path(this)
             g = this.raw_lm_path_;
         end
-        function g = get.raw_pet_path(this)
-            g = fullfile(myfileparts(this.raw_lm_path), "pet");
+        function g = get.raw_sub_path(this)
+            g = myfileparts(this.raw_lm_path);
         end
-        function g = get.source_lm_path(this)
-            g = this.source_lm_path_;
+        function g = get.source_ses_paths(this)
+            g = fullfile(this.source_sub_path, this.sessions);
         end
-        function g = get.source_pet_path(this)
-            g = fullfile(myfileparts(this.source_lm_path), "pet");
+        function g = get.source_sub_path(this)
+            g = strrep(this.raw_sub_path, "rawdata", "sourcedata");
         end
     end
 

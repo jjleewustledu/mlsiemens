@@ -4,10 +4,6 @@ classdef BrainMoCoParams2
     %  
     %  Created 19-Apr-2023 00:15:19 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiements/src/+mlsiements.
     %  Developed on Matlab 9.14.0.2206163 (R2023a) for MACI64.  Copyright 2023 John J. Lee.
-    
-    properties (Constant)
-        SHAPE = [440 440 159]
-    end
 
     properties (Dependent)
         %---------------------------------------
@@ -126,7 +122,7 @@ classdef BrainMoCoParams2
                 case "mct"
                     g = 400;
                 case "vision"
-                    g = this.SHAPE(1);
+                    g = 440;
                 case "mmr"
                     g = 344;
                 case "horizon"
