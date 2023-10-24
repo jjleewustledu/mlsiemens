@@ -6,7 +6,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlvg/src/+mlvg.
  	%% It was developed on Matlab 9.11.0.1769968 (R2021b) for MACI64.  Copyright 2021 John Joowon Lee.
 
-    properties (Abstract)
+    properties
         flair_toglob
         pet_dyn_toglob
         pet_static_toglob
@@ -221,6 +221,24 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             %      sessionFolder (text): is the BIDS-adherent string for session identity.
 
             this = this@mlpipeline.Bids(varargin{:});
+
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'flair_toglob', fullfile(this.sourceAnatPath, 'sub-*_3D_FLAIR_Sag.nii.gz'), @istext);
+            addParameter(ip, 'pet_dyn_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*MovingAvg*_pet.nii.gz'), @istext);
+            addParameter(ip, 'pet_static_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*tatic*_pet.nii.gz'), @istext);
+            addParameter(ip, 't1w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T1w_MPR_vNav_4e_RMS.nii.gz'), @istext);
+            addParameter(ip, 't2w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T2w_SPC_vNava.nii.gz'), @istext);
+            addParameter(ip, 'tof_toglob', fullfile(this.sourceAnatPath, 'sub-*_tof_fl3d_tra_p2_multi-slab.nii.gz'), @istext);            
+            parse(ip, varargin{:})
+            ipr = ip.Results;
+
+            this.flair_toglob = ipr.flair_toglob;
+            this.pet_dyn_toglob = ipr.pet_dyn_toglob;
+            this.pet_static_toglob = ipr.pet_static_toglob;
+            this.t1w_toglob = ipr.t1w_toglob;
+            this.t2w_toglob = ipr.t2w_toglob;
+            this.tof_toglob = ipr.tof_toglob;
         end
         function [s,r] = build_dlicv(~, t1w, dlicv)
             %% nvidia-docker run -it -v $(pwd):/data --rm jjleewustledu/deepmrseg_image:20220615 --task dlicv --inImg fileprefix.nii.gz --outImg fileprefix_DLICV.nii.gz
