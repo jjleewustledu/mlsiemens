@@ -86,7 +86,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             %assert(contains(opts.source_lm_path, "lm"), stackstr())
             this.source_lm_path_ = convertCharsToStrings(opts.source_lm_path);
         end
-        function call(this, opts)
+        function build_all(this, opts)
             arguments
                 this mlsiemens.BrainMoCo
                 opts.Skip {mustBeInteger} = 0
@@ -135,7 +135,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             end
             popd(pwd0);
         end
-        function call_static(this)
+        function build_static(this)
             pwd0 = pushd(this.source_pet_path);
             [~,r] = mysystem(sprintf("cscript C:\JSRecon12\StaticRecon\StaticRecon.js %s", ...
                 this.jsrecon_js, ...
@@ -143,7 +143,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             disp(r)
             popd(pwd0);
         end
-        function this = call_test(this, opts)
+        function this = build_test(this, opts)
             arguments
                 this mlsiemens.BrainMoCo
                 opts.LMFrames {mustBeTextScalar} = "0:60,60,60,60,60"
@@ -277,7 +277,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
                 this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
                 lmframes = this.mat2lmframes(10*ones(1,29), start=start);
-                this.call(LMFrames=lmframes, tracer="co", tag="-start"+start);
+                this.build_all(LMFrames=lmframes, tracer="co", tag="-start"+start);
             end
         end
         function create_oo(source_lm_path)
@@ -288,7 +288,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
                 this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
                 lmframes = this.mat2lmframes(10*ones(1,12), start=start);
-                this.call(LMFrames=lmframes, tracer="oo", tag="-start"+start);
+                this.build_all(LMFrames=lmframes, tracer="oo", tag="-start"+start);
             end
         end
         function create_ho(source_lm_path)
@@ -299,7 +299,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
                 this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
                 lmframes = this.mat2lmframes(10*ones(1,12), start=start);
-                this.call(LMFrames=lmframes, tracer="ho", tag="-start"+start);
+                this.build_all(LMFrames=lmframes, tracer="ho", tag="-start"+start);
             end
         end
         function create_fdg(source_lm_path)
@@ -310,11 +310,11 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
                 this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
                 lmframes = this.mat2lmframes(10*ones(1,30), start=start);
-                this.call(LMFrames=lmframes, tracer="fdg", tag="-start"+start);
+                this.build_all(LMFrames=lmframes, tracer="fdg", tag="-start"+start);
             end
             that = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+300);
             lmframes = that.mat2lmframes(60*ones(1,55), start=300);
-            that.call(LMFrames=lmframes, tracer="fdg", tag="-start"+300);
+            that.build_all(LMFrames=lmframes, tracer="fdg", tag="-start"+300);
         end
         function create_fdg_hires(source_lm_path)
             arguments
@@ -324,7 +324,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
                 this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
                 lmframes = this.mat2lmframes(10*ones(1,359), start=start);
-                this.call(LMFrames=lmframes, tracer="fdg", tag="-hires-start"+start);
+                this.build_all(LMFrames=lmframes, tracer="fdg", tag="-hires-start"+start);
             end
         end
         function create_fdg_phantom(source_lm_path)
@@ -335,7 +335,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             parfor (start = 0:9, mlsiemens.BrainMoCo.N_PROC)
                 this = mlsiemens.BrainMoCo.create_tagged(source_lm_path, "-start"+start);
                 lmframes = this.mat2lmframes(10*ones(1,29), start=start);
-                this.call(LMFrames=lmframes, tracer="fdg", tag="-start"+start);
+                this.build_all(LMFrames=lmframes, tracer="fdg", tag="-start"+start);
             end
         end
         function this = create_tagged(source_lm_path, tag)

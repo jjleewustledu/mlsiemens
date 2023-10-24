@@ -33,7 +33,7 @@ classdef Test_JSReconBuilder < matlab.unittest.TestCase
         end
         function test_vision_test_data(this)
             bmc = mlsiemens.BrainMoCo();
-            call_test(bmc);
+            build_test(bmc);
         end
         function test_jsrecon_builder(this)
         end

@@ -17,11 +17,11 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
-        function test_BMC_call(this)
+        function test_BMC_build(this)
             % calib. phantom
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108306\ses-20230227134149\lm");
             bmc = mlsiemens.BrainMoCo(source_lm_path=pwd);
-            bmc.call(Skip=0, LMFrames="0:10,10,10", tracer="fdg");
+            bmc.build_all(Skip=0, LMFrames="0:10,10,10", tracer="fdg");
             this.verifyEqual(1,1);            
             popd(pwd0);
         end
@@ -36,65 +36,131 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             toc
             popd(pwd0);
             % Elapsed time is 3148.839220 seconds for 54 cumulative, N_PROC == 5, parpool(5).
+            % Elapsed time is ~ 2580 seconds for 5*29 moving average frames, N_PROC == 5, parpool(5).
+        end
+
+        function test_BMC_create_co(this)
+
+            % co
+            pwd0 = pushd(fullfile( ...
+                "D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm"));
+            tic
+            mlsiemens.BrainMoCo2.create_simple(pwd, tracer="co");
+            toc
+            popd(pwd0);
+            % Elapsed time is 2053.586021 seconds.
         end
         function test_BMC_create_oo(this)
-
+            
             parpool(mlsiemens.BrainMoCo2.N_PROC)
 
             % oo
             pwd0 = pushd(fullfile( ...
-                "D:", "CCIR_01211", "sourcedata", "sub-108293", "aaaases-20210421150523", "lm"));
+                "D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", "lm-oo1"));
             tic
-            mlsiemens.BrainMoCo2.create_oo(pwd);
+            mlsiemens.BrainMoCo2.create_moving_average(pwd, tracer="oo");            
+            %mlsiemens.BrainMoCo2.create_simple( ...
+            %    pwd, tracer="oo", taus=[3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)]);
             toc
             popd(pwd0);
             % Elapsed time is 6974.721815 seconds for moving-average (with drop-outs).
             % Elapsed time is 1389.936770 seconds for 2 cumulative, N_PROC == 5
             % Elapsed time is 2662.566290 seconds for 5 cumulative, N_PROC == 5
             % Elapsed time is 4482.024104 seconds for 10 moving-average, N_PROC == 5, parpool(5)
+            % Elapsed time is 4289.807903 seconds for 5*29 moving average frames, N_PROC == 5, parpool(5). 
+            % Elapsed time is 6856.532406 seconds for moving average frames N_PROC == 10, parpool(10).
         end
-        function test_BMC_create_for_agi(this)
+        function test_BMC_create_moving_average_agi(this)
             
             parpool(mlsiemens.BrainMoCo2.N_PROC)
 
-            % co
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421144815\lm");
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co"), ...
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm-ho"), ...
+            paths = [ ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421155709", "lm-fdg")];
+            tracers = ["oo", "fdg"]; % "co", "ho", 
+            % 10*ones(1,29), ...
+            % 10*ones(1,11), ...
+            taus = { ...
+                10*ones(1,11), ...                
+                10*ones(1,359)};
+            for ti = 1:2
+                tic
+                mlsiemens.BrainMoCo2.create_moving_average( ...
+                    paths(ti), tracer=tracers(ti), taus=taus{ti});
+                toc
+            end
+        end
+        function test_BMC_create_simple_agi(this)
+            
+            parpool(mlsiemens.BrainMoCo2.N_PROC)
+
+            paths = [ ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", "lm-oo1"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm-ho"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421155709", "lm-fdg")];
+            tracers = ["co", "oo", "ho", "oo", "fdg"];
+            taus = { ...
+                [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)], ...
+                [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)], ...
+                [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)], ...
+                [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)], ...
+                [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4) 300*ones(1,11)]};
             tic
-            mlsiemens.BrainMoCo2.create_co(pwd);
+            parfor (ti = 1:5, mlsiemens.BrainMoCo2.N_PROC)
+                mlsiemens.BrainMoCo2.create_simple( ...
+                    paths(ti), tracer=tracers(ti), taus=taus{ti});
+            end
             toc
-            popd(pwd0);
-            % Elapsed time is 10988.011654 seconds.
+            % Elapsed time is 4629.934149 seconds.
+
+            % co
+            % pwd0 = pushd(fullfile( ...
+            %     "D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm"));
+            % tic
+            % mlsiemens.BrainMoCo2.create_co(pwd);
+            % toc
+            % popd(pwd0);
+            % Elapsed time is 10988.011654 seconds for cumul2frames.
+            % Elapsed time is 3075.282301 seconds for moving average frames.
 
             % oo
             % pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421150523\lm");
             % tic
-            % mlsiemens.BrainMoCo2.create_oo(pwd);
+            % mlsiemens.BrainMoCo2.create_simple(pwd, tracer="oo");
             % toc
             % popd(pwd0);
             % Elapsed time is 29512.260563 seconds.
 
             % ho
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421152358\lm");
-            tic
-            mlsiemens.BrainMoCo2.create_ho(pwd);
-            toc
-            popd(pwd0);
+            % pwd0 = pushd(fullfile( ...
+            %     "D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm"));
+            % tic
+            % mlsiemens.BrainMoCo2.create_simple(pwd, tracer="ho");
+            % toc
+            % popd(pwd0);
             % Elapsed time is 7146.333194 seconds.
 
             % oo
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421154248\lm");
-            tic
-            mlsiemens.BrainMoCo2.create_oo(pwd);
-            toc
-            popd(pwd0);
+            % pwd0 = pushd(fullfile( ...
+            %     "D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm"));
+            % tic
+            % mlsiemens.BrainMoCo2.create_simple(pwd, tracer="oo");
+            % toc
+            % popd(pwd0);
             % Elapsed time is 11010.605297 seconds.
 
             % fdg
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421155709\lm");
-            tic
-            mlsiemens.BrainMoCo2.create_fdg(pwd);
-            toc
-            popd(pwd0);
+            % pwd0 = pushd(fullfile( ...
+            %     "D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421155709", "lm"));
+            % tic
+            % mlsiemens.BrainMoCo2.create_simple(pwd, tracer="fdg", ...
+            %     taus=[5*ones(1,24) 20*ones(1,9) 60*ones(1,10) 300*ones(1,9)]);
+            % toc
+            % popd(pwd0);
             % Elapsed time is 40264.135840 seconds.
         end
         function test_build_niftis(this)
@@ -117,7 +183,12 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             delete(myfileparts(dyn_dcm_path))
             popd(pwd0);
         end
-        function test_call_static(this)
+        function test_createNiftiMovingAvgRepair(this)
+            sub = "sub-108293";
+            ses = "ses-20210421154248";
+            mlsiemens.BrainMoCo2.createNiftiMovingAvgRepair(sub, ses);
+        end
+        function test_build_static(this)
             pwd0 = pushd("D:\CCIR_01211\rawdata\sub-108306\ses-20230227\lm");
 
             bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd);
@@ -126,7 +197,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             for k = asrow(keys) 
                 bmcb.build_input_folders(map(k{1}));
                 bmc = mlsiemens.BrainMoCo(source_lm_path=bmcb.source_lm_path);
-                bmc.call_static();
+                bmc.build_static();
                 %bmcb.build_niftis(map(k{1}), tracer="unknown", is_dyn=false);
                 %bmcb.build_output_folders(map(k{1}));
             end
