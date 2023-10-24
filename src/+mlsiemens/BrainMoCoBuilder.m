@@ -45,56 +45,253 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
     methods
         function this = BrainMoCoBuilder(opts)
+            %% opts.raw_lm_path specifies subject for building in properties raw_sub_path, source_sub_path
+
             arguments
                 opts.raw_lm_path {mustBeFolder} = pwd
             end
-            this.raw_lm_path_ = opts.raw_lm_path;
+
+            this.raw_lm_path_ = this.ensureEndsWithLm(opts.raw_lm_path);
+            this.ensureEndsWithLm(opts.raw_lm_path);
+            ensuredir(this.raw_lm_path);
+            ensuredir(this.raw_dcm_path);            
+            fprintf("%s: manually inspect %s and %s for appropriate raw data.\n", stackstr(), this.raw_lm_path, this.raw_dcm_path)
+
+            this.sessions = "";
         end
-        function [s,r] = copyfile(~, file_obj, dest_pth)
-            [~,fp,x] = myfileparts(file_obj);
-            dest_obj = fullfile(dest_pth, strcat(fp, x));
-            if ~isfile(dest_obj)
-                return
+        
+        
+        function build_all(this)
+            %% in rawdata, build dcm and lm folders containing first iteration of organization of files
+
+            %this.build_raw_dcm()
+            %this.build_raw_lm()
+            map = this.build_map_of_lm();
+            keys = map.keys;
+            for k = asrow(keys) % *LISTMODE*                
+                this.build_sourcedata_dcm();
+                %this.build_sourcedata_lm(map(k{1}));
             end
-            [s,r] = copyfile(file_obj, dest_pth);
         end
-        function [s,r] = copyfile_ct_dcm(this, ct_nii, dest_pth)
-            [~,fp,x] = myfileparts(ct_nii);
-            ct_stars = fullfile(this.project_path, "rawdata", "dcm", "**", strcat(fp, x));
-            g = glob(convertStringsToChars(ct_stars));
 
-            % find the deepest match
-            [~,I] = sort(cellfun(@length, g));
-            g = g(I);
+
+        function build_all_part2(this, opts)
+            %% in sourcedata, build
+            arguments
+                this mlsiemens.BrainMoCoBuilder
+                opts.subjects {mustBeText} = ...
+                    ["sub-108007", "sub-108238", "sub-108287", "sub-108300", "sub-108306"]
+                opts.nproc double = mlsiemens.BrainMoCo2.N_PROC
+            end
+
+            parpool(opts.nproc)
+
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co"), ...
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm-ho"), ...
+            paths = [ ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421155709", "lm-fdg")];
+            tracers = ["oo", "fdg"]; % "co", "ho", 
+            % 10*ones(1,29), ...
+            % 10*ones(1,11), ...
+            taus = { ...
+                10*ones(1,11), ...                
+                10*ones(1,359)};
+            for ti = 1:2
+                tic
+                mlsiemens.BrainMoCo2.create_moving_average( ...
+                    paths(ti), tracer=tracers(ti), taus=taus{ti});
+                toc
+            end
+
+
+            % %     build_all BMC    
+            % bmc = mlsiemens.BrainMoCo2(source_lm_path=this.source_lm_path);
+            % switch something
+            %     case "fdg_phantom"
+            %         bmc.build_fdg_phantom() % phantom
+            %     case "co"
+            %         bmc.build_co()
+            %     case "oo"
+            %         bmc.build_oo()
+            %     case "ho"                
+            %         bmc.build_ho()
+            %     case "fdg"
+            %         bmc.build_fdg()
+            % end
+            % 
+            % %     apply dcm2niix
+            % 
+            % this.build_niftis(map(k{1}));
+            % 
+            % %     reorganize output folders
+            % 
+            % this.build_output_folders(map(k{1}));            
         end
-        function build_input_folders(this, s)
-            raw_sub_path = myfileparts(myfileparts(this.raw_lm_path));
-            source_sub_path = strrep(raw_sub_path, "rawdata", "sourcedata");
-            ses = sprintf("ses-%s", datetime(s.dt, Format="yyyyMMddHHmmss"));
-            this.source_lm_path_ = fullfile(source_sub_path, ses, "lm");
 
-            ensuredir(this.source_lm_path);
-            this.copyfile_ct_dcm(s.ct, this.source_lm_path);
-            this.copyfile(s.norm, this.source_lm_path);
-            this.copyfile(s.lm, this.source_lm_path);
 
-            ensuredir(this.source_pet_path);
+        function build_sourcedata_dcm(this)
+            pwd0 = pushd(this.raw_dcm_path);
+
+            % ensure session folders
+            ensuredir(this.source_sub_path);
+            dts = this.find_dcm_dates();
+            for dtidx = 1:length(dts)
+                this.sessions(dtidx) = sprintf("ses-%s", string(datetime(dts(dtidx), Format="yyyyMMdd")));
+                ensuredir(fullfile(this.source_sub_path, this.sessions(dtidx) ));
+            end
+
+            % populate anat
+            for ses = asrow(this.sessions)
+                src_anat_pth = fullfile(this.source_sub_path, ses, "anat");
+                g = mglob([ ...
+                    "sub-*_"+ses+"*ocalizer*.*", ...
+                    "sub-*_"+ses+"*FastIR*.*", ...
+                    "sub-*_"+ses+"*FLAIR*.*", ...
+                    "sub-*_"+ses+"*quick_tof*.*", ...                    
+                    "sub-*_"+ses+"*sag_loc*.*", ...                  
+                    "sub-*_"+ses+"*tof*.*", ...                
+                    "sub-*_"+ses+"*_T1-*.*", ...                
+                    "sub-*_"+ses+"*_T1w*vNav*.*", ...              
+                    "sub-*_"+ses+"*_T2w*vNav*.*"]);
+                if ~isemptytext(g)
+                    ensuredir(src_anat_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g1, src_anat_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
+            end
+
+            % populate dwi
+            for ses = asrow(this.sessions)
+                src_dwi_pth = fullfile(this.source_sub_path, ses, "dwi");
+                g = mglob([ ...
+                    "sub-*_"+ses+"*DTI*.*", ...
+                    "sub-*_"+ses+"*DBSI*.*"]);
+                if ~isemptytext(g)
+                    ensuredir(src_dwi_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g, src_dwi_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
+            end
+
+            % populate fmap
+            for ses = asrow(this.sessions)
+                src_fmap_pth = fullfile(this.source_sub_path, ses, "fmap");
+                g = mglob("sub-*_"+ses+"*FieldMap*.*");
+                if ~isemptytext(g)
+                    ensuredir(src_fmap_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g1, src_fmap_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
+            end
+
+            % populate func
+            for ses = asrow(this.sessions)
+                src_func_pth = fullfile(this.source_sub_path, ses, "func");
+                g = mglob([ ...
+                    "sub-*_"+ses+"*ASE*.*", ...
+                    "sub-*_"+ses+"*ase*.*", ...
+                    "sub-*_"+ses+"*DistortionMap*.*", ...
+                    "sub-*_"+ses+"*CBF*.*", ...  
+                    "sub-*_"+ses+"*fMRI_REST*.*", ...        
+                    "sub-*_"+ses+"*M0*.*", ...       
+                    "sub-*_"+ses+"*MoCoSeries*.*", ...         
+                    "sub-*_"+ses+"*PC2D*.*", ...         
+                    "sub-*_"+ses+"*PCASL*.*", ...        
+                    "sub-*_"+ses+"*pcasl*.*", ...           
+                    "sub-*_"+ses+"*QSM*.*", ...               
+                    "sub-*_"+ses+"*Perfusion_Weighted*.*", ...              
+                    "sub-*_"+ses+"*TRUST*.*"]);
+                if ~isemptytext(g)
+                    ensuredir(src_func_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g, src_func_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
+            end
+
+            % populate pet
+            for ses = asrow(this.sessions)
+                src_pet_pth = fullfile(this.source_sub_path, ses, "pet");
+                g = mglob([ ...
+                    "sub-*_"+ses+"*kvp*ct*.*", ...
+                    "sub-*_"+ses+"*CT_Brain*.*", ...
+                    "sub-*_"+ses+"*trc-co*.*", ...
+                    "sub-*_"+ses+"*trc-oc*.*", ...
+                    "sub-*_"+ses+"*trc-oo*.*", ...
+                    "sub-*_"+ses+"*trc-ho*.*", ...
+                    "sub-*_"+ses+"*trc-fdg*.*", ...
+                    "sub-*_"+ses+"*CO*.*", ...
+                    "sub-*_"+ses+"*Oxygen*.*", ...
+                    "sub-*_"+ses+"*FDG*.*", ...                    
+                    "sub-*_"+ses+"*Topogram*.*", ...                      
+                    "sub-*_"+ses+"*Water*.*", ...                
+                    "sub-*_"+ses+"*Phantom*.*"]);
+                if ~isemptytext(g)
+                    ensuredir(src_pet_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g, src_pet_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
+            end
+
+            popd(pwd0)
+        end
+
+
+        function build_sourcedata_lm(this, s)
+            pwd0 = pushd(this.raw_lm_path);
+            ensuredir(this.source_sub_path);
+            copyfile(s.ct, fullfile(this.source_sub_path, "CT"));
+            copyfile(s.norm, this.source_sub_path);
+            try
+                movefile(s.ptd, this.source_sub_path);
+            catch %#ok<CTCH>
+            end
+            popd(pwd0);
         end
         function m = build_map_of_lm(this)
+            %% m(fileprefix) := struct with
+            %  fields from this.siemns_get_meta() ~ struct
+            %  ptd ~ /home/usr/jjlee/Singularity/CCIR_01211/rawdata/sub-108007/lm/108007.PT.Head_CCIR_1211_FDG_(Adult).602.PET_LISTMODE.2021.02.23.14.04.04.508000.2.0.105550091.ptd
+            %  datetime
+            %  datetimestr ~ yyyyMMddHHmmss
+            %  ct from this.find_ct ~ folder
+            %  norm from this.find_norm ~ file.ptd
+
             pwd0 = pushd(this.raw_lm_path);
             m = containers.Map;
-            g = glob(fullfile(this.raw_lm_path, "*LIST*"));
+
+            g = mglob(fullfile(this.raw_lm_path, "**", "*LISTMODE*.ptd"));
             for gidx = 1:length(g)
-                fp = mybasename(g{gidx});
-                re = regexp(fp, ...
-                    "\S+LISTMODE.(?<Y>\d{4}).(?<M>\d{2}).(?<D>\d{2}).(?<H>\d{2}).(?<MI>\d{2}).(?<S>\d{2}).(?<MS>\d{6}).(?<id>[0-9.]+)", "names");
-                dt = datetime( ...
-                    str2double(re.Y), str2double(re.M), str2double(re.D), str2double(re.H), str2double(re.MI), str2double(re.S), str2double(re.MS)/1e3); 
-                s.dt = dt;
-                s.ct = this.find_ct(dt=dt);
-                s.norm = this.find_norm(dt=dt);
-                s.lm = g{gidx};
-                s.id = re.id;
+                fp = mybasename(g(gidx));
+                s = this.siemens_get_meta(g(gidx));
+
+                s.ptd = g{gidx};
+                s.tracer = this.siemens_get_tracer(s.ptd);
+                s.datetime = datetime(s.acquisition.timestamp, ...
+                    InputFormat='yyyy-MM-dd''T''HH:mm:ss.SSSXXXXXX', TimeZone=s.acquisition.timezone);
+                s.datetimestr = datetime(s.datetime, Format='yyyyMMddHHmmss');
+                s.ct = this.find_ct(dt=s.datetimestr);
+                s.norm = this.find_norm(dt=s.datetimestr);
                 m(char(fp)) = s;
             end
             popd(pwd0);
@@ -110,22 +307,22 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
             % source_lm_path ~ "D:\CCIR_01211\sourcedata\sub-108306\ses-20230227134149\lm" ~ 
             % listmode staged by build_input_folders()
-            source_lm_path = strrep(this.raw_lm_path, "raw", "source");
+            source_lm_path__ = strrep(this.raw_lm_path, "raw", "source");
             sesdt8 = "ses-" + string(datetime(s.dt, Format="yyyyMMdd"));
             sesdt14 = "ses-" + string(datetime(s.dt, Format="yyyyMMddHHmmss"));
-            source_lm_path = strrep(source_lm_path, sesdt8, sesdt14);
+            source_lm_path__ = strrep(source_lm_path__, sesdt8, sesdt14);
 
             % def. source_ses_path, source_pet_path := source_lm_path
-            source_ses_path = myfileparts(source_lm_path);
-            source_pet_path = strrep(source_lm_path, "lm", "pet");
+            source_ses_path_ = myfileparts(source_lm_path__);
+            source_pet_path_ = strrep(source_lm_path__, "lm", "pet");
 
-            pwd0 = pushd(source_pet_path);
+            pwd0 = pushd(source_pet_path_);
             if opts.is_dyn
-                dyn_dcm_path = fullfile(source_ses_path, "lm"+opts.tag+"-DynamicBMC", "lm-BMC-LM-00-dynamic-DICOM");
+                dyn_dcm_path = fullfile(source_ses_path_, "lm"+opts.tag+"-DynamicBMC", "lm-BMC-LM-00-dynamic-DICOM");
                 mlsiemens.BrainMoCoBuilder.dcm2niix(dyn_dcm_path, f="sub-%n_ses-%t_trc-"+opts.tracer+"_proc-bmc-lm-00-dyn"+opts.tag+"_pet", w=1); % clobber
                 rmdir(myfileparts(dyn_dcm_path), "s")
             else
-                static_dcm_path = fullfile(source_ses_path, "lm"+opts.tag+"-StaticBMC", "lm-BMC-LM-00-ac_mc_000_000.v-DICOM");
+                static_dcm_path = fullfile(source_ses_path_, "lm"+opts.tag+"-StaticBMC", "lm-BMC-LM-00-ac_mc_000_000.v-DICOM");
                 mlsiemens.BrainMoCoBuilder.dcm2niix(static_dcm_path, f="sub-%n_ses-%t_trc-"+opts.tracer+"_proc-bmc-lm-00-static_pet", w=1); % clobber
                 rmdir(myfileparts(static_dcm_path), "s")
             end
@@ -133,67 +330,91 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
         end
         function build_output_folders(this, s)
+        end        
+        function build_raw_dcm(this)
+            pwd0 = pushd(this.raw_dcm_path);
+            this.dcm2niix();
+            popd(pwd0);
         end
-        function call(this)
-            % build map:  datetime -> struct.{ct, norm, lm}, fields with f.q. filenames; no timezone for simplicity
-            map = this.build_map_of_lm();
-            keys = map.keys;
-            for k = asrow(keys) % co, oo, oo, ho, fdg, fdg_phant
-                
-                %     create input folder    
-                this.build_input_folders(map(k{1}));
-    
-                %     call BMC    
-                bmc = mlsiemens.BrainMoCo(source_lm_path=this.source_lm_path);
-                switch something
-                    case "fdg_phantom"
-                        bmc.call_fdg_phantom() % phantom
-                    case "co"
-                        bmc.call_co()
-                    case "oo"
-                        bmc.call_oo()
-                    case "ho"                
-                        bmc.call_ho()
-                    case "fdg"
-                        bmc.call_fdg()
+        function build_raw_lm(this)
+            pwd0 = pushd(this.raw_lm_path);
+            g = mglob(fullfile("**", "*.ptd"));
+            for gi = 1:length(g)
+                try
+                    movefile(g(gi), this.raw_lm_path);
+                catch ME
+                    handwarning(ME)
                 end
-    
-                %     apply dcm2niix
-
-                this.build_niftis(map(k{1}));
-
-                %     reorganize output folders
-    
-                this.build_output_folders(map(k{1}));
-
             end
+            popd(pwd0)
         end
-        function fqfn = find_ct(this, opts)
+
+        
+        function [s,r] = copyfile(~, file_obj, dest_pth)
+            [~,fp,x] = myfileparts(file_obj);
+            dest_obj = fullfile(dest_pth, strcat(fp, x));
+            if ~isfile(dest_obj)
+                return
+            end
+            [s,r] = copyfile(file_obj, dest_pth);
+        end
+        function [s,r] = copyfile_ct_dcm(this, ct_nii, dest_pth)
+            [~,fp,x] = myfileparts(ct_nii);
+            ct_stars = fullfile(this.raw_dcm_path, "**", strcat(fp, x));
+            g = glob(convertStringsToChars(ct_stars));
+
+            % find the deepest match
+            [~,I] = sort(cellfun(@length, g));
+            g = g(I);
+        end
+        function folder = find_ct(this, opts)
+            %% returns folder with ct dicoms.
+
             arguments
                 this mlsiemens.BrainMoCoBuilder
                 opts.dt datetime = NaT % datetimes of listmode to match
+                opts.ct_series double = 3
             end
 
-            pwd0 = pushd(this.raw_pet_path);
+            pwd0 = pushd(this.raw_dcm_path);
             
             % glob CTs
-            g = glob(fullfile(this.raw_pet_path, '*_CT_*.nii.gz')); 
+            g = glob(fullfile(this.raw_dcm_path, '*_CT_*.nii.gz')); 
             g = g(~contains(g, '_AC_CT_'));
             for gidx = 1:length(g)
-                % find CT datetimes
-                re = regexp(mybasename(g{gidx}), "\S+_ses-(?<dt>\d{14})_\S+", "names");
-                ct_dt(gidx) = datetime(re.dt, InputFormat="yyyyMMddHHmmss"); %#ok<AGROW>
+                % find CT datetimes, series
+                re = regexp(mybasename(g{gidx}), "\S+_ses-(?<dt>\d{14})_\S+-(?<series>\d+)", "names");
+                ct_dt(gidx) = datetime(re.dt, Format="yyyyMMddHHmmss", TimeZone="local"); %#ok<AGROW>
+                series(gidx) = str2double(re.series); %#ok<AGROW>
             end
 
             % find CT acquired just before listmode
-            T = table(ascol(g), minutes(ascol(opts.dt) - ascol(ct_dt)), variableNames={'fqfn', 'dur'});
-            T = sortrows(T, 'dur', 'ascend');
+            T = table(ascol(g), minutes(ascol(opts.dt) - ascol(ct_dt)), ascol(series), variableNames={'fqfn', 'dur', 'series'});
+            T = sortrows(T, 'dur');
             T = T(minutes(T.dur) >= 0, :);
-            fqfn = T.fqfn{1};
+            nii_fqfn = T.fqfn{1};
+            j_fqfn = strrep(nii_fqfn, ".nii.gz", ".json");
+            j = readstruct(j_fqfn);
+            folder = j.dicom_folder;
 
             popd(pwd0);
         end
+        function dts = find_dcm_dates(this)
+            %% unique session dates in this.raw_dcm_path
+
+            pwd0 = pushd(this.raw_dcm_path);
+            g = mglob("sub-*_ses-*_*.nii.gz");
+            dts = NaT(size(g));
+            for idx = 1:length(g)
+                re = regexp(g(idx), "sub-\S+_ses-(?<dt>\d{8})\d*\S+.nii.gz", "names");
+                dts(idx) = datetime(re.dt, InputFormat="yyyyMMdd");
+            end
+            dts = unique(dts);
+            popd(pwd0);
+        end
         function fqfn = find_norm(this, opts)
+            %% returns fqfn of calibration ptd.
+
             arguments
                 this mlsiemens.BrainMoCoBuilder
                 opts.dt datetime = NaT % datetimes of listmode to match
@@ -205,10 +426,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             g = glob(fullfile(this.raw_lm_path, '*CALIBRATION*')); 
             for gidx = 1:length(g)
                 % find norm datetimes
-                re = regexp(mybasename(g{gidx}), ...
-                    "\S+CALIBRATION.(?<Y>\d{4}).(?<M>\d{2}).(?<D>\d{2}).(?<H>\d{2}).(?<MI>\d{2}).(?<S>\d{2}).(?<MS>\d{6}).(?<id>[0-9.]+)", "names");
-                norm_dt(gidx) = datetime( ...
-                    str2double(re.Y), str2double(re.M), str2double(re.D), str2double(re.H), str2double(re.MI), str2double(re.S), str2double(re.MS)/1e3); %#ok<AGROW>
+                norm_dt(gidx) = this.siemens_meta_to_datetime(g{gidx}); %#ok<AGROW>
             end
 
             % find norm acquired just before listmode
@@ -227,6 +445,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %  e.g., $ dcm2niix -f sub-%n_ses-%t_%d-%s -i 'n' -o $(pwd) -d 5 -v 0 -w 2 -z y $(pwd)
             %  Args:
             %      folder (folder):  for recursive searching
+            %      a : adjacent DICOMs (images from same series always in same folder) for faster conversion (n/y, default n)
+            %      ba : anonymize BIDS (y/n, default y)
             %      d : directory search depth. Convert DICOMs in sub-folders of in_folder? (0..9, default 5)
             %      f (text):  filename specification; default 'sub-%n_ses-%t-%d-%s';
             %           %a=antenna (coil) number, 
@@ -253,7 +473,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %      terse : omit filename post-fixes (can cause overwrites)
             %      u : up-to-date check
             %      v : verbose (0/1/2, default 0) [no, yes, logorrheic]
-            %      version (numeric):  [] | 20180622 | 20180627
+            %      version (numeric):  [] | 20180622 | 20180627 | 20230411
             %      w : write behavior for name conflicts (0,1,2, default 2: 0=skip duplicates, 1=overwrite, 2=add suffix)
             %      z : gz compress images (y/o/i/n/3, default n) [y=pigz, o=optimal pigz, i=internal:zlib, n=no, 3=no,3D]
             %
@@ -264,6 +484,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
             arguments
                 folder {mustBeFolder} = pwd % for recursive searching
+                opts.a {mustBeTextScalar} = "y"
+                opts.ba {mustBeTextScalar} =  "n"
                 opts.d {mustBeInteger} = 5
                 opts.f {mustBeTextScalar} = "sub-%n_ses-%t_%d-%s"
                 opts.i {mustBeTextScalar} = "n"
@@ -276,20 +498,27 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.toglob_mhdr {mustBeTextScalar} = "*.mhdr"
                 opts.toglob_vhdr {mustBeTextScalar} = "*.v.hdr"
             end
+            tempfolder = fullfile(folder, "temp");
             
             % select executable dcm2niix & pigz
-            exe = 'dcm2niix';
-            if isempty(opts.version)
-                switch computer
-                    case 'MACI64'
-                        exe = 'dcm2niix_20230411';
-                    case 'GLNXA64'
-                        exe  = 'dcm2niix_20230411';
-                    case 'PCWIN64'
-                        exe = 'dcm2niix.exe';
-                    otherwise
-                        exe = 'dcm2niix';
-                end
+            switch computer
+                case {'MACI64', 'MACA64'}
+                    exe = 'dcm2niix';
+                    if ~isempty(opts.version)
+                        exe = sprintf('dcm2niix_%i', opts.version);
+                    end
+                case 'GLNXA64'
+                    exe  = 'dcm2niix_20230411';
+                    if ~isempty(opts.version)
+                        exe = sprintf('dcm2niix_%i', opts.version);
+                    end
+                case 'PCWIN64'
+                    exe = 'dcm2niix.exe';
+                    if ~isempty(opts.version)
+                        exe = sprintf('dcm2niix_%i.exe', opts.version);
+                    end
+                otherwise
+                    exe = 'dcm2niix';
             end
             [~,wd] = mysystem(sprintf('which %s', exe));
             assert(~isempty(wd))            
@@ -306,14 +535,27 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 exe = sprintf('%s -u', exe);
             end
 
-            % call mysystem(), but keep .nii.gz in folder
+            % call mysystem(), depositing .nii.gz in folder
             ensuredir(opts.o)
-            [s,r] = mysystem( ...
-                sprintf("%s -f %s -i %s -o %s -d %i -v %i -w %i -z %s %s", ...
-                    exe, opts.f, opts.i, folder, opts.d, opts.v, opts.w, z, folder));
+            ensuredir(tempfolder);
+            folders = find_dcm_folders(folder);
+            Nfolds = length(folders);
+            s = zeros(1, Nfolds);
+            r = cell(1, Nfolds);
+            for fidx = 1:Nfolds
+                [s(fidx),r{fidx}] = mysystem( ...
+                    sprintf("%s -a %s -ba %s -f %s -i %s -o %s -d %i -v %i -w %i -z %s %s", ...
+                    exe, opts.a, opts.ba, opts.f, opts.i, tempfolder, opts.d, opts.v, opts.w, z, folders{fidx}));
+                g = glob(fullfile(tempfolder, '*.nii.gz'));
+                if ~isempty(g)
+                    j = append_json(g, folders{fidx});
+                    cellfun(@(x) movefile(x, folder), g, UniformOutput=false);
+                    cellfun(@(x) movefile(x, folder), j, UniformOutput=false);
+                end
+            end
             
             % adjust filenames folder
-            g = glob(convertStringsToChars(fullfile(folder, "**.nii.gz")));
+            g = glob(convertStringsToChars(fullfile(folder, "*.nii.gz")));
             fn = convertCharsToStrings(g);
             fp = myfileprefix(fn);
 
@@ -325,8 +567,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 try
                     mhdr_glob = glob(convertStringsToChars(fullfile(hdr_path{fidx}, opts.toglob_mhdr))); assert(~isempty(mhdr_glob));
                     vhdr_glob = glob(convertStringsToChars(fullfile(hdr_path{fidx}, opts.toglob_vhdr))); assert(~isempty(vhdr_glob));
-                    if isempty(mhdr_glob); continue; end
-                    if isempty(vhdr_glob); continue; end
+                    if isemptytext(mhdr_glob); continue; end
+                    if isemptytexxt(vhdr_glob); continue; end
+
                     tags = mybasename(mhdr_glob);
                     tags = strrep(tags, '-', '_');
     
@@ -350,9 +593,139 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                         end
                     end
                 catch ME
-                    handwarning(ME)
+                    %handwarning(ME)
                 end
             end
+
+            function j = append_json(niigz, dcmfold)
+                %% for json correponding to niigz, add field dicom_folder for the source of niigz
+
+                for nidx = 1:length(niigz)
+                    j{nidx} = strrep(niigz{nidx}, ".nii.gz", ".json");
+                    if isfile(j{nidx})
+                        s_ = readstruct(j{nidx});
+                        s_.dicom_folder = dcmfold;
+                        writestruct(s_, j{nidx});
+                    end
+                end
+            end
+            function folds = find_dcm_folders(fold0)
+                %% find all unique folders contain dicoms within fold0
+
+                dcms = glob(fullfile(fold0, '**', '*.dcm'));
+                dcms = cellfun(@fileparts, dcms, UniformOutput=false);
+                folds = unique(dcms);
+            end
+        end
+        function s = siemens_get_meta(ptd)
+            %% ptd file -> struct  
+            % s = mlsiemens.BrainMoCoBuilder.siemens_get_meta("108293.PT.Head_CCIR_1211_TriplePack_(Adult).602.PET_LISTMODE.2021.04.23.11.59.28.876000.2.0.15804242.ptd")
+            %   struct with fields:
+            %         subject: [1×1 struct]
+            %         session: [1×1 struct]
+            %     acquisition: [1×1 struct]
+            %            file: [1×1 struct]
+            % s.subject
+            %   struct with fields:
+            %        label: '108293_MAG_20210421'
+            %     lastname: '108293'
+            %          sex: 'male'
+            % s.session
+            %   struct with fields:
+            %           uid: '1.3.12.2.1107.5.1.4.11009.30000021042114261176500000007'
+            %         label: 'Head^CCIR_1211_TriplePack (Adult)'
+            %           age: 1.325419200000000e+09
+            %        weight: 83.914599124500000
+            %     timestamp: '2021-04-21T13:45:36.900-05:00'
+            %      timezone: 'America/Chicago'
+            % s.acquisition
+            %   struct with fields:
+            %           uid: '1.3.12.2.1107.5.1.4.11009.30000021042114373330500000054'
+            %         label: '602 - PET Raw Data'
+            %     timestamp: '2021-04-21T15:57:09.395-05:00'
+            %      timezone: 'America/Chicago'
+            % s.file
+            %   struct with fields:
+            %     name: '1.3.12.2.1107.5.1.4.11009.30000021042114373330500000068.PT.ptd'
+            %     type: 'ptd'
+
+            arguments
+                ptd {mustBeFile}
+            end
+
+            meta = py.fw_file.siemens.PTDFile(ptd).get_meta();
+            dumps = py.json.dumps(meta.dict);
+            s = jsondecode(string(dumps));            
+        end
+        function m = siemens_get_dicom_map(ptd)
+            %% N.B.: m("DerivationDescription")
+            %   struct with fields:
+            %                      VM: [1×1 py.int]
+            %             empty_value: [1×0 py.str]
+            %                is_empty: 0
+            %              is_private: 0
+            %              is_retired: 0
+            %                 keyword: [1×21 py.str]
+            %                    name: [1×22 py.str]
+            %                  repval: [1×17 py.str]
+            %                   value: "PETCT-FDG Brain"
+            %                      VR: [1×2 py.str]
+            %                     tag: [1×1 py.pydicom.tag.BaseTag]
+            %                  parent: [1×1 py.NoneType]
+            %         validation_mode: [1×1 py.int]
+            %               file_tell: [1×1 py.int]
+            %     is_undefined_length: 0
+            %         private_creator: [1×1 py.NoneType]            
+
+            arguments
+                ptd {mustBeFile}
+            end
+
+            warning('off', 'MATLAB:structOnObject')
+            siemens = py.fw_file.siemens.PTDFile(ptd);
+            l = py.list(py.iter(siemens));
+            m = containers.Map;
+            for idx = 1:length(l)
+                try
+                    s = struct(l{idx});
+                    if isa(s.value, "py.str")
+                        s.value = string(s.value);
+                    end
+                    m(string(l{idx}.keyword)) = s;
+                catch %#ok<CTCH>
+                end
+            end
+        end
+        function trc = siemens_get_tracer(ptd)
+            m = mlsiemens.BrainMoCoBuilder.siemens_get_dicom_map(ptd);
+            v = m("DerivationDescription").value;
+
+            
+            if contains(v, "CO", IgnoreCase=true)
+                trc = "CO";
+                return
+            end
+            if contains(v, "Oxygen", IgnoreCase=true)
+                trc = "OO";
+                return
+            end            
+            if contains(v, "Water", IgnoreCase=true)
+                trc = "HO";
+                return
+            end            
+            if contains(v, "FDG", IgnoreCase=true)
+                trc = "FDG";
+                return
+            end
+            trc = "Unknown";
+        end
+        function [dt,dtstr] = siemens_meta_to_datetime(ptd)
+            %% returns datetime, datetime string
+
+            s = mlsiemens.BrainMoCoBuilder.siemens_get_meta(ptd);
+            dt = datetime(s.acquisition.timestamp, ...
+                InputFormat='yyyy-MM-dd''T''HH:mm:ss.SSSXXXXXX', TimeZone=s.acquisition.timezone);
+            dtstr = datetime(dt, Format='yyyyMMddHHmmss');
         end
     end
 
@@ -361,6 +734,17 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
     properties (Access = private)
         raw_lm_path_
         source_lm_path_
+    end
+
+    methods (Access = private)
+        function pth = ensureEndsWithLm(~, pth) 
+            if endsWith(pth, "dcm")
+                pth = myfileparts(pth);
+            end
+            if ~endsWith(pth, "lm")
+                pth = fullfile(pth, "lm");
+            end
+        end
     end
     
     %  Created with mlsystem.Newcl, inspired by Frank Gonzalez-Morphy's newfcn.
