@@ -97,6 +97,12 @@ classdef BiographKit < handle & mlpet.ScannerKit
         end
         function d = datestr(this)
             d = datestr(datetime(this), 'yyyymmddHHMMSS');
+        end        
+        function decayCorrect(this)
+            decayCorrect(this.scannerDev_);
+        end
+        function decayUncorrect(this)
+            decayUncorrect(this.scannerDev_);
         end
         function fn = tracerResolvedOpSubject(this, varargin)
             fn = this.sessionData.tracerResolvedOpSubject(varargin{:});

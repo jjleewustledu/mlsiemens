@@ -32,7 +32,8 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
                 'datetimeMeasured', sesd.datetime, ...
                 'taus', sesd.taus, ...
                 varargin{:});
-            this = this.read(sesd.tracerOnAtlas());
+            this.read(sesd.tracerOnAtlas());
+            this.decayUncorrect(); % ensure decay-uncorrected state for legacy pipelines
         end
         function fwhh = petPointSpread
             fwhh = mlsiemens.MMRRegistry.instance.petPointSpread;

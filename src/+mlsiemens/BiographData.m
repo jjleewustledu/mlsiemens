@@ -75,7 +75,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             c = this.activityDensity('decayCorrected', true, varargin{:});
         end
         function this = decayCorrect(this)
-            if ~this.decayCorrected
+            if ~this.decayCorrected_
                 ifc = this.imagingContext_.imagingFormat;
                 mat = this.reshape_native_to_2d(ifc.img);
                 mat = mat .* this.decayCorrectionFactors;
@@ -103,7 +103,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             f = reshape(f, size(asrow(times1)));
         end
         function this = decayUncorrect(this)
-            if this.decayCorrected
+            if this.decayCorrected_
                 ifc = this.imagingContext_.imagingFormat;
                 mat = this.reshape_native_to_2d(ifc.img);
                 mat = mat ./ this.decayCorrectionFactors;
@@ -140,7 +140,6 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         end
         function this = read(this, varargin)
             this.imagingContext_ = mlfourd.ImagingContext2(varargin{:});
-            this = this.decayUncorrect();
         end
         function img = reshape_native_to_2d(this, img)
             sz  = size(this.imagingContext_.imagingFormat);
@@ -210,12 +209,13 @@ classdef BiographData < handle & mlpet.AbstractTracerData
 	methods (Access = protected)	  
  		function this = BiographData(varargin)
  			%% BIOGRAPHDATA
+            %  @param radMeasurements is an mlpet.RadMeasurements object
 
  			this = this@mlpet.AbstractTracerData(varargin{:});
             
             ip = inputParser;
             ip.KeepUnmatched = true;
-            addParameter(ip, 'radMeasurements', [], @(x) isa(x, 'mlpet.RadMeasurements'))
+            addParameter(ip, 'radMeasurements', [], @(x) isa(x, 'mlpet.RadMeasurements') || isempty(x))
             parse(ip, varargin{:})
             ipr = ip.Results;
             
@@ -255,13 +255,12 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             ic.addJsonMetadata(struct("timeMid", this.timesMid));
             ic.addJsonMetadata(struct("timeMidUnits", "seconds"));
         end
-        function m = measurement(this, varargin)
+        function ic = measurement(this, varargin)
             %% Bq/mL
 
             ip = inputParser;
             ip.KeepUnmatched = true;
             ip.PartialMatching= false;
-            addParameter(ip, 'decayCorrected', false, @islogical)
             addParameter(ip, 'datetimeForDecayCorrection', NaT, @(x) isnat(x) || isdatetime(x))
             addParameter(ip, 'index0', this.index0, @isnumeric)
             addParameter(ip, 'indexF', this.indexF, @isnumeric)
@@ -276,14 +275,6 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             if ~isnat(ipr.datetimeForDecayCorrection)
                 this.datetimeForDecayCorrection = ipr.datetimeForDecayCorrection;
             end
-            if ipr.decayCorrected && ~this.decayCorrected
-                this.decayCorrect(); % handle
-                this.decayCorrected_ = true;
-            end
-            if ~ipr.decayCorrected && this.decayCorrected
-                this.decayUncorrect(); % handle
-                this.decayCorrected_ = false;
-            end 
             
             ic = copy(this.imagingContext_);
             ic = this.ensure_times_mid(ic);
@@ -312,7 +303,6 @@ classdef BiographData < handle & mlpet.AbstractTracerData
                 ic = diff(ic);
             end
             ic.addJsonMetadata(ip);
-            m = imagingType(ipr.typ, ic);
             % m = m/this.branchingRatio; % BUG FIX: this is already performed by Siemens Biograph scanners
         end
         function ic = selectIndex0IndexF(this, ic, index0, indexF)
