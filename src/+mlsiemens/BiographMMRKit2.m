@@ -7,7 +7,7 @@ classdef (Sealed) BiographMMRKit2 < handle & mlkinetics.ScannerKit
     methods (Static)
         function this = instance(varargin)
             persistent uniqueInstance
-            if (isempty(uniqueInstance))
+            if isempty(uniqueInstance)
                 this = mlsiemens.BiographMMRKit2();
                 this.install_scanner(varargin{:});
                 uniqueInstance = this;
