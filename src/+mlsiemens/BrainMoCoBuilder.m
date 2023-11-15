@@ -22,8 +22,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
     methods % GET
         function g = get.output_path(this)
-            g = myfileparts(this.source_sub_path);
-            g = fullfile(g, "+Output");
+            g = fullfile(this.source_sub_path, "+Output");
             ensuredir(g)
         end
         function g = get.raw_dcm_path(this)
@@ -64,13 +63,13 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         function build_all(this)
             %% in rawdata, build dcm and lm folders containing first iteration of organization of files
 
-            %this.build_raw_dcm()
-            %this.build_raw_lm()
+            this.build_raw_dcm()
+            this.build_raw_lm()
             map = this.build_map_of_lm();
             keys = map.keys;
             for k = asrow(keys) % *LISTMODE*                
                 this.build_sourcedata_dcm();
-                %this.build_sourcedata_lm(map(k{1}));
+                this.build_sourcedata_lm(map(k{1}));
             end
         end
 
@@ -175,7 +174,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     ensuredir(src_dwi_pth);
                     for g1 = asrow(g)
                         try
-                            movefile(g, src_dwi_pth);
+                            movefile(g1, src_dwi_pth);
                         catch %#ok<CTCH>
                         end
                     end
@@ -207,7 +206,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     "sub-*_"+ses+"*CBF*.*", ...  
                     "sub-*_"+ses+"*fMRI_REST*.*", ...        
                     "sub-*_"+ses+"*M0*.*", ...       
-                    "sub-*_"+ses+"*MoCoSeries*.*", ...         
+                    "sub-*_"+ses+"*MoCoSeries*.*", ...      
                     "sub-*_"+ses+"*PC2D*.*", ...         
                     "sub-*_"+ses+"*PCASL*.*", ...        
                     "sub-*_"+ses+"*pcasl*.*", ...           
@@ -218,7 +217,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     ensuredir(src_func_pth);
                     for g1 = asrow(g)
                         try
-                            movefile(g, src_func_pth);
+                            movefile(g1, src_func_pth);
                         catch %#ok<CTCH>
                         end
                     end
@@ -229,6 +228,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             for ses = asrow(this.sessions)
                 src_pet_pth = fullfile(this.source_sub_path, ses, "pet");
                 g = mglob([ ...
+                    "sub-*_"+ses+"*arbon*.*", ...
                     "sub-*_"+ses+"*kvp*ct*.*", ...
                     "sub-*_"+ses+"*CT_Brain*.*", ...
                     "sub-*_"+ses+"*trc-co*.*", ...
@@ -237,16 +237,19 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     "sub-*_"+ses+"*trc-ho*.*", ...
                     "sub-*_"+ses+"*trc-fdg*.*", ...
                     "sub-*_"+ses+"*CO*.*", ...
+                    "sub-*_"+ses+"*oxide*.*", ...   
                     "sub-*_"+ses+"*Oxygen*.*", ...
-                    "sub-*_"+ses+"*FDG*.*", ...                    
+                    "sub-*_"+ses+"*FDG*.*", ...      
+                    "sub-*_"+ses+"*tatic*.*", ...                 
                     "sub-*_"+ses+"*Topogram*.*", ...                      
-                    "sub-*_"+ses+"*Water*.*", ...                
+                    "sub-*_"+ses+"*Water*.*", ...       
+                    "sub-*_"+ses+"*yn*.*", ...             
                     "sub-*_"+ses+"*Phantom*.*"]);
                 if ~isemptytext(g)
                     ensuredir(src_pet_pth);
                     for g1 = asrow(g)
                         try
-                            movefile(g, src_pet_pth);
+                            movefile(g1, src_pet_pth);
                         catch %#ok<CTCH>
                         end
                     end
@@ -357,15 +360,6 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 return
             end
             [s,r] = copyfile(file_obj, dest_pth);
-        end
-        function [s,r] = copyfile_ct_dcm(this, ct_nii, dest_pth)
-            [~,fp,x] = myfileparts(ct_nii);
-            ct_stars = fullfile(this.raw_dcm_path, "**", strcat(fp, x));
-            g = glob(convertStringsToChars(ct_stars));
-
-            % find the deepest match
-            [~,I] = sort(cellfun(@length, g));
-            g = g(I);
         end
         function folder = find_ct(this, opts)
             %% returns folder with ct dicoms.
@@ -723,8 +717,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %% returns datetime, datetime string
 
             s = mlsiemens.BrainMoCoBuilder.siemens_get_meta(ptd);
-            dt = datetime(s.acquisition.timestamp, ...
-                InputFormat='yyyy-MM-dd''T''HH:mm:ss.SSSXXXXXX', TimeZone=s.acquisition.timezone);
+            dt = datetime(s.session.timestamp, ...
+                InputFormat='yyyy-MM-dd''T''HH:mm:ss.SSSXXXXXX', TimeZone=s.session.timezone);
             dtstr = datetime(dt, Format='yyyyMMddHHmmss');
         end
     end

@@ -149,6 +149,7 @@ classdef BrainMoCoParams2
                 opts.filepath {mustBeFolder} = pwd
                 opts.tag {mustBeTextScalar} = "-start"
                 opts.tag0 {mustBeTextScalar} = "-start0"
+                opts.starts double {mustBeScalarOrEmpty} = 0
                 opts.is_dyn logical = true
                 opts.doIF2Dicom logical = false
                 opts.clean_up logical = false

@@ -50,19 +50,37 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             popd(pwd0);
             % Elapsed time is 2053.586021 seconds.
         end
+        function test_BMC_create_ho(this)
+        end
         function test_BMC_create_oo(this)
             
-            parpool(mlsiemens.BrainMoCo2.N_PROC)
-
-            % oo
-            pwd0 = pushd(fullfile( ...
-                "D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", "lm-oo1"));
-            tic
-            mlsiemens.BrainMoCo2.create_moving_average(pwd, tracer="oo");            
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co"), ...
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", "lm-oo1"), ...
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm-ho"), ...
+            % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421155709", "lm-fdg")
+            paths = [ ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2"), ...                
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2")];
+                
+            tracers = ["oo", "oo"]; % "fdg", "co", "ho", 
+            % 10*ones(1,29), ...
+            % 10*ones(1,11), ...
+            taus = { ...
+                20*ones(1,4), 10*ones(1,3)};
+                %10*ones(1,359)};
+            time_delay = [30, 0];
+            for ti = 1:length(paths)
+                pwd0 = pushd(paths(ti));
+                tic                 
+                mlsiemens.BrainMoCo2.create_moving_average( ...
+                    paths(ti), tracer=tracers(ti), taus=taus{ti}, time_delay=time_delay(ti), nifti_only=false);
+                toc
+                popd(pwd0);
+            end
+         
             %mlsiemens.BrainMoCo2.create_simple( ...
             %    pwd, tracer="oo", taus=[3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)]);
-            toc
-            popd(pwd0);
+
             % Elapsed time is 6974.721815 seconds for moving-average (with drop-outs).
             % Elapsed time is 1389.936770 seconds for 2 cumulative, N_PROC == 5
             % Elapsed time is 2662.566290 seconds for 5 cumulative, N_PROC == 5
@@ -72,23 +90,25 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
         end
         function test_BMC_create_moving_average_agi(this)
             
-            parpool(mlsiemens.BrainMoCo2.N_PROC)
+            % parpool(mlsiemens.BrainMoCo2.N_PROC)
 
             % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co"), ...
             % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm-ho"), ...
             paths = [ ...
-                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2"), ...
-                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421155709", "lm-fdg")];
-            tracers = ["oo", "fdg"]; % "co", "ho", 
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2"), ...                
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "lm-oo2")];
+                %fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421155709", "lm-fdg")];
+            tracers = ["oo", "oo"]; % "fdg", "co", "ho", 
             % 10*ones(1,29), ...
             % 10*ones(1,11), ...
             taus = { ...
-                10*ones(1,11), ...                
-                10*ones(1,359)};
-            for ti = 1:2
+                20*ones(1,4), 10*ones(1,3)};
+                %10*ones(1,359)};
+            time_delay = [30, 0];
+            for ti = 1:length(paths)
                 tic
                 mlsiemens.BrainMoCo2.create_moving_average( ...
-                    paths(ti), tracer=tracers(ti), taus=taus{ti});
+                    paths(ti), tracer=tracers(ti), taus=taus{ti}, time_delay=time_delay(ti));
                 toc
             end
         end
@@ -163,6 +183,18 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             % popd(pwd0);
             % Elapsed time is 40264.135840 seconds.
         end
+        function test_BMC_repair_empty_frames(this)
+            nii = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", ...
+                "sub-108293_ses-20210421150523_trc-oo_proc-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
+            nii1 = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", ...
+                "sub-108293_ses-20210421150523_trc-oo_proc-Conventional-createNiftiMovingAvgFrames.nii.gz");
+            
+            tic
+            nii = mlsiemens.BrainMoCo2.repair_empty_frames(nii, nii1);
+            toc
+            
+            nii.view
+        end
         function test_build_niftis(this)
             lm_path = "D:\CCIR_01211\sourcedata\sub-108306\ses-20230227134149\lm";
             ses_path = myfileparts(lm_path);
@@ -183,11 +215,6 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             delete(myfileparts(dyn_dcm_path))
             popd(pwd0);
         end
-        function test_createNiftiMovingAvgRepair(this)
-            sub = "sub-108293";
-            ses = "ses-20210421154248";
-            mlsiemens.BrainMoCo2.createNiftiMovingAvgRepair(sub, ses);
-        end
         function test_build_static(this)
             pwd0 = pushd("D:\CCIR_01211\rawdata\sub-108306\ses-20230227\lm");
 
@@ -203,6 +230,11 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             end
 
             popd(pwd0);
+        end
+        function test_createNiftiMovingAvgRepair(this)
+            sub = "sub-108293";
+            ses = "ses-20210421154248";
+            mlsiemens.BrainMoCo2.createNiftiMovingAvgRepair(sub, ses);
         end
         function test_cumul2frames(this)
             a = [0 1e3 1e4 5e4 10e4 7e4 6e4 5e4 4e4 3e4 linspace(20e3, 10e3, 10) linspace(10e3, 5e3, 10)]; % len ~ 30
