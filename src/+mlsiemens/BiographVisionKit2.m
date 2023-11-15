@@ -20,6 +20,10 @@ classdef (Sealed) BiographVisionKit2 < handle & mlkinetics.ScannerKit
 
     methods
         function d = do_make_device(this)
+            if ~isempty(this.device_)
+                d = this.device_;
+                return
+            end
             this.device_ = mlsiemens.BiographVisionDevice.create( ...
                 bids_kit=this.bids_kit_, ...
                 tracer_kit=this.tracer_kit_);
