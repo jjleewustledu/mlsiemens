@@ -163,10 +163,11 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             arterial = ic ./ N;
         end
         function ic = imagingContext(this)
-            ic = this.data_.imagingContext;
-            ifc = ic.imagingFormat;
-            ifc.img = this.invEfficiency_*ifc.img;
-            ic = mlfourd.ImagingContext2(ifc);
+            error("mlsiemens:NotImplementedError", stackstr()+" enables latent bug")
+            % ic = this.data_.imagingContext;
+            % ifc = ic.imagingFormat;
+            % ifc.img = this.invEfficiency_*ifc.img;
+            % ic = mlfourd.ImagingContext2(ifc);
         end
     end
 
