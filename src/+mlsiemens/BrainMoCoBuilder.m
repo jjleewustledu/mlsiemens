@@ -351,7 +351,6 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             end
             popd(pwd0)
         end
-
         
         function [s,r] = copyfile(~, file_obj, dest_pth)
             [~,fp,x] = myfileparts(file_obj);
@@ -690,28 +689,57 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 end
             end
         end
-        function trc = siemens_get_tracer(ptd)
+        function trc = siemens_get_tracer(ptd, opts)
+            arguments
+                ptd {mustBeFile}
+                opts.do_lower logical = false
+            end
+
             m = mlsiemens.BrainMoCoBuilder.siemens_get_dicom_map(ptd);
             v = m("DerivationDescription").value;
-
             
             if contains(v, "CO", IgnoreCase=true)
                 trc = "CO";
+                if opts.do_lower; trc = lower(trc); end
                 return
             end
             if contains(v, "Oxygen", IgnoreCase=true)
                 trc = "OO";
+                if opts.do_lower; trc = lower(trc); end
                 return
             end            
             if contains(v, "Water", IgnoreCase=true)
                 trc = "HO";
+                if opts.do_lower; trc = lower(trc); end
                 return
             end            
             if contains(v, "FDG", IgnoreCase=true)
                 trc = "FDG";
+                if opts.do_lower; trc = lower(trc); end
+                return
+            end
+            if contains(v, "RO", IgnoreCase=true) && contains(v, "948")
+                trc = "RO948";
+                if opts.do_lower; trc = lower(trc); end
+                return
+            end
+            if contains(v, "MK", IgnoreCase=true) && contains(v, "6240")
+                trc = "MK6240";
+                if opts.do_lower; trc = lower(trc); end
+                return
+            end
+            if contains(v, "ASEM", IgnoreCase=true)
+                trc = "ASEM";
+                if opts.do_lower; trc = lower(trc); end
+                return
+            end
+            if contains(v, "AZAN", IgnoreCase=true)
+                trc = "AZAN";
+                if opts.do_lower; trc = lower(trc); end
                 return
             end
             trc = "Unknown";
+            if opts.do_lower; trc = lower(trc); end
         end
         function [dt,dtstr] = siemens_meta_to_datetime(ptd)
             %% returns datetime, datetime string
