@@ -372,7 +372,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
         function build_sub(this, opts)
             arguments
                 this mlsiemens.BrainMoCo2
-                opts.part1 double = 1 % continue with subsequent rows of build_sub_table() if runtime err
+                opts.ses1 double = 1 % continue with subsequent rows of build_sub_table() if runtime err
             end
 
             if ~isfile(this.source_sub_table_fqfn)
@@ -381,7 +381,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 ld = load(this.source_sub_table_fqfn);
                 T = ld.T;
             end
-            for sesi = 1:size(T,1)  
+            for sesi = opts.ses1:size(T,1)  
                 apath = T{sesi, "lmpath"};
                 apath = strrep(apath, "/data/nil-bluearc/vlassenko/jjlee/Singularity", "d:"); % KLUDGE
                 apath = strrep(apath, "/home/usr/jjlee/mnt/CHPC_scratch/Singularity", "d:");  % KLUDGE
@@ -391,17 +391,27 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 thetimedelays = T{sesi, "timedelays"}{1};
 
                 pwd0 = pushd(apath);
-                for parti = opts.part1:length(thetaus)
+                if isnumeric(thetaus)
                     tic
                     try
                         mlsiemens.BrainMoCo2.create_moving_average( ...
                             apath, tracer=atracer, taus=thetaus, starts=thestarts, time_delay=thetimedelays);  
                     catch ME
-                        disp(ME)                
-                        mlsiemens.BrainMoCo2.create_moving_average( ...
-                            apath, tracer=atracer, taus=thetaus{parti}, starts=thestarts{parti}, time_delay=thetimedelays(parti));  
+                        disp(ME)
                     end
                     toc
+                end
+                if iscell(thetaus)
+                    for parti = 1:length(thetaus)
+                        tic
+                        try
+                            mlsiemens.BrainMoCo2.create_moving_average( ...
+                                apath, tracer=atracer, taus=thetaus{parti}, starts=thestarts{parti}, time_delay=thetimedelays(parti));  
+                        catch ME
+                            disp(ME)                
+                        end
+                        toc
+                    end
                 end
                 popd(pwd0);
             end
