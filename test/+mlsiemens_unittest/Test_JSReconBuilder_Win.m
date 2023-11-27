@@ -73,7 +73,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
         function test_BMC_create_fdg_108300(this)
             paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108300", "ses-20210517114419", "lm-fdg");
             tracers = "fdg";
-            taus = {10*ones(1,359)};
+            taus = {10*ones(1,329)};
             pwd0 = pushd(paths);
             tic                 
             mlsiemens.BrainMoCo2.create_moving_average(paths, tracer=tracers, taus=taus{1}, nifti_only=true);
