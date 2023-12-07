@@ -4,6 +4,19 @@ classdef (Sealed) BiographMMRKit2 < handle & mlkinetics.ScannerKit
     %  Created 09-Jun-2022 13:53:46 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
     %  Developed on Matlab 9.12.0.1956245 (R2022a) Update 2 for MACI64.  Copyright 2022 John J. Lee.
     
+    methods
+        function d = do_make_device(this)
+            if ~isempty(this.device_)
+                d = this.device_;
+                return
+            end
+            this.device_ = mlsiemens.BiographMMRDevice.create( ...
+                bids_kit=this.bids_kit_, ...
+                tracer_kit=this.tracer_kit_);
+            d = this.device_;
+        end
+    end
+
     methods (Static)
         function this = instance(varargin)
             this = mlsiemens.BiographMMRKit2();
@@ -20,15 +33,6 @@ classdef (Sealed) BiographMMRKit2 < handle & mlkinetics.ScannerKit
             % end
         end
     end 
-
-    methods
-        function d = do_make_device(this)
-            this.device_ = mlsiemens.BiographMMRDevice.create( ...
-                bids_kit=this.bids_kit_, ...
-                tracer_kit=this.tracer_kit_);
-            d = this.device_;
-        end
-    end
 
     %% PROTECTED
 
