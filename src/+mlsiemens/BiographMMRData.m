@@ -14,14 +14,20 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
         function consoleTaus(varargin)
             error('mlan:NotImplementedError', stackstr());
         end
-        function this = create(bids_med, counter)
+        function this = create(bids_med, opts)
+            arguments
+                bids_med mlpipeline.ImagingMediator {mustBeNonempty}
+                opts.counter = [];
+            end
+
             bids_med.rnumber = mlsiemens.BiographMMRData.R_NUMBER_FINAL;
             this = mlsiemens.BiographMMRData( ...
                 'isotope', bids_med.isotope, ...
                 'tracer', bids_med.tracer, ...
                 'datetimeMeasured', bids_med.datetime, ...
+                'times', bids_med.times, ...
                 'taus', bids_med.taus, ...
-                'radMeasurements', counter);
+                'radMeasurements', opts.counter);
             this.imagingContext_ = bids_med.imagingContext;
         end
         function this = createFromSession(sesd, varargin)
