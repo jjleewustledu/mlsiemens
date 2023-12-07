@@ -11,16 +11,21 @@ classdef BiographVisionData < handle & mlsiemens.BiographData
 
     methods (Static)
         function consoleTaus(varargin)
-            error('mlvg:NotImplementedError', stackstr());
+            error('mlsiemens:NotImplementedError', stackstr());
         end
-        function this = create(bids_med, counter)
+        function this = create(bids_med, opts)
+            arguments
+                bids_med mlpipeline.ImagingMediator {mustBeNonempty}
+                opts.counter = [];
+            end
+
             this = mlsiemens.BiographVisionData( ...
                 'isotope', bids_med.isotope, ...
                 'tracer', bids_med.tracer, ...
                 'datetimeMeasured', bids_med.datetime, ...
                 'times', bids_med.times, ...
                 'taus', bids_med.taus, ...
-                'radMeasurements', counter);
+                'radMeasurements', opts.counter);
             this.imagingContext_ = bids_med.imagingContext;
         end
         function this = createFromSession(sesd, varargin)
@@ -33,7 +38,7 @@ classdef BiographVisionData < handle & mlsiemens.BiographData
             this.read(sesd.tracerOnAtlas());
             this.decayUncorrect(); % ensure decay-uncorrected state for legacy pipelines
         end
-        function fwhh = petPointSpread
+        function fwhh = petPointSpread()
             fwhh = mlsiemens.VisionRegistry.instance.petPointSpread;
         end
     end

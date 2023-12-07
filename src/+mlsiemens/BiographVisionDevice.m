@@ -19,7 +19,7 @@ classdef BiographVisionDevice < handle & mlsiemens.BiographDevice
             radionuclide = opts.tracer_kit.make_radionuclides();
             this = BiographVisionDevice( ...
                 calibration=BiographCalibration.create(bids_med, counter, radionuclide), ...
-                data=BiographVisionData.create(bids_med, counter));
+                data=BiographVisionData.create(bids_med, counter=counter));
         end
         function this = createFromSession(varargin)
             import mlsiemens.*;
