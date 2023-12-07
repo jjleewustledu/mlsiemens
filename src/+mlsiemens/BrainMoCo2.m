@@ -120,6 +120,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
             try
                 if opts.deep
+                    cd(this.source_sub_path); %#ok<MCCD>
                     mg = mglob(fullfile(this.source_ses_path, this.lm_prefix+tagged+"*"));
                     for mgi = mg
                         rmdir(mgi(1), "s");
@@ -261,7 +262,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.Skip {mustBeInteger} = 0
                 opts.LMFrames {mustBeTextScalar} = "0:10,10,10,10,10,10,10,10,10,10,10,10"
                 opts.model {mustBeTextScalar} = "Vision"
-                opts.tracer {mustBeTextScalar} = "oo"
+                opts.tracer {mustBeTextScalar} = "fdg"
                 opts.filepath {mustBeFolder} = this.source_pet_path % for BMC params file (.txt)
                 opts.tag string {mustBeTextScalar} = "-start"
                 opts.tag0 string {mustBeTextScalar} = "-start0"
@@ -273,15 +274,32 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             copts = namedargs2cell(opts);
             this.check_env();
 
+            % cscript JSRecon.js
+            if startsWith(opts.tracer, "oo")
+                pwd0 = pushd(this.source_pet_path);
+                jsrp = mlsiemens.JSRParams(copts{:});
+                jsrp.writelines();
+                [~,r] = mysystem(sprintf("cscript %s %s %s", ...
+                    this.jsrecon_js, ...
+                    this.source_lm_path, ...
+                    jsrp.fqfilename));
+                disp(r)
+                path00 = fullfile(this.source_pet_path, 
+                [~,r] = mysystem(fullfile(path00, sprintf("Run-04-VisionTestData-LM-00-All.bat")));
+                disp(r)
+            end
+
             % cscript BMC.js
-            pwd0 = pushd(this.source_pet_path);
-            bmcp = mlsiemens.BrainMoCoParams2(copts{:});
-            bmcp.writelines();
-            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                this.bmc_js, ...
-                this.source_lm_path, ...
-                bmcp.fqfilename));
-            disp(r)
+            if ~startsWith(opts.tracer, "oo")
+                pwd0 = pushd(this.source_pet_path);
+                bmcp = mlsiemens.BrainMoCoParams2(copts{:});
+                bmcp.writelines();
+                [~,r] = mysystem(sprintf("cscript %s %s %s", ...
+                    this.bmc_js, ...
+                    this.source_lm_path, ...
+                    bmcp.fqfilename));
+                disp(r)
+            end
 
             % move output/* to source_ses_path
             g = asrow(globFolders(fullfile(this.output_path, '*')));

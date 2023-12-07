@@ -118,6 +118,21 @@ classdef BrainMoCoParams2
             g = this.LMFrames_;
         end
         function g = get.Resolution(this)
+            if startsWith(this.tracer_, "oo", IgnoreCase=true)
+                switch convertCharsToStrings(lower(this.model_))
+                    case "mct"
+                        g = 400;
+                    case "vision"
+                        g = 220;
+                    case "mmr"
+                        g = 344;
+                    case "horizon"
+                        g = 360;
+                    otherwise
+                        error("mlsiemens:ValueError", "%s: this.model->%s", stackstr(), this.model_)
+                end
+                return
+            end
             switch convertCharsToStrings(lower(this.model_))
                 case "mct"
                     g = 400;
@@ -145,7 +160,7 @@ classdef BrainMoCoParams2
                 opts.Skip {mustBeInteger} = 0
                 opts.LMFrames {mustBeTextScalar} = "0:120"
                 opts.model {mustBeTextScalar} = "Vision"
-                opts.tracer {mustBeTextScalar} = "fdg"
+                opts.tracer {mustBeTextScalar} = "unknown"
                 opts.filepath {mustBeFolder} = pwd
                 opts.tag {mustBeTextScalar} = "-start"
                 opts.tag0 {mustBeTextScalar} = "-start0"
@@ -161,6 +176,9 @@ classdef BrainMoCoParams2
             this.filepath_ = convertCharsToStrings(opts.filepath);
 
             this.doBMCDynamic = double(opts.is_dyn); % dynamic BMC recon
+
+            if startsWith(opts.tracer, "oo", IgnoreCase=true)
+            end
         end
         function fn = fqfilename(this)
             ss = strsplit(this.LMFrames_, ":");

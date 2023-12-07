@@ -76,11 +76,11 @@ classdef JSReconParams
         %        I picked these numbers rather arbitrarily.
         %  For Horizon 111*, TOF subsets = 20. Cannot be changed.
         %  For Vision  12**, TOF subsets = 5. Cannot be changed.
-        TOFawiter       =       2
+        TOFawiter       =       4
         TOFawsubsets    =       5
-        TOFopiter       =       2
+        TOFopiter       =       4
         TOFopsubsets    =       5
-        TOFpsfiter      =       2
+        TOFpsfiter      =       4
         TOFpsfsubsets   =       5
 
         % ------------------------------------------------------
@@ -122,7 +122,7 @@ classdef JSReconParams
         doFBPTOFRecon   =       0
         doAWTOFRecon    =       0
         doOPTOFRecon    =       1
-        doPSFTOFRecon   =       0
+        doPSFTOFRecon   =       1
         doIF2Dicom      =       0
         doIF2MIP        =       0
         
@@ -322,13 +322,13 @@ classdef JSReconParams
         mMReMCdoPSFRecon  =     1
         mMReMCiter        =     3
         mMReMCsubsets	  =    21
-        mMReMCoimagesize  =   172  
+        mMReMCoimagesize  =   344  
         mMReMCrefgate     =     0  
         mMReMCLMstart     =    -1  
         mMReMCLMstop      =    -1
         mMReMCfiltertype  = "GAUSS"
-        mMReMCfilterxy    =   2.0 
-        mMReMCfilterz     =   2.0
+        mMReMCfilterxy    =     0 
+        mMReMCfilterz     =     0
         % [TV] end
         
         %------------------------------------------------------
@@ -493,10 +493,14 @@ classdef JSReconParams
                 opts.Skip {mustBeInteger} = 0
                 opts.LMFrames {mustBeTextScalar} = "0:120"
                 opts.model {mustBeTextScalar} = "Vision"
-                opts.tracer {mustBeTextScalar} = "oo"
+                opts.tracer {mustBeTextScalar} = "unknown"
                 opts.filepath {mustBeFolder} = pwd
-                opts.tag {mustBeTextScalar} = ""
-                opts.is_dyn logical = false
+                opts.tag {mustBeTextScalar} = "-start"
+                opts.tag0 {mustBeTextScalar} = "-start0"
+                opts.starts double {mustBeScalarOrEmpty} = 0
+                opts.is_dyn logical = true
+                opts.doIF2Dicom logical = false
+                opts.clean_up logical = false
             end
             this.LMFrames_ = convertCharsToStrings(opts.LMFrames);
             this.model_ = convertCharsToStrings(opts.model);

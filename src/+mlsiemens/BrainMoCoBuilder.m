@@ -261,12 +261,14 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
 
         function build_sourcedata_lm(this, s)
+            %% links sourcedata to rawdata; use rsync -raL to rsync listmode to Windows/e7
+            
             pwd0 = pushd(this.raw_lm_path);
             ensuredir(this.source_sub_path);
             copyfile(s.ct, fullfile(this.source_sub_path, "CT"));
             copyfile(s.norm, this.source_sub_path);
             try
-                movefile(s.ptd, this.source_sub_path);
+                mysystem("ln -s %s %s", s.ptd, this.source_sub_path);
             catch %#ok<CTCH>
             end
             popd(pwd0);
