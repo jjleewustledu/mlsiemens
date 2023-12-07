@@ -124,10 +124,12 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
     
     methods (Access = protected)
  		function this = BiographDevice(varargin)
- 			this = this@mlpet.AbstractDevice(varargin{:});            
+ 			this = this@mlpet.AbstractDevice(varargin{:});       
+            
             this.invEfficiency_ = ...
                 mean(this.calibration_.invEfficiency)* ...
                 mlcapintec.RefSourceCalibration.invEfficiencyf();
+            this.data_.imagingContext.json_metadata.invEfficiency = this.invEfficiency_;
  		end
     end
 
