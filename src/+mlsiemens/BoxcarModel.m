@@ -55,6 +55,8 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
             ks_mat_ = single(ks_mat_);
             soln = this.artery.selectImagingTool(img=ks_mat_);
             soln.fileprefix = strrep(this.artery.fileprefix, "_pet", "_boxcarks");
+            soln.fileprefix = strrep(this.artery.fileprefix, "_idif", "_boxcarks");
+            soln.save();
             this.product_ = soln;
         end
     end
