@@ -121,10 +121,9 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
             import mlsiemens.BoxcarModel.sampled
             
             estimation = sampled(ks, Data, [], times_sampled); 
-            estimation_norm = estimation/max(estimation); % \in [0 1] 
             measurement_norm = measurement/max(measurement); % \in [0 1] 
             positive = measurement_norm > 0.01;
-            eoverm = estimation_norm(positive)./measurement_norm(positive);            
+            eoverm = estimation(positive)./measurement_norm(positive);            
             loss = mean(abs(1 - eoverm));
         end
         function [qs,A_qs,qs_] = sampled(ks, Data, artery_interpolated, times_sampled)
