@@ -54,7 +54,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             this.ensureEndsWithLm(opts.raw_lm_path);
             ensuredir(this.raw_lm_path);
             ensuredir(this.raw_dcm_path);            
-            fprintf("%s: manually inspect %s and %s for appropriate raw data.\n", stackstr(), this.raw_lm_path, this.raw_dcm_path)
+            fprintf("%s:\nmanually inspect %s and\n%s for appropriate raw data.\n", stackstr(), this.raw_lm_path, this.raw_dcm_path)
 
             this.sessions = "";
         end
@@ -67,12 +67,12 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             this.build_raw_lm()
             map = this.build_map_of_lm();
             keys = map.keys;
+            save("map.mat", "map");
             for k = asrow(keys) % *LISTMODE*                
                 this.build_sourcedata_dcm();
                 this.build_sourcedata_lm(map(k{1}));
             end
         end
-
 
         function build_all_part2(this, opts)
             %% in sourcedata, build
@@ -127,7 +127,6 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             % 
             % this.build_output_folders(map(k{1}));            
         end
-
 
         function build_sourcedata_dcm(this)
             pwd0 = pushd(this.raw_dcm_path);
@@ -259,20 +258,22 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             popd(pwd0)
         end
 
-
         function build_sourcedata_lm(this, s)
             %% links sourcedata to rawdata; use rsync -raL to rsync listmode to Windows/e7
             
             pwd0 = pushd(this.raw_lm_path);
-            ensuredir(this.source_sub_path);
-            copyfile(s.ct, fullfile(this.source_sub_path, "CT"));
-            copyfile(s.norm, this.source_sub_path);
+            ses_path = fullfile(this.source_sub_path, "sub-"+string(s.datetimestr));
+            ensuredir(ses_path);
+            copyfile(s.ct, fullfile(ses_path, "CT"));
+            copyfile(s.norm, ses_path);
             try
-                mysystem("ln -s %s %s", s.ptd, this.source_sub_path);
-            catch %#ok<CTCH>
+                movefile(s.ptd, ses_path);
+            catch ME
+                handexcept(ME);
             end
             popd(pwd0);
         end
+
         function m = build_map_of_lm(this)
             %% m(fileprefix) := struct with
             %  fields from this.siemns_get_meta() ~ struct
@@ -338,7 +339,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         end        
         function build_raw_dcm(this)
             pwd0 = pushd(this.raw_dcm_path);
-            this.dcm2niix();
+            [~,r] = this.dcm2niix();
+            disp(r)
             popd(pwd0);
         end
         function build_raw_lm(this)
@@ -376,6 +378,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             % glob CTs
             g = glob(fullfile(this.raw_dcm_path, '*_CT_*.nii.gz')); 
             g = g(~contains(g, '_AC_CT_'));
+            assert(~isemptytext(g))
             for gidx = 1:length(g)
                 % find CT datetimes, series
                 re = regexp(mybasename(g{gidx}), "\S+_ses-(?<dt>\d{14})_\S+-(?<series>\d+)", "names");
@@ -481,7 +484,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 folder {mustBeFolder} = pwd % for recursive searching
                 opts.a {mustBeTextScalar} = "y"
                 opts.ba {mustBeTextScalar} =  "n"
-                opts.d {mustBeInteger} = 5
+                opts.d {mustBeInteger} = 7
                 opts.f {mustBeTextScalar} = "sub-%n_ses-%t_%d-%s"
                 opts.i {mustBeTextScalar} = "n"
                 opts.o {mustBeFolder} = pwd
