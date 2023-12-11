@@ -275,19 +275,19 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             this.check_env();
 
             % cscript JSRecon.js
-            if startsWith(opts.tracer, "oo")
-                pwd0 = pushd(this.source_pet_path);
-                jsrp = mlsiemens.JSRParams(copts{:});
-                jsrp.writelines();
-                [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                    this.jsrecon_js, ...
-                    this.source_lm_path, ...
-                    jsrp.fqfilename));
-                disp(r)
-                path00 = fullfile(this.source_pet_path, 
-                [~,r] = mysystem(fullfile(path00, sprintf("Run-04-VisionTestData-LM-00-All.bat")));
-                disp(r)
-            end
+            % if startsWith(opts.tracer, "oo")
+            %     pwd0 = pushd(this.source_pet_path);
+            %     jsrp = mlsiemens.JSRParams(copts{:});
+            %     jsrp.writelines();
+            %     [~,r] = mysystem(sprintf("cscript %s %s %s", ...
+            %         this.jsrecon_js, ...
+            %         this.source_lm_path, ...
+            %         jsrp.fqfilename));
+            %     disp(r)
+            %     path00 = fullfile(this.source_pet_path, 
+            %     [~,r] = mysystem(fullfile(path00, sprintf("Run-04-VisionTestData-LM-00-All.bat")));
+            %     disp(r)
+            % end
 
             % cscript BMC.js
             if ~startsWith(opts.tracer, "oo")
