@@ -1,6 +1,6 @@
 classdef BrainMoCoBuilder < handle & mlsystem.IHandle
-    %% line1
-    %  line2
+    %% >> bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd)
+    %  >> bmcb.build_all
     %  
     %  Created 29-Aug-2023 15:00:03 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
@@ -65,11 +65,13 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
             this.build_raw_dcm()
             this.build_raw_lm()
+            
             map = this.build_map_of_lm();
             keys = map.keys;
             save("map.mat", "map");
-            for k = asrow(keys) % *LISTMODE*                
-                this.build_sourcedata_dcm();
+
+            this.build_sourcedata_dcm();    
+            for k = asrow(keys) % *LISTMODE* 
                 this.build_sourcedata_lm(map(k{1}));
             end
         end
