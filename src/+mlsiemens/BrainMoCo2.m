@@ -5,7 +5,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
     %  Developed on Matlab 9.13.0.2105380 (R2022b) Update 2 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Constant)
-        N_PROC = 5
+        N_PROC = 4
         SHAPE = [440 440 159]
     end
 
@@ -413,7 +413,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     tic
                     try
                         mlsiemens.BrainMoCo2.create_moving_average( ...
-                            apath, tracer=atracer, taus=thetaus, starts=thestarts, time_delay=thetimedelays);  
+                            apath, tracer=atracer, taus=thetaus, starts=thestarts, time_delay=thetimedelays);
                     catch ME
                         disp(ME)
                     end
@@ -440,6 +440,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             % ptds from mglob
             ptds = mglob(fullfile(this.source_sub_path, "**", "*LISTMODE*.ptd"));
             sess = mglob(fullfile(this.source_sub_path, "ses-*"));
+            sess = sess(this.has_date_and_time(sess));
             assert(length(ptds) == length(sess))
 
             % all tracers
@@ -1091,6 +1092,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ic = []; % respecting memory limits
         end
         function ic = createNiftiStatic(sub, ses, opts)
+            %% requires previously generated results from e7
+
             arguments
                 sub {mustBeTextScalar}
                 ses {mustBeTextScalar}
@@ -1128,6 +1131,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ic = mlfourd.ImagingContext2(ifc);
         end
         function ic = createNiftiSimple(sub, ses, opts)
+            %% requires previously generated results from e7
+
             arguments
                 sub {mustBeTextScalar}
                 ses {mustBeTextScalar}
@@ -1198,10 +1203,16 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 tracer="fdg");
         end
         function create_fdg_phantom(source_lm_path)
-            mlsiemens.BrainMoCo2.create_moving_average( ...
-                source_lm_path, ...
-                taus=10*ones(1,29), ...
-                tracer="fdg");
+            try
+                mlsiemens.BrainMoCo2.create_moving_average( ...
+                    source_lm_path, ...
+                    taus=10*ones(1,29), ...
+                    tracer="fdg", ...
+                    starts=0:9, ...
+                    time_delay=0);
+            catch ME
+                disp(ME)
+            end
         end
         function create_ho(source_lm_path)
             mlsiemens.BrainMoCo2.create_moving_average( ...
@@ -1255,7 +1266,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     sub{1}, ses{1}, tag=opts.tag, tracer=opts.tracer, lm_prefix=lm_prefix, time_delay=opts.time_delay, starts=starts(1));
                 mlsiemens.BrainMoCo2.createNiftiMovingAvgFrames( ...
                     sub{1}, ses{1}, tag=opts.tag, tag0=opts.tag+starts(1), taus=taus, tracer=opts.tracer, lm_prefix=lm_prefix, time_delay=opts.time_delay, dt=opts.dt, starts=starts, coarsening_time=opts.coarsening_time);
-                mlsiemens.BrainMoCo2.deliver_product(sub{1}, ses{1});
+
+                source_pet_path = fullfile(myfileparts(source_lm_path), "pet");
+                ensuredir(source_pet_path);
+                mlsiemens.BrainMoCo2.deliver_products(sub{1}, ses{1}, source_pet_path=source_pet_path);
             catch ME
                 handwarning(ME)
             end
@@ -1471,10 +1485,30 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ifc.fileprefix = strcat(ifc.fileprefix, "-", stackstr(use_dashes=true));
             ic = mlfourd.ImagingContext2(ifc);
         end
-        function deliver_product(sub, ses)
+        function deliver_products(sub, ses, opts)
             arguments
                 sub {mustBeText}
                 ses {mustBeText}
+                opts.source_pet_path {mustBeFolder}
+            end
+            
+            % gather recons into folder "pet"
+            products_path = myfileparts(opts.source_pet_path);
+            mg = [mglob(fullfile(products_path, "*.nii.gz")), ...
+                  mglob(fullfile(products_path, "*.json")), ...
+                  mglob(fullfile(products_path, "*.log"))];
+            for mgi = 1:length(mg)
+                ensuredir(fullfile(products_path, "pet"));
+                movefile(mg(mgi), opts.source_pet_path);
+            end
+
+            % copy recons to chpc
+            try
+                chpc_pet_path = strrep(opts.source_pet_path, ...
+                    "D:", "S:\Singularity");
+                copyfile(opts.source_pet_path, fileparts(chpc_pet_path));
+            catch ME
+                handwarning(ME)
             end
         end
         function ic = deconv_moving(ic, opts)
@@ -1552,6 +1586,20 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 starts = 0:opts.dt:(taus(1)-1);
             end
             starts = starts + opts.time_delay;
+        end
+        function tf = has_date_and_time(ses_str)
+            arguments
+                ses_str string {mustBeText}
+            end
+
+            tf = false(size(ses_str));
+            for tfi = 1:length(tf)
+                re = regexp(ses_str(tfi), "[a-zA-Z\-_]+(?<date>\d{8})(?<time>\d+)$", "names");
+                if ~isempty(re)
+                    len = length(re.time{1});
+                    tf(tfi) = len >= 4; % at least has yyyyMMddHHmm
+                end
+            end
         end
         function proto = ic_prototype(opts)
             %% read prototype from filesystem

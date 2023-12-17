@@ -17,26 +17,44 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
-        function test_BMC_build_all(this)
-            % calib. phantom
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108306");
-            bmc = mlsiemens.BrainMoCo(source_lm_path=pwd);
-            bmc.build_all();
-            ls("S:\Singularity\CCIR_01211\sourcedata\sub-108306")
+        function test_BMC_build_sub(this)
+            % single subject
+            tic
+            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108237\ses-20221031100910\lm");
+            bmc = mlsiemens.BrainMoCo2(source_lm_path=pwd);
+            bmc.build_sub();
+            ls("S:\Singularity\CCIR_01211\sourcedata\sub-108237")
             popd(pwd0);
+            toc
         end
         function test_BMC_create_fdg_phantom(this)
 
-            parpool(mlsiemens.BrainMoCo2.N_PROC)
+            if isempty(gcp('nocreate'))
+                parpool(2)
+            end
 
             % calib. phantom
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421171325\lm");
-            tic
-            mlsiemens.BrainMoCo2.create_fdg_phantom(pwd);
-            toc
-            popd(pwd0);
+            % pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421171325\lm");
+            % tic
+            % mlsiemens.BrainMoCo2.create_fdg_phantom(pwd);
+            % toc
+            % popd(pwd0);
             % Elapsed time is 3148.839220 seconds for 54 cumulative, N_PROC == 5, parpool(5).
             % Elapsed time is ~ 2580 seconds for 5*29 moving average frames, N_PROC == 5, parpool(5).
+
+            paths = [ ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108250", "ses-20221207120651", "lm-fdg"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108254", "ses-20221116130516", "lm-fdg"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108284", "ses-20230220122457", "lm-fdg"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108306", "ses-20230227132837", "lm-fdg")];
+            for idx = 1:length(paths)
+                apath = paths(idx);
+                pwd0 = pushd(apath);
+                tic                 
+                mlsiemens.BrainMoCo2.create_fdg_phantom(apath);  
+                toc
+                popd(pwd0);
+            end
         end
 
         function test_BMC_build_clean_co(this)
@@ -199,7 +217,9 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
         end
         function test_BMC_create_simple_agi(this)
             
-            parpool(mlsiemens.BrainMoCo2.N_PROC)
+            if isempty(gcp('nocreate'))
+                parpool(mlsiemens.BrainMoCo2.N_PROC)
+            end
 
             paths = [ ...
                 fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co"), ...

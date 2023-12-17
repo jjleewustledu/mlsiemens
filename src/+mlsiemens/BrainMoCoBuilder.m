@@ -85,7 +85,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.nproc double = mlsiemens.BrainMoCo2.N_PROC
             end
 
-            parpool(opts.nproc)
+            if isempty(gcp('nocreate'))
+                parpool(opts.nproc)
+            end
 
             % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co"), ...
             % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm-ho"), ...
@@ -104,7 +106,6 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     paths(ti), tracer=tracers(ti), taus=taus{ti});
                 toc
             end
-
 
             % %     build_all BMC    
             % bmc = mlsiemens.BrainMoCo2(source_lm_path=this.source_lm_path);
@@ -264,12 +265,12 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %% links sourcedata to rawdata; use rsync -raL to rsync listmode to Windows/e7
             
             pwd0 = pushd(this.raw_lm_path);
-            ses_path = fullfile(this.source_sub_path, "sub-"+string(s.datetimestr));
-            ensuredir(ses_path);
-            copyfile(s.ct, fullfile(ses_path, "CT"));
-            copyfile(s.norm, ses_path);
+            lm_path = fullfile(this.source_sub_path, "ses-"+string(s.datetimestr), "lm");
+            ensuredir(lm_path);
+            copyfile(s.ct, fullfile(lm_path, "CT"));
+            copyfile(s.norm, lm_path);
             try
-                movefile(s.ptd, ses_path);
+                movefile(s.ptd, lm_path);
             catch ME
                 handexcept(ME);
             end
