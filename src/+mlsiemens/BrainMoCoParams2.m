@@ -123,7 +123,7 @@ classdef BrainMoCoParams2
                     case "mct"
                         g = 400;
                     case "vision"
-                        g = 220;
+                        g = 440;
                     case "mmr"
                         g = 344;
                     case "horizon"

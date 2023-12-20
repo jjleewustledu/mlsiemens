@@ -35,7 +35,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
     methods %% GET
         function g = get.bmc_js(this)
-            g = fullfile(this.jsrecon_home, "BrainMotionCorrection", "BMC.js");
+            g = fullfile(this.jsrecon_home, "BrainMotionCorrection", "BMC.js"); % BMC.js BMC_VG76.js, BMC_VG80.js
         end
         function g = get.inki_home(this)
             g = fullfile("C:", "Inki");
@@ -274,6 +274,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             copts = namedargs2cell(opts);
             this.check_env();
 
+            pwd0 = pushd(this.source_pet_path);
+
             % cscript JSRecon.js
             % if startsWith(opts.tracer, "oo")
             %     pwd0 = pushd(this.source_pet_path);
@@ -287,19 +289,17 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             %     path00 = fullfile(this.source_pet_path, 
             %     [~,r] = mysystem(fullfile(path00, sprintf("Run-04-VisionTestData-LM-00-All.bat")));
             %     disp(r)
+            %     popd(pwd0);
             % end
 
             % cscript BMC.js
-            if ~startsWith(opts.tracer, "oo")
-                pwd0 = pushd(this.source_pet_path);
-                bmcp = mlsiemens.BrainMoCoParams2(copts{:});
-                bmcp.writelines();
-                [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                    this.bmc_js, ...
-                    this.source_lm_path, ...
-                    bmcp.fqfilename));
-                disp(r)
-            end
+            bmcp = mlsiemens.BrainMoCoParams2(copts{:});
+            bmcp.writelines();
+            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
+                this.bmc_js, ...
+                this.source_lm_path, ...
+                bmcp.fqfilename));
+            disp(r)
 
             % move output/* to source_ses_path
             g = asrow(globFolders(fullfile(this.output_path, '*')));
@@ -323,6 +323,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             if opts.clean_up
                 this.build_clean(tag=opts.tag, starts=opts.starts);
             end
+            
             popd(pwd0);
         end        
         function build_single(this, opts)
@@ -390,16 +391,24 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
         function build_sub(this, opts)
             arguments
                 this mlsiemens.BrainMoCo2
-                opts.ses1 double = 1 % continue with subsequent rows of build_sub_table() if runtime err
+                opts.ses0 double = 1
+                opts.ses1 double = [] % continue with subsequent rows of build_sub_table() if runtime err
+                opts.sesF double = []
             end
 
-            if ~isfile(this.source_sub_table_fqfn)
-                T = this.build_sub_table();
-            else
-                ld = load(this.source_sub_table_fqfn);
-                T = ld.T;
+            if isfile(this.source_sub_table_fqfn)
+                new_fqfn = myfileprefix(this.source_sub_table_fqfn) ...
+                    + "_" + string(datetime("now", Format="yyyyMMddHHmmss")) + ".mat";
+                movefile(this.source_sub_table_fqfn, new_fqfn);
             end
-            for sesi = opts.ses1:size(T,1)  
+            T = this.build_sub_table();
+            if ~isempty(opts.ses1)
+                opts.ses0 = opts.ses1;
+            end
+            if isempty(opts.sesF)
+                opts.sesF = size(T, 1);
+            end
+            for sesi = opts.ses0:opts.sesF
                 apath = T{sesi, "lmpath"};
                 apath = strrep(apath, "/data/nil-bluearc/vlassenko/jjlee/Singularity", "d:"); % KLUDGE
                 apath = strrep(apath, "/home/usr/jjlee/mnt/CHPC_scratch/Singularity", "d:");  % KLUDGE
@@ -439,6 +448,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
             % ptds from mglob
             ptds = mglob(fullfile(this.source_sub_path, "**", "*LISTMODE*.ptd"));
+            ptds = ptds(~contains(ptds, "lm-"));
             sess = mglob(fullfile(this.source_sub_path, "ses-*"));
             sess = sess(this.has_date_and_time(sess));
             assert(length(ptds) == length(sess))
@@ -519,13 +529,13 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 end
             end
 
-            % rename "lm" to lmfolders
+            % copy "lm" to lmfolders
             for idx = 1:length(ptds)
                 lm_pth = myfileparts(ptds(idx));
                 ses_pth = myfileparts(lm_pth);
                 lmpaths(idx) = fullfile(ses_pth, lmfolders(idx)); %#ok<AGROW>
                 if isfolder(lm_pth) && ~isfolder(lmpaths(idx))
-                    movefile(lm_pth, lmpaths(idx));
+                    copyfile(lm_pth, lmpaths(idx));
                 end
             end
             
