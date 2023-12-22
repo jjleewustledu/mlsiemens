@@ -1,4 +1,4 @@
-classdef BiographDevice < handle & mlpet.AbstractDevice
+classdef BiographDevice < handle & mlpet.ScannerDevice
 	%% BIOGRAPHDEVICE represents Siemens Biograph scanners.
 
 	%  $Revision$
@@ -97,6 +97,7 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
             that.data_ = that.data_.volumeAveraged(varargin{:});
         end
     end 
+    
     methods (Static)        
         function sesd = findCalibrationSession(sesd0, varargin)
             %% assumed calibration is performed at end of session
@@ -124,7 +125,7 @@ classdef BiographDevice < handle & mlpet.AbstractDevice
     
     methods (Access = protected)
  		function this = BiographDevice(varargin)
- 			this = this@mlpet.AbstractDevice(varargin{:});       
+ 			this = this@mlpet.ScannerDevice(varargin{:});       
             
             this.invEfficiency_ = ...
                 mean(this.calibration_.invEfficiency)* ...

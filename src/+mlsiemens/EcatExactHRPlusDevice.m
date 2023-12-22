@@ -1,4 +1,4 @@
-classdef EcatExactHRPlusDevice < handle & mlpet.AbstractDevice
+classdef EcatExactHRPlusDevice < handle & mlpet.ScannerDevice
 	%% ECATEXACTHRPLUSDEVICE  
 
 	%  $Revision$
@@ -43,7 +43,7 @@ classdef EcatExactHRPlusDevice < handle & mlpet.AbstractDevice
  			%% ECATEXACTHRPLUSDEVICE
  			%  @param .
 
- 			this = this@mlpet.AbstractDevice(varargin{:});
+ 			this = this@mlpet.ScannerDevice(varargin{:});
  		end
  	end 
 

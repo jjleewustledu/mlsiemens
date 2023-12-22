@@ -8,6 +8,7 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
         function soln = build_solution(this)
             %% MAKE_SOLUTION
             %  @return ks_ in R^1 as mlfourd.ImagingContext2, without saving to filesystems.   
+            %  @return this.artery, which is deconvolved.
 
             % this.Data is assigned in create(), since build_solution() requires no adjustments of this.Data
 

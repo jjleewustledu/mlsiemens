@@ -302,7 +302,7 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             if ipr.diff
                 ic = diff(ic);
             end
-            ic.addJsonMetadata(ip);
+            ic.addJsonMetadata(ipr);
             % m = m/this.branchingRatio; % BUG FIX: this is already performed by Siemens Biograph scanners
         end
         function ic = selectIndex0IndexF(this, ic, index0, indexF)

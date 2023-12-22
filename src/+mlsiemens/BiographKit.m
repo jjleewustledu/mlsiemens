@@ -1,6 +1,6 @@
 classdef BiographKit < handle & mlpet.ScannerKit
-	%% BIOGRAPHKIT is an abstract factory pattern.
-
+	%% BIOGRAPHKIT is an abstract factory pattern.  It is DEPRECATED.
+      
 	%  $Revision$
  	%  was created 23-Feb-2020 16:09:01 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
