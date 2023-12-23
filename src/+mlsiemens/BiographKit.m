@@ -15,8 +15,9 @@ classdef BiographKit < handle & mlpet.ScannerKit
     end
     
     methods (Static)
-        function [arterialDev,arterialDatetimePeak] = alignArterialToScanner(varargin)
-            [arterialDev,arterialDatetimePeak] = mlkinetics.ScannerKit.alignArterialToScanner(varargin{:});   
+        function [arterialDev,arterialDatetimePeak] = alignArterialToReference(varargin)
+            [arterialDev,arterialDatetimePeak] = ...
+                mlpet.InputFuncDevice.alignArterialToReference(varargin{:});   
         end
     end
     
@@ -56,8 +57,10 @@ classdef BiographKit < handle & mlpet.ScannerKit
             
             arterialDev = mlswisstrace.TwiliteDevice.createFromSession(this.sessionData);
             arterialDev.deconvCatheter = ipr.deconvCatheter;
-            arterialDev = this.alignArterialToScanner( ...
-                arterialDev, scannerDev, 'sameWorldline', ipr.sameWorldline);
+            arterialDev = this.alignArterialToReference( ...
+                    arterialDev=arterialDev, ...
+                    referenceDev=ipr.scannerDev, ...
+                    sameWorldline=ipr.sameWorldline);
             if scannerDev.timeWindow > arterialDev.timeWindow && ...
                     contains(this.sessionData.isotope, '15O')
                 warning('mlsiemens:ValueWarning', ...
@@ -78,8 +81,10 @@ classdef BiographKit < handle & mlpet.ScannerKit
             
             countingDev = mlcapintec.CapracDevice.createFromSession(this.sessionData);
             if ~isempty(ipr.scannerDev) && ipr.alignToScanner
-                countingDev = this.alignArterialToScanner( ...
-                    countingDev, ipr.scannerDev, 'sameWorldline', ipr.sameWorldline);
+                countingDev = this.alignArterialToReference( ...
+                    arterialDev=countingDev, ...
+                    referenceDev=ipr.scannerDev, ...
+                    sameWorldline=ipr.sameWorldline);
             end
             this.countingDev_ = countingDev;
         end
