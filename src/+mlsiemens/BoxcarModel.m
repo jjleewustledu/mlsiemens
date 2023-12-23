@@ -34,12 +34,22 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
 
             % update idealized artery
             pr_ = solved_star.product;
-            [~,~,ideal] = this.sampled(pr_.ks, this.Data, [], solved_star.TimesSampled);
-            img_new_ = solved_star.M0*ideal;
+            [~,A,ideal] = this.sampled(pr_.ks, this.Data, [], solved_star.TimesSampled);
+            img_new_ = solved_star.rescaleModelEstimate(A*ideal);
             ai_new_ = this.artery.selectImagingTool(img=img_new_); % ref to be immediately updated
             ai_new_.fileprefix = strrep(this.artery.fileprefix, "_pet", "_boxcar");
             this.artery_ = ai_new_;
             solved_star.ArteryInterpolated = this.interp1_artery(img=img_new_);
+            this.solver_ = solved_star;
+
+            % product_ := ks
+            ks_mat_= [asrow(pr_.ks), pr_.loss];
+            ks_mat_ = single(ks_mat_);
+            soln = this.artery.selectImagingTool(img=ks_mat_);
+            soln.fileprefix = strrep(this.artery.fileprefix, "_pet", "_boxcarks");
+            soln.fileprefix = strrep(this.artery.fileprefix, "_idif", "_boxcarks");
+            soln.save();
+            this.product_ = soln;
 
             % plot idealized artery
             h = solved_star.plot( ...
@@ -50,15 +60,6 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
             saveFigure2(h, ...
                 this.artery.fqfp + "_" + stackstr(), ...
                 closeFigure=this.closeFigures);
-
-            % product_ := ks
-            ks_mat_= [asrow(pr_.ks), pr_.loss];
-            ks_mat_ = single(ks_mat_);
-            soln = this.artery.selectImagingTool(img=ks_mat_);
-            soln.fileprefix = strrep(this.artery.fileprefix, "_pet", "_boxcarks");
-            soln.fileprefix = strrep(this.artery.fileprefix, "_idif", "_boxcarks");
-            soln.save();
-            this.product_ = soln;
         end
     end
 
@@ -69,8 +70,8 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
                 opts.model_kind {mustBeTextScalar} = "3bolus"
                 opts.t0_forced {mustBeNumeric} = []
                 opts.tracer {mustBeTextScalar} = "Unknown"
-                opts.closeFigures logical = true
-                opts.Nensemble double = 20
+                opts.closeFigures logical = false
+                opts.Nensemble double = 10
             end
 
             this = mlsiemens.BoxcarModel();
@@ -90,7 +91,7 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
             this.closeFigures = opts.closeFigures;
             this.Nensemble = opts.Nensemble;
 
-            this.LENK = 9;
+            this.LENK = 12;
         end
 
         function vec = apply_boxcar(vec, Data)
@@ -125,13 +126,16 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
             
             estimation = sampled(ks, Data, [], times_sampled); 
             measurement_norm = measurement/max(measurement); % \in [0 1] 
-            positive = measurement_norm > 0.01;
-            eoverm = estimation(positive)./measurement_norm(positive);            
-            loss = mean(abs(1 - eoverm));
+            denergy = abs(estimation - measurement_norm);
+            kT = 0.5*mean(estimation) + 0.5*mean(measurement_norm);
+            loss = mean(denergy)/kT;            
+            %positive = measurement_norm > 0.01;
+            %eoverm = estimation(positive)./measurement_norm(positive);            
+            %loss = mean(abs(1 - eoverm));
         end
         function [qs,A_qs,qs_] = sampled(ks, Data, artery_interpolated, times_sampled)
             %% Returns:
-            %      qs, the Bayesian estimate of the measured boxcar AIF, including baseline, scaled to unity.
+            %      qs, the Bayesian estimate of the measured boxcar AIF, including baseline.
             %      qs_, the Bayesian estimate of the idealized AIF, scaled to unity.
             %      A_qs, providing the scaling factor lost to the boxcar.
             
@@ -140,10 +144,10 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
                 Data struct
                 artery_interpolated {mustBeNumeric} = []
                 times_sampled {mustBeNumeric} = []
-            end
+            end            
             
-            qs_ = ks(9)*mlsiemens.BoxcarModel.solution(ks, Data); % \in [0 1]
-
+            amplitude = ks(11);
+            qs_ = amplitude*mlsiemens.BoxcarModel.solution(ks, Data); % \in [0 1]
             qs = mlsiemens.BoxcarModel.apply_boxcar(qs_, Data); % 1 Hz sampling -> sampling of times_sampled
             A_qs = 1/max(qs); % amplitude lost to boxcar > 1
 
@@ -169,74 +173,13 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
                     qs = BoxcarModel.solution_2bolus(ks, N, [], ks(3));
                 case '3bolus'
                     qs = BoxcarModel.solution_3bolus(ks, N, []);
+                case '4bolus'
+                    qs = BoxcarModel.solution_4bolus(ks, N, []);
                 otherwise
                     error('mlaif:ValueError', ...
                         'BoxcarModel.solution.model_kind = %s', model_kind)
             end
         end
-        function qs = solution_1bolus(ks, N, ~, p)
-            %% stretched gamma distribution
-
-            import mlaif.ArteryLee2021Model.slide
-            t = 0:N-1;
-            t0 = ks(5);
-            a = ks(1);
-            b = ks(2);
-            
-            if (t(1) >= t0) 
-                t_ = t - t0;
-                qs = t_.^a .* exp(-(b*t_).^p);
-            else % k is complex for t - t0 < 0
-                t_ = t - t(1);
-                qs = t_.^a .* exp(-(b*t_).^p);
-                qs = slide(qs, t, t0 - t(1));
-            end
-            assert(all(imag(qs) == 0))
-            qs = qs/max(qs); % \in [0 1] 
-        end
-        function qs = solution_2bolus(ks, N, ~, p)
-            %% stretched gamma distribution + rising steadystate
-
-            import mlaif.ArteryLee2021Model.slide
-            t = 0:N-1;
-            t0 = ks(5);
-            a = ks(1);
-            b = ks(2);
-            g = ks(2);
-            ss_frac = ks(6);
-            
-            if (t(1) >= t0) 
-                t_ = t - t0;
-                k_ = t_.^a .* exp(-(b*t_).^p);
-                ss_ = 1 - exp(-g*t_);
-                qs = (1 - ss_frac)*k_ + ss_frac*ss_;
-            else % k is complex for t - t0 < 0
-                t_ = t - t(1);
-                k_ = t_.^a .* exp(-(b*t_).^p);
-                ss_ = 1 - exp(-g*t_);
-                qs = (1 - ss_frac)*k_ + ss_frac*ss_;
-                qs = slide(qs, t, t0 - t(1));
-            end
-            assert(all(imag(qs) == 0))
-            qs = qs/max(qs); % \in [0 1] 
-        end
-        function qs = solution_3bolus(ks, N, ~)
-            %% stretched gamma distribution + rising steadystate + auxiliary stretched gamma distribution; 
-            %  forcing p2 = p - dp2 < p, to be more dispersive
-
-            import mlsiemens.BoxcarModel.solution_1bolus
-            import mlsiemens.BoxcarModel.solution_2bolus
-            import mlaif.ArteryLee2021Model.slide
-            recirc_frac = ks(7);
-            recirc_delay = ks(8);
-            
-            qs2 = solution_2bolus(ks, N, [], ks(3));
-            qs1 = solution_1bolus(ks, N, [], ks(3) - ks(4));
-            qs1 = slide(qs1, 0:N-1, recirc_delay);
-            qs = (1 - recirc_frac)*qs2 + recirc_frac*qs1;
-            qs = qs/max(qs); % \in [0 1] 
-        end
-        
     end
 
     %% PROTECTED
