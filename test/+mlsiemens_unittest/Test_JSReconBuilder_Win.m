@@ -17,13 +17,32 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
+        function test_BMC_build_sub_oo(this)
+            if isempty(gcp('nocreate'))
+                parpool(8)
+            end
+
+            % all oxygens in pos 2 & 3
+            subs = ["sub-108237", "sub-108250", "sub-108254"];
+            sess = ["ses-20221031102320", "ses-20221207095507", "ses-20221116100858"]; % first oo
+            for si = 1:length(subs)
+                tic
+                pwd0 = pushd(fullfile("D:\CCIR_01211\sourcedata", subs(si), sess(si), "lm"));
+                bmc = mlsiemens.BrainMoCo2(source_lm_path=pwd);
+                bmc.build_sub(ses0=2, sesF=3);
+                clear bmc
+                ls(fullfile("S:\Singularity\CCIR_01211\sourcedata", subs(si)))
+                popd(pwd0);
+                toc
+            end
+        end
         function test_BMC_build_sub(this)
             % single subject
             tic
-            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108237\ses-20221031100910\lm");
+            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108284\ses-20230220095210\lm");
             bmc = mlsiemens.BrainMoCo2(source_lm_path=pwd);
-            bmc.build_sub();
-            ls("S:\Singularity\CCIR_01211\sourcedata\sub-108237")
+            bmc.build_sub(ses0=2, sesF=3);
+            ls("S:\Singularity\CCIR_01211\sourcedata\sub-108284")
             popd(pwd0);
             toc
         end

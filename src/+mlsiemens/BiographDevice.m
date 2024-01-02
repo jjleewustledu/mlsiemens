@@ -31,6 +31,7 @@ classdef BiographDevice < handle & mlpet.ScannerDevice
  			%  @param datetimeForDecayCorrection updates internal.
             
             a = this.data_.activity(varargin{:})*this.invEfficiency_;
+            a.json_metadata.(stackstr()).invEfficiency = this.invEfficiency_;
         end
         function a = activityDensity(this, varargin)
             %% is calibrated to ref-source; Bq/mL
@@ -38,6 +39,7 @@ classdef BiographDevice < handle & mlpet.ScannerDevice
  			%  @param datetimeForDecayCorrection updates internal.
             
             a = this.data_.activityDensity(varargin{:})*this.invEfficiency_;
+            a.json_metadata.(stackstr()).invEfficiency = this.invEfficiency_;
         end
         function that = blurred(this, varargin)
             that = copy(this);

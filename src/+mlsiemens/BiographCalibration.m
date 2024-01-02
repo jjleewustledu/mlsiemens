@@ -118,6 +118,11 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                 
                 activityDensityBiograph = 1e3 * rm.mMR.ROIMean_KBq_mL('NiftyPET'); % Bq/mL   
                 this.invEfficiency_ = mean(activityDensityCapr)/mean(activityDensityBiograph);
+
+                S = struct( ...
+                    'radMeasurementsFqfn', rm.fqfn, ...
+                    'invEfficiency', this.invEfficiency_);
+                sesd.json_metadata.(stackstr()) = S;
             catch ME
                 
                 % calibration data was inadequate, but proximal session may be useable

@@ -113,7 +113,7 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
             times0 = timesMid - taus/2;
             timesF = timesMid + taus/2;
 
-            vec_sampled = NaN(1, length(timesMid));
+            vec_sampled = NaN(size(timesMid));
             for vi = 1:length(timesMid)
                 s = times0(vi) + 1;
                 s1 = min(timesF(vi), length(vec));
@@ -148,7 +148,7 @@ classdef BoxcarModel < handle & mlaif.ArteryLee2021Model
             
             amplitude = ks(11);
             qs_ = amplitude*mlsiemens.BoxcarModel.solution(ks, Data); % \in [0 1]
-            qs = mlsiemens.BoxcarModel.apply_boxcar(qs_, Data); % 1 Hz sampling -> sampling of times_sampled
+            qs = mlsiemens.BoxcarModel.apply_boxcar(qs_, Data); 
             A_qs = 1/max(qs); % amplitude lost to boxcar > 1
 
             if ~isempty(times_sampled)

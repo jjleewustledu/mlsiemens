@@ -168,6 +168,8 @@ classdef BrainMoCoParams2
                 opts.is_dyn logical = true
                 opts.doIF2Dicom logical = false
                 opts.clean_up logical = false
+                opts.do_jsr logical = false
+                opts.do_bmc logical = true
             end
             this.Skip = opts.Skip;
             this.LMFrames_ = convertCharsToStrings(opts.LMFrames);

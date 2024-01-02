@@ -7,6 +7,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
     properties (Constant)
         N_PROC = 4
         SHAPE = [440 440 159]
+        USE_SKIP = true
     end
 
     properties
@@ -110,63 +111,76 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.tag string {mustBeTextScalar} = "-start"
                 opts.tag0 string {mustBeTextScalar} = "-start0"
                 opts.starts double {mustBeScalarOrEmpty} = 0
-                opts.deep logical = true % deep clean to minimize storage
+                opts.deep logical = false % deep clean to minimize storage
             end
 
-            tagged = opts.tag+opts.starts;
-            if ~isemptytext(tagged) && ~startsWith(tagged, "-")
-                tagged = "-"+tagged;
-            end
+            ld = load(this.source_sub_table_fqfn);
+            lmpath = ld.T.lmpath + opts.tag;
+            lmpathn = lmpath + opts.starts;
+            lmfoldn = mybasename(lmpathn);
 
             try
-                if opts.deep
-                    cd(this.source_sub_path); %#ok<MCCD>
-                    mg = mglob(fullfile(this.source_ses_path, this.lm_prefix+tagged+"*"));
-                    for mgi = mg
-                        rmdir(mgi(1), "s");
+                mg = mglob(lmpath+"*");
+                mg = mg(~contains(mg, opts.tag0+"-") | ...
+                    endsWith(mg, "-BMC") | ...
+                    endsWith(mg, "-DynamicBMC") | ...
+                    endsWith(mg, "-StaticBMC"));
+                for m = mg
+                    try
+                        fileattrib(m(1), '+w -h');
+                        rmdir(m(1), "s");
+                    catch
+                        fprintf("%s: rmdir %s had errors.\n", stackstr(), m(1))
                     end
-                    return
                 end
             catch ME
                 handwarning(ME)
-            end 
-            
-            try
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged), "s");
-            catch ME
-                handwarning(ME)
-            end 
-            try
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC"), "s");
-            catch ME
-                handwarning(ME)
-            end 
-            try
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*.i"), "s");
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*.l"), "s");                
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*.s"), "s");                
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*.s.hdr"), "s");
-            catch ME
-                handwarning(ME)
-            end 
-            try
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "nac*.v"), "s");                
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "nac*.v.hdr"), "s");
-            catch ME
-                handwarning(ME)
-            end 
-            try
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*-ac_mc_*_*.v"), "s");
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*-ac_mc_*_*.v.hdr"), "s");
-            catch ME
-                handwarning(ME)
-            end 
-            try
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*-dynamic_mc*_*_*.v"), "s");
-                rmdir(fullfile(this.source_ses_path, this.lm_prefix+tagged+"-BMC-Converted", this.lm_prefix+tagged+"-BMC-LM-00", "*-dynamic_mc*_*_*.v.hdr"), "s");
-            catch ME
-                handwarning(ME)
-            end            
+            end             
+
+            if opts.deep
+                for idx = 1:length(lmpathn)
+                    try
+                        if isfolder(lmpathn(idx))
+                            rmdir(fullfile(lmpathn(idx)), "s");
+                        end
+                    catch ME
+                        handwarning(ME)
+                    end
+                    try
+                        if isfolder(lmpathn(idx)+"-BMC")
+                            rmdir(fullfile(lmpathn(idx)+"-BMC"), "s");
+                        end
+                    catch ME
+                        handwarning(ME)
+                    end
+                    try
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.i"));
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.l"));
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.s"));
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.s.hdr"));
+                    catch ME
+                        handwarning(ME)
+                    end
+                    try
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "nac*.v"));
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "nac*.v.hdr"));
+                    catch ME
+                        handwarning(ME)
+                    end
+                    try
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-ac_mc_*_*.v"));
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-ac_mc_*_*.v.hdr"));
+                    catch ME
+                        handwarning(ME)
+                    end
+                    try
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-dynamic_mc*_*_*.v"));
+                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-dynamic_mc*_*_*.v.hdr"));
+                    catch ME
+                        handwarning(ME)
+                    end
+                end
+            end
         end
         function build_IF2Dicom(this, opts)
             arguments
@@ -269,6 +283,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.starts double {mustBeScalarOrEmpty} = 0
                 opts.is_dyn logical = true
                 opts.doIF2Dicom logical = false
+                opts.do_jsr logical = false
+                opts.do_bmc logical = true
                 opts.clean_up logical = true
             end
             copts = namedargs2cell(opts);
@@ -276,38 +292,42 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
             pwd0 = pushd(this.source_pet_path);
 
-            % cscript JSRecon.js
-            % if startsWith(opts.tracer, "oo")
-            %     pwd0 = pushd(this.source_pet_path);
-            %     jsrp = mlsiemens.JSRParams(copts{:});
-            %     jsrp.writelines();
-            %     [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-            %         this.jsrecon_js, ...
-            %         this.source_lm_path, ...
-            %         jsrp.fqfilename));
-            %     disp(r)
-            %     path00 = fullfile(this.source_pet_path, 
-            %     [~,r] = mysystem(fullfile(path00, sprintf("Run-04-VisionTestData-LM-00-All.bat")));
-            %     disp(r)
-            %     popd(pwd0);
-            % end
+            if opts.do_jsr
+                cscript JSRecon.js
+                if startsWith(opts.tracer, "oo")
+                    pwd0 = pushd(this.source_pet_path);
+                    jsrp = mlsiemens.JSReconParams(copts{:});
+                    jsrp.writelines();
+                    [~,r] = mysystem(sprintf("cscript %s %s %s", ...
+                        this.jsrecon_js, ...
+                        this.source_lm_path, ...
+                        jsrp.fqfilename));
+                    disp(r)
+                    path00 = fullfile(this.source_pet_path+"-Converted", this.lm_prefix+opts.tag0+"-LM-00");
+                    [~,r] = mysystem(fullfile(path00, sprintf("Run-99-"+this.lm_prefix+opts.tag0+"-LM-00-All.bat")));
+                    disp(r)
+                    popd(pwd0);
+                end
+            end
 
-            % cscript BMC.js
-            bmcp = mlsiemens.BrainMoCoParams2(copts{:});
-            bmcp.writelines();
-            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                this.bmc_js, ...
-                this.source_lm_path, ...
-                bmcp.fqfilename));
-            disp(r)
+            if opts.do_bmc
+                % cscript BMC.js
+                bmcp = mlsiemens.BrainMoCoParams2(copts{:});
+                bmcp.writelines();
+                [~,r] = mysystem(sprintf("cscript %s %s %s", ...
+                    this.bmc_js, ...
+                    this.source_lm_path, ...
+                    bmcp.fqfilename));
+                disp(r)
 
-            % move output/* to source_ses_path
-            g = asrow(globFolders(fullfile(this.output_path, '*')));
-            for gidx = 1:length(g)
-                try
-                    movefile(g{gidx}, this.source_ses_path)
-                catch ME
-                    handwarning(ME)
+                % move output/* to source_ses_path
+                g = asrow(globFolders(fullfile(this.output_path, '*')));
+                for gidx = 1:length(g)
+                    try
+                        movefile(g{gidx}, this.source_ses_path)
+                    catch ME
+                        handwarning(ME)
+                    end
                 end
             end
 
@@ -317,11 +337,6 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     source=fullfile(this.source_lm_path+"-BMC-Converted", this.lm_prefix+opts.tag0+"-BMC-LM-00"), ...
                     dest=this.source_ses_path, ...
                     tag0=opts.tag0);
-            end
-            
-            % delete large files
-            if opts.clean_up
-                this.build_clean(tag=opts.tag, starts=opts.starts);
             end
             
             popd(pwd0);
@@ -382,10 +397,6 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     tag0=opts.tag0);
             end
             
-            % delete large files
-            if opts.clean_up
-                this.build_clean(tag=tagged, starts=opts.starts);
-            end
             popd(pwd0);
         end
         function build_sub(this, opts)
@@ -394,6 +405,11 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.ses0 double = 1
                 opts.ses1 double = [] % continue with subsequent rows of build_sub_table() if runtime err
                 opts.sesF double = []
+                opts.tag string {mustBeTextScalar} = "-start"
+                opts.starts double {mustBeScalarOrEmpty} = 0
+                opts.clean_up logical = false
+                opts.do_jsr logical = false
+                opts.do_bmc logical = true
             end
 
             if isfile(this.source_sub_table_fqfn)
@@ -422,7 +438,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     tic
                     try
                         mlsiemens.BrainMoCo2.create_moving_average( ...
-                            apath, tracer=atracer, taus=thetaus, starts=thestarts, time_delay=thetimedelays);
+                            apath, tracer=atracer, taus=thetaus, starts=thestarts, time_delay=thetimedelays, ...
+                            do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
                     catch ME
                         disp(ME)
                     end
@@ -433,7 +450,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                         tic
                         try
                             mlsiemens.BrainMoCo2.create_moving_average( ...
-                                apath, tracer=atracer, taus=thetaus{parti}, starts=thestarts{parti}, time_delay=thetimedelays(parti));  
+                                apath, tracer=atracer, taus=thetaus{parti}, starts=thestarts{parti}, time_delay=thetimedelays(parti), ...
+                                do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
                         catch ME
                             disp(ME)                
                         end
@@ -441,6 +459,11 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     end
                 end
                 popd(pwd0);
+            end
+            
+            % delete large files
+            if opts.clean_up
+                this.build_clean(tag=opts.tag, starts=opts.starts);
             end
         end
         function T = build_sub_table(this)
@@ -466,6 +489,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                         taus{idx} = 10*ones(1,29);
                     case 'oo'
                         taus{idx} = {10*ones(1,3), 20*ones(1,4)};
+                        %taus{idx} = {10,10,10, 20,20,20,20};
                     case 'ho'
                         taus{idx} = 10*ones(1,11);
                     case 'fdg'
@@ -484,6 +508,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                         starts{idx} = 0:9;
                     case 'oo'
                         starts{idx} = {0:9, 0};
+                        %starts{idx} = {0:9,0:9,0:9, 0,0,0,0};
                     case 'ho'
                         starts{idx} = 0:9;
                     case 'fdg'
@@ -502,6 +527,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                         timedelays{idx} = 0;
                     case 'oo'
                         timedelays{idx} = [0, 30];
+                        %timedelays{idx} = [0,10,20, 30,50,70,90];
                     case 'ho'
                         timedelays{idx} = 0;
                     case 'fdg'
@@ -1251,6 +1277,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.coarsening_time double = 3600 % sec; frames after this time are coarsened for throughput speed
                 opts.tracer {mustBeTextScalar}
                 opts.nifti_only logical = false
+                opts.do_jsr logical = false
+                opts.do_bmc logical = true
             end
             import mlsiemens.BrainMoCo2
 
@@ -1263,7 +1291,9 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     taus=taus, ...
                     starts=starts, ...
                     coarsening_time=opts.coarsening_time, ...
-                    tracer=opts.tracer);
+                    tracer=opts.tracer, ...
+                    do_jsr=opts.do_jsr, ...
+                    do_bmc=opts.do_bmc);
             end
 
             try
@@ -1345,13 +1375,17 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.taus double = [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)]
                 opts.starts double = 0
                 opts.tracer {mustBeTextScalar} = "unknown"
+                opts.do_jsr logical = false
+                opts.do_bmc logical = true
             end
 
             import mlsiemens.BrainMoCo2
             try
                 this = BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag, starts=opts.starts); 
-                lmframes = BrainMoCo2.mat2lmframes(opts.taus, start=opts.starts);
-                this.build_scan(LMFrames=lmframes, tracer=opts.tracer, tag=opts.tag, tag0=opts.tag0, starts=opts.starts);
+                [lmframes,skip] = BrainMoCo2.mat2lmframes(opts.taus, start=opts.starts);
+                this.build_scan( ...
+                    LMFrames=lmframes, Skip=skip, tracer=opts.tracer, tag=opts.tag, tag0=opts.tag0, starts=opts.starts, ...
+                    do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
             catch ME
                 handwarning(ME)
             end
@@ -1376,6 +1410,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.starts double = []
                 opts.coarsening_time double = 3600 % sec; frames after this time are coarsened for throughput speed
                 opts.tracer {mustBeTextScalar} = "unknown"
+                opts.do_jsr logical = false
+                opts.do_bmc logical = true
             end
 
             import mlsiemens.BrainMoCo2
@@ -1394,22 +1430,39 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 taus1 = opts.taus(N1+1:end);
             end
 
-            parfor (si = 1:M, BrainMoCo2.N_PROC)
-            %for si = 1:M
-                try
-                    this = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=starts(si)); 
-                    lmframes = BrainMoCo2.mat2lmframes(taus, start=starts(si));
-                    this.build_scan(LMFrames=lmframes, tracer=tracer, tag=tag, tag0=tag0, starts=starts(si));
-                catch ME
-                    handwarning(ME)
+            if BrainMoCo2.N_PROC > 1
+                parfor (si = 1:M, BrainMoCo2.N_PROC)
+                    try
+                        this = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=starts(si));
+                        [lmframes,skip] = BrainMoCo2.mat2lmframes(taus, start=starts(si));
+                        this.build_scan( ...
+                            LMFrames=lmframes, Skip=skip, tracer=tracer, tag=tag, tag0=tag0, starts=starts(si), ...
+                            do_jsr=opts.do_jsr, do_bmc=opts.do_bmc); %#ok<PFBNS>
+                    catch ME
+                        handwarning(ME)
+                    end
+                end
+            else
+                for si = 1:M
+                    try
+                        this = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=starts(si));
+                        [lmframes,skip] = BrainMoCo2.mat2lmframes(taus, start=starts(si));
+                        this.build_scan( ...
+                            LMFrames=lmframes, Skip=skip, tracer=tracer, tag=tag, tag0=tag0, starts=starts(si), ...
+                            do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
+                    catch ME
+                        handwarning(ME)
+                    end
                 end
             end
 
             if ~isempty(taus1) % use data reductions
                 try
                     this = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=opts.coarsening_time); 
-                    lmframes = BrainMoCo2.mat2lmframes(taus1, start=opts.coarsening_time);
-                    this.build_scan(LMFrames=lmframes, tracer=tracer, tag=tag, tag0=tag0, starts=opts.coarsening_time);
+                    [lmframes,skip] = BrainMoCo2.mat2lmframes(taus1, start=opts.coarsening_time);
+                    this.build_scan( ...
+                        LMFrames=lmframes, Skip=skip, tracer=tracer, tag=tag, tag0=tag0, starts=opts.coarsening_time, ...
+                            do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
                 catch ME
                     handwarning(ME)
                 end
@@ -1515,7 +1568,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             % copy recons to chpc
             try
                 chpc_pet_path = strrep(opts.source_pet_path, ...
-                    "D:", "S:\Singularity");
+                    "D:", fullfile("S:", "Singularity"));
                 copyfile(opts.source_pet_path, fileparts(chpc_pet_path));
             catch ME
                 handwarning(ME)
@@ -1675,10 +1728,11 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ic = mlfourd.ImagingContext2(ifc);
             ic.fileprefix = fp + "_" + stackstr();
         end
-        function s = mat2lmframes(taus, opts)
+        function [lmf,sk] = mat2lmframes(taus, opts)
             arguments
                 taus {mustBeInteger} = 60
                 opts.start {mustBeInteger} = 0
+                opts.use_skip = mlsiemens.BrainMoCo2.USE_SKIP
             end
             frame_durations = mat2str(asrow(taus));
             frame_durations = strrep(frame_durations, ' ', ',');
@@ -1688,7 +1742,13 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             if strcmp(frame_durations(end), ']')
                 frame_durations = frame_durations(1:end-1);
             end
-            s = num2str(opts.start)+":"+frame_durations;
+            if opts.use_skip                
+                lmf = num2str(opts.start)+":"+frame_durations;
+                sk = opts.start;
+                return
+            end
+            lmf = num2str(opts.start)+":"+frame_durations;
+            sk = 0;
         end
         function s = sread(filename, shape)
             %% sinograms

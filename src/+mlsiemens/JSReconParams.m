@@ -501,6 +501,8 @@ classdef JSReconParams
                 opts.is_dyn logical = true
                 opts.doIF2Dicom logical = false
                 opts.clean_up logical = false
+                opts.do_jsr logical = true
+                opts.do_bmc logical = false
             end
             this.LMFrames_ = convertCharsToStrings(opts.LMFrames);
             this.model_ = convertCharsToStrings(opts.model);
