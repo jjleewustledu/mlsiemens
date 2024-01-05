@@ -550,8 +550,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             for idx = 1:length(utrcs)
                 num = n(utrcs(idx));
                 if num > 1
-                    select = strcmp(trcs, utrcs(idx));
-                    lmfolders(select) = lmfolders(select) + (1:num);
+                    selected = strcmp(trcs, utrcs(idx));
+                    lmfolders(selected) = lmfolders(selected) + (1:num);
                 end
             end
 
