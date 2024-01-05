@@ -124,7 +124,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
                 return
             end
             globbed = globT(this.t2w_toglob);
-            fn = globbed{end};
+            fn = globbed{1};
             fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
             assert(isfile(fn))
             this.t2w_ic_ = mlfourd.ImagingContext2(fn);
@@ -224,12 +224,12 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
 
             ip = inputParser;
             ip.KeepUnmatched = true;
-            addParameter(ip, 'flair_toglob', fullfile(this.sourceAnatPath, 'sub-*_3D_FLAIR_Sag.nii.gz'), @istext);
-            addParameter(ip, 'pet_dyn_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*MovingAvg*_pet.nii.gz'), @istext);
-            addParameter(ip, 'pet_static_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*tatic*_pet.nii.gz'), @istext);
-            addParameter(ip, 't1w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T1w_MPR_vNav_4e_RMS.nii.gz'), @istext);
-            addParameter(ip, 't2w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T2w_SPC_vNava.nii.gz'), @istext);
-            addParameter(ip, 'tof_toglob', fullfile(this.sourceAnatPath, 'sub-*_tof_fl3d_tra_p2_multi-slab.nii.gz'), @istext);            
+            addParameter(ip, 'flair_toglob', fullfile(this.sourceAnatPath, 'sub-*_3D_FLAIR_Sag*.nii.gz'), @istext);
+            addParameter(ip, 'pet_dyn_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*MovingAvg*.nii.gz'), @istext);
+            addParameter(ip, 'pet_static_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*Static*.nii.gz'), @istext);
+            addParameter(ip, 't1w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T1w_MPR_vNav_4e_RMS*.nii.gz'), @istext);
+            addParameter(ip, 't2w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T2w_SPC_vNav*.nii.gz'), @istext);
+            addParameter(ip, 'tof_toglob', fullfile(this.sourceAnatPath, 'sub-*_tof_fl3d_tra_p2_multi-slab*.nii.gz'), @istext);            
             parse(ip, varargin{:})
             ipr = ip.Results;
 
