@@ -40,7 +40,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
                 fullfile(getenv('FSLDIR'), 'data', 'standard', 'MNI152_T1_1mm.nii.gz'));
         end
         function g = get.dlicv_ic(this)
-            if ~isempty(this.dlicv_ic_)
+            if ~isempty(this.dlicv_ic_) && isfile(this.dlicv_ic_.fqfn)
                 g = copy(this.dlicv_ic_);
                 return
             end
@@ -57,7 +57,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             end
         end
         function g = get.flair_ic(this)
-            if ~isempty(this.flair_ic_)
+            if ~isempty(this.flair_ic_) && isfile(this.flair_ic_.fqfn)
                 g = copy(this.flair_ic_);
                 return
             end
@@ -71,7 +71,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             g = copy(this.flair_ic_);
         end
         function g = get.T1_ic(this)
-            if ~isempty(this.T1_ic_)
+            if ~isempty(this.T1_ic_) && isfile(this.T1_ic_.fqfn)
                 g = copy(this.T1_ic_);
                 return
             end
@@ -104,7 +104,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             g = copy(this.T1_on_t1w_ic_);
         end
         function g = get.t1w_ic(this)
-            if ~isempty(this.t1w_ic_)
+            if ~isempty(this.t1w_ic_) && isfile(this.t1w_ic_.fqfn)
                 g = copy(this.t1w_ic_);
                 return
             end
@@ -119,7 +119,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             g = copy(this.t1w_ic_);
         end
         function g = get.t2w_ic(this)
-            if ~isempty(this.t2w_ic_)
+            if ~isempty(this.t2w_ic_) && isfile(this.t2w_ic_.fqfn)
                 g = copy(this.t2w_ic_);
                 return
             end
@@ -131,12 +131,13 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             g = copy(this.t2w_ic_);
         end
         function g = get.tof_ic(this)
-            if ~isempty(this.tof_ic_)
+            if ~isempty(this.tof_ic_) && isfile(this.tof_ic_.fqfn)
                 g = copy(this.tof_ic_);
                 return
             end
             globbed = globT(this.tof_toglob);
-            fn = globbed{end};
+            globbed = globbed(~contains(globbed, 'MIP'));
+            fn = globbed{1};
             fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
             if ~isfile(fn)
                 this.build_orientstd(this.tof_toglob);
@@ -176,7 +177,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             g = copy(this.tof_on_t1w_ic_);
         end        
         function g = get.wmparc_ic(this)
-            if ~isempty(this.wmparc_ic_)
+            if ~isempty(this.wmparc_ic_) && isfile(this.wmparc_ic_.fqfn)
                 g = copy(this.wmparc_ic_);
                 return
             end
@@ -259,9 +260,10 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             addOptional(ip, 'destination_path', this.anatPath, @isfolder)
             parse(ip, varargin{:});
             ipr = ip.Results;
+            ipr.patt = convertStringsToChars(ipr.patt);
 
             for g = glob(ipr.patt)
-                [~,fp] = myfileparts(g{end});
+                [~,fp] = myfileparts(g{1});
                 fqfn = fullfile(ipr.destination_path, strcat(fp, '_orient-std.nii.gz'));
                 ensuredir(strrep(myfileparts(g{1}), 'sourcedata', 'derivatives'));
                 cmd = sprintf('fslreorient2std %s %s', g{1}, fqfn);
