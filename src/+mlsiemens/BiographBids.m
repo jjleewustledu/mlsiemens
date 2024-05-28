@@ -23,6 +23,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
         atlas_ic
         dlicv_ic
         flair_ic
+        schaeffer_ic
         T1_ic % FreeSurfer
         T1_on_t1w_ic
         t1w_ic
@@ -69,6 +70,16 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             end
             this.flair_ic_ = mlfourd.ImagingContext2(fn);
             g = copy(this.flair_ic_);
+        end
+        function g = get.schaeffer_ic(this)
+            if ~isempty(this.schaeffer_ic_) && isfile(this.schaeffer_ic_.fqfn)
+                g = copy(this.schaeffer_ic_);
+                return
+            end
+            fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1_complete.nii.gz');
+            assert(isfile(fn))
+            this.schaeffer_ic_ = mlfourd.ImagingContext2(fn);
+            g = copy(this.schaeffer_ic_);
         end
         function g = get.T1_ic(this)
             if ~isempty(this.T1_ic_) && isfile(this.T1_ic_.fqfn)
@@ -226,8 +237,8 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             ip = inputParser;
             ip.KeepUnmatched = true;
             addParameter(ip, 'flair_toglob', fullfile(this.sourceAnatPath, 'sub-*_3D_FLAIR_Sag*.nii.gz'), @istext);
-            addParameter(ip, 'pet_dyn_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*MovingAvg*.nii.gz'), @istext);
-            addParameter(ip, 'pet_static_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-*Static*.nii.gz'), @istext);
+            addParameter(ip, 'pet_dyn_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-delay*MovingAvg*.nii.gz'), @istext);
+            addParameter(ip, 'pet_static_toglob', fullfile(this.sourcePetPath, 'sub-*_ses-*_trc-*_proc-delay*Static*.nii.gz'), @istext);
             addParameter(ip, 't1w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T1w_MPR_vNav_4e_RMS*.nii.gz'), @istext);
             addParameter(ip, 't2w_toglob', fullfile(this.sourceAnatPath, 'sub-*_T2w_SPC_vNav*.nii.gz'), @istext);
             addParameter(ip, 'tof_toglob', fullfile(this.sourceAnatPath, 'sub-*_tof_fl3d_tra_p2_multi-slab*.nii.gz'), @istext);            
@@ -432,6 +443,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
         dlicv_ic_
         flair_ic_
         json_
+        schaeffer_ic_
         T1_ic_
         T1_on_t1w_ic_
         t1w_ic_

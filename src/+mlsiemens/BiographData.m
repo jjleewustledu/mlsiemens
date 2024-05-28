@@ -59,7 +59,14 @@ classdef BiographData < handle & mlpet.AbstractTracerData
         function that = blurred(this, varargin)
             that = copy(this);
             that.imagingContext_ = that.imagingContext_.blurred(varargin{:});
-        end
+        end    
+        function sec = clocksTimeOffsetWrtNTS(this)
+            try
+                sec = seconds(this.radMeasurements_.clocks.TimeOffsetWrtNTS____s('mMR console'));
+            catch
+                sec = seconds(this.radMeasurements_.clocks.TIMEOFFSETWRTNTS____S('mMR console'));
+            end
+        end 
         function c = countRate(this, varargin)
             %% Bq/mL, decay-corrected.
             %  decayCorrected logical = false.
@@ -203,7 +210,6 @@ classdef BiographData < handle & mlpet.AbstractTracerData
     
     properties (Access = protected)
         imagingContext_
-        radMeasurements_
     end
     
 	methods (Access = protected)	  
@@ -211,30 +217,10 @@ classdef BiographData < handle & mlpet.AbstractTracerData
  			%% BIOGRAPHDATA
             %  @param radMeasurements is an mlpet.RadMeasurements object
 
- 			this = this@mlpet.AbstractTracerData(varargin{:});
+ 			this = this@mlpet.AbstractTracerData(varargin{:}, decayCorrected = true);         
             
-            ip = inputParser;
-            ip.KeepUnmatched = true;
-            addParameter(ip, 'radMeasurements', [], @(x) isa(x, 'mlpet.RadMeasurements') || isempty(x))
-            parse(ip, varargin{:})
-            ipr = ip.Results;
-            
-            this.decayCorrected_ = true;
-            if ~isempty(ipr.radMeasurements)
-                this.radMeasurements_ = ipr.radMeasurements;
-            else
-                this.radMeasurements_ = mlpet.CCIRRadMeasurements.createFromDate(this.datetimeMeasured);
-            end
             this.datetimeMeasured = this.datetimeMeasured - this.clocksTimeOffsetWrtNTS;
-        end         
-        function sec = clocksTimeOffsetWrtNTS(this)
-            try
-                sec = seconds(this.radMeasurements_.clocks.TimeOffsetWrtNTS____s('mMR console'));
-            catch ME
-                handwarning(ME)
-                sec = seconds(this.radMeasurements_.clocks.TIMEOFFSETWRTNTS____S('mMR console'));
-            end
-        end 
+        end     
         function that = copyElement(this)
             %%  See also web(fullfile(docroot, 'matlab/ref/matlab.mixin.copyable-class.html'))
             
