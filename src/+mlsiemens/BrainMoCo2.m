@@ -1179,6 +1179,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.tracer {mustBeTextScalar} = "unknown"
                 opts.matrix double = mlsiemens.BrainMoCo2.SHAPE
                 opts.lm_prefix {mustBeTextScalar} = "lm-trc"
+                opts.time_delay double = 0  % unused, but accomodates interface for create*
+                opts.starts double {mustBeScalarOrEmpty} = 0  % unused, but accomodates interface for create*
             end
             ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);            
             taus = opts.taus;

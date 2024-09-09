@@ -17,6 +17,17 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
+        function test_BMC_build_vatdys(this)
+
+            path = fullfile("D:", "VATDYS", "sourcedata", "sub-046", "ses-20240521151158", "lm");
+            tracer = "fdg";
+            taus = [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4) 300*ones(1,11)];
+            tic
+            mlsiemens.BrainMoCo2.create_simple( ...
+                path, tracer=tracer, taus=taus);
+            toc
+            % Elapsed time is 4629.934149 seconds.
+        end
         function test_BMC_build_sub_oo(this)
             if isempty(gcp('nocreate'))
                 parpool(8)

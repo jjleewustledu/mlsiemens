@@ -6,6 +6,7 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
     %  Developed on Matlab 24.1.0.2628055 (R2024a) Update 4 for MACA64.  Copyright 2024 John J. Lee.
     
     properties
+        dtor
         testObj
     end
     
@@ -18,7 +19,7 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
         end
         function test_BMC_create_simple(this)
 
-            paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co");
+            paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm");
             tracers = "co";
             taus = {2*ones(1,149)};
             tic
@@ -27,12 +28,88 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
             toc
             % Elapsed time is 4629.934149 seconds.
         end
+        function test_BMC_create_co(this)
+            paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm");
+            tracers = "co";
+            taus = {3*ones(1,96)};
+
+            for pth = paths
+                pwd0 = pushd(pth);
+                tic
+                mlsiemens.BrainMoCo2.create_moving_average(pth, tracer=tracers, taus=taus{1}, nifti_only=false);
+                toc
+                popd(pwd0);
+            end
+        end
+        function test_BMC_create_ho_x7(this)
+            % lm durations:  
+            %   425
+            %   425
+            %   425
+            %   425
+            %   425
+            %   365
+            %   425?
+
+            lm_durations = [425, 425, 425, 425, 425, 365, 425];
+            paths = [ ...
+                fullfile("D:\CCIR_01211\sourcedata\sub-108237\ses-20221031110638", "lm"), ...
+                fullfile("D:\CCIR_01211\sourcedata\sub-108250\ses-20221207102944", "lm"), ...
+                fullfile("D:\CCIR_01211\sourcedata\sub-108254\ses-20221116104751", "lm"), ...
+                fullfile("D:\CCIR_01211\sourcedata\sub-108284\ses-20230220103226", "lm"), ...
+                fullfile("D:\CCIR_01211\sourcedata\sub-108284\ses-20230220112328", "lm"), ...
+                fullfile("D:\CCIR_01211\sourcedata\sub-108293\ses-20210421152358", "lm"), ...
+                fullfile("D:\CCIR_01211\sourcedata\sub-108306\ses-20230227113853", "lm")];
+            tracers = "ho";
+
+            idx = 0;
+            for pth = paths
+                idx = idx + 1;
+                pwd0 = pushd(pth);
+                tic
+                taus = {3*ones(1, floor(lm_durations(idx)/3))};  % taus passed as singleton cell containing array
+                mlsiemens.BrainMoCo2.create_moving_average(pth, tracer=tracers, taus=taus{1}, nifti_only=false);
+                toc
+                popd(pwd0);
+            end
+        end
+        function test_BMC_create_co_x5(this)
+            paths = [ ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108237", "ses-20221031100910", "lm"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108250", "ses-20221207093856", "lm"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108254", "ses-20221116095143", "lm"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108284", "ses-20230220093702", "lm"), ...
+                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108306", "ses-20230227103048", "lm")];
+                % fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm");
+            tracers = "co";
+            taus = {3*ones(1,96)};
+
+            for pth = paths
+                pwd0 = pushd(pth);
+                tic
+                mlsiemens.BrainMoCo2.create_moving_average(pth, tracer=tracers, taus=taus{1}, nifti_only=false);
+                toc
+                popd(pwd0);
+            end
+        end
     end
     
     methods (TestClassSetup)
         function setupJSReconBuilder_fPET(this)
             import mlsiemens.*
-            this.testObj_ = JSReconBuilder_fPET();
+
+            % fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
+            %     "CCIR_01211", "rawdata", "sub-108306", "ses-20230227", "etc", "session_description.nii.gz");
+            % if ~isfile(fqfn)
+            %     ensuredir(myfileparts(fqfn));
+            %     mysystem("touch "+fqfn);
+            % end
+            % this.bk = mlkinetics.BidsKit.create( ...
+            %     bids_tags="ccir1211", ...
+            %     bids_fqfn=fqfn);
+            % this.dtor = JSReconDirector(bids_kit=this.bk);
+
+            this.testObj_ = [];  % JSReconBuilder_fPET(dtor=this.dtor);
         end
     end
     
