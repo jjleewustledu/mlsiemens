@@ -6,7 +6,10 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
     %  Developed on Matlab 24.1.0.2628055 (R2024a) Update 4 for MACA64.  Copyright 2024 John J. Lee.
     
     properties
+<<<<<<< HEAD
         dtor
+=======
+>>>>>>> 71f9de38456de2594c377c13a03e9e944d4a839c
         testObj
     end
     
@@ -19,7 +22,11 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
         end
         function test_BMC_create_simple(this)
 
+<<<<<<< HEAD
             paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm");
+=======
+            paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm-co");
+>>>>>>> 71f9de38456de2594c377c13a03e9e944d4a839c
             tracers = "co";
             taus = {2*ones(1,149)};
             tic
@@ -28,6 +35,7 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
             toc
             % Elapsed time is 4629.934149 seconds.
         end
+<<<<<<< HEAD
         function test_BMC_create_co(this)
             paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421144815", "lm");
             tracers = "co";
@@ -92,11 +100,14 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
                 popd(pwd0);
             end
         end
+=======
+>>>>>>> 71f9de38456de2594c377c13a03e9e944d4a839c
     end
     
     methods (TestClassSetup)
         function setupJSReconBuilder_fPET(this)
             import mlsiemens.*
+<<<<<<< HEAD
 
             % fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
             %     "CCIR_01211", "rawdata", "sub-108306", "ses-20230227", "etc", "session_description.nii.gz");
@@ -110,6 +121,9 @@ classdef Test_JSReconBuilder_fPET < matlab.unittest.TestCase
             % this.dtor = JSReconDirector(bids_kit=this.bk);
 
             this.testObj_ = [];  % JSReconBuilder_fPET(dtor=this.dtor);
+=======
+            this.testObj_ = JSReconBuilder_fPET();
+>>>>>>> 71f9de38456de2594c377c13a03e9e944d4a839c
         end
     end
     

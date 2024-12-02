@@ -17,6 +17,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
+<<<<<<< HEAD
         function test_BMC_build_vatdys(this)
 
             setenv("PROJECT_FOLDER", "VATDYS")
@@ -30,6 +31,8 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             toc
             % Elapsed time is 4629.934149 seconds.
         end
+=======
+>>>>>>> 71f9de38456de2594c377c13a03e9e944d4a839c
         function test_BMC_build_sub_oo(this)
             if isempty(gcp('nocreate'))
                 parpool(8)
