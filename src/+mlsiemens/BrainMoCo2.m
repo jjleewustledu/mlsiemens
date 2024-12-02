@@ -652,7 +652,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.tracer {mustBeTextScalar} = "unknown"
                 opts.matrix double = mlsiemens.BrainMoCo2.SHAPE
             end
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);
             starts = cumsum(opts.taus) - opts.taus + opts.time0;
             M = length(opts.taus);
             img = zeros([opts.matrix M], "single");
@@ -661,7 +661,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             for starti = 1:M
                 tagged = opts.tag+starts(starti);
                 cumpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                    "CCIR_01211", "sourcedata", sub, ses, this.lm_prefix+tagged+opts.folder_tag);             
+                    getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, this.lm_prefix+tagged+opts.folder_tag);             
                 v_fqfn = fullfile(cumpath, this.lm_prefix+tagged+"-BMC-LM-00-dynamic_mc0_000_000.v");
                 if ~isfile(v_fqfn)
                     continue
@@ -698,7 +698,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.tracer {mustBeTextScalar} = "unknown"
                 opts.matrix double = mlsiemens.BrainMoCo2.SHAPE
             end
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);
             starts = cumsum(opts.taus) - opts.taus + opts.time0;
             M = length(opts.taus);
             img = zeros([opts.matrix M], "single");
@@ -709,7 +709,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             for taui = 1:M
                 tagged = opts.tag+starts(M-taui+1);
                 cumpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                    "CCIR_01211", "sourcedata", sub, ses, this.lm_prefix+tagged+opts.folder_tag);             
+                    getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, this.lm_prefix+tagged+opts.folder_tag);             
                 v_fqfn = fullfile(cumpath, this.lm_prefix+tagged+"-BMC-LM-00-dynamic_mc0_000_000.v");
                 if isempty(v_fqfn)
                     continue
@@ -755,7 +755,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.dt double {mustBeInteger} = 1
             end
             import mlsiemens.BrainMoCo2
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);
             [starts,taus] = BrainMoCo2.expand_starts(opts.starts, opts.taus, dt=opts.dt);
 
             % load ic with missing frames
@@ -816,7 +816,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             end
             import mlsiemens.BrainMoCo2
 
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);            
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);            
             [starts,taus] = BrainMoCo2.expand_starts(opts.starts, opts.taus, dt=opts.dt);
             M = length(starts);
             N = length(taus);
@@ -840,7 +840,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     try
                         lmtag = opts.tag+starts(m);
                         lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                            "CCIR_01211", "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
+                            getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
     
                         v_fqfn = mglob( ...
                             fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, lmtag, n-1)));
@@ -895,7 +895,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             end
             import mlsiemens.BrainMoCo2
 
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);
             [starts,taus] = BrainMoCo2.expand_starts(opts.starts, opts.taus, dt=opts.dt);
             M = length(starts);
             N = length(taus);
@@ -915,7 +915,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     try
                         lmtag = opts.tag+starts(m);
                         lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                            "CCIR_01211", "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
+                            getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
     
                         v_fqfn = mglob( ...
                             fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, lmtag, n-1)));
@@ -959,7 +959,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     try
                         lmtag = opts.tag+starts(m);
                         lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                            "CCIR_01211", "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
+                            getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
     
                         v_fqfn = mglob( ...
                             fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, lmtag, N1+n-1)));
@@ -1017,7 +1017,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             end
             import mlsiemens.BrainMoCo2
 
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);
             [starts,taus] = BrainMoCo2.expand_starts(opts.starts, opts.taus, dt=opts.dt);
             M = length(starts);
             N = length(taus);
@@ -1037,7 +1037,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     try
                         lmtag = opts.tag+starts(m);
                         lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                            "CCIR_01211", "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
+                            getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
     
                         v_fqfn = mglob( ...
                             fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, lmtag, n-1)));
@@ -1084,7 +1084,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     try
                         lmtag = opts.tag+starts(m);
                         lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                            "CCIR_01211", "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
+                            getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
     
                         v_fqfn = mglob( ...
                             fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, lmtag, N1+n-1)));
@@ -1143,7 +1143,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.starts double {mustBeScalarOrEmpty} = 0
             end
             tagged = opts.tag + opts.starts;
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);  
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);  
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-delay"+opts.time_delay+"-"+stackstr(use_dashes=true); 
 
             % activity 
@@ -1151,7 +1151,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ifc = proto.imagingFormat;
             try
                 lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                    "CCIR_01211", "sourcedata", sub, ses, opts.lm_prefix+tagged+opts.folder_tag);
+                    getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+tagged+opts.folder_tag);
                 v_fqfn = mglob( ...
                     fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-ac_mc_*_*.v", opts.lm_prefix, tagged)));
                 v_fqfn = v_fqfn(1);
@@ -1173,7 +1173,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 sub {mustBeTextScalar}
                 ses {mustBeTextScalar}
                 opts.taus double = [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4)] % ordered per NIfTI, for easy testing
-                opts.tag {mustBeTextScalar} = "-simple"
+                opts.tag {mustBeTextScalar} = "-simple0"
                 opts.folder_tag {mustBeTextScalar} = "-DynamicBMC"
                 opts.v_tag {mustBeTextScalar} = "-BMC-LM-00-dynamic_mc0"
                 opts.tracer {mustBeTextScalar} = "unknown"
@@ -1182,7 +1182,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.time_delay double = 0  % unused, but accomodates interface for create*
                 opts.starts double {mustBeScalarOrEmpty} = 0  % unused, but accomodates interface for create*
             end
-            ses_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", sub, ses);            
+            tagged = opts.tag + opts.starts;
+            ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);            
             taus = opts.taus;
             N = length(taus);
 
@@ -1195,10 +1196,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             for n = N:-1:1
                 try
                     lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                        "CCIR_01211", "sourcedata", sub, ses, opts.lm_prefix+opts.tag+opts.folder_tag);    
+                        getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+tagged+opts.folder_tag);    
 
                     v_fqfn = mglob( ...
-                        fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, opts.tag, n-1)));
+                        fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, tagged, n-1)));
                     if isempty(v_fqfn)
                         %img(:,:,:,n) = img(:,:,:,n+1);
                         continue
@@ -1326,10 +1327,16 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.starts double = []
                 opts.tracer {mustBeTextScalar}
                 opts.nifti_only logical = false
+                opts.expand_starts logical = true
             end
             import mlsiemens.BrainMoCo2
 
-            [starts,taus] = BrainMoCo2.expand_starts(opts.starts, opts.taus, time_delay=opts.time_delay, dt=opts.dt);
+            if opts.expand_starts
+                [starts,taus] = BrainMoCo2.expand_starts(opts.starts, opts.taus, time_delay=opts.time_delay, dt=opts.dt);
+            else
+                starts = opts.starts;
+                taus = opts.taus;
+            end
 
             if ~opts.nifti_only
                 BrainMoCo2.create_v( ...
@@ -1669,11 +1676,11 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
         function proto = ic_prototype(opts)
             %% read prototype from filesystem
             %  opts.fqfn {mustBeFile} = ...
-            %      fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "vision_zeros_440x440x159.nii.gz")
+            %      fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "vision_zeros_440x440x159.nii.gz")
 
             arguments
                 opts.fqfn {mustBeFile} = ...
-                    fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "vision_zeros_440x440x159.nii.gz")
+                    fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "vision_zeros_440x440x159.nii.gz")
             end            
             proto = mlfourd.ImagingContext2(opts.fqfn);
             proto.selectImagingTool();
@@ -1781,7 +1788,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
         function ic = v2ic(varargin)
             %% Args follow vread.
             ifc = mlfourd.ImagingFormatContext2(fullfile( ...
-                getenv("SINGULARITY_HOME"), "CCIR_01211", "vision_zeros_440x440x159.nii.gz"));
+                getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "vision_zeros_440x440x159.nii.gz"));
             ifc.img = mlsiemens.BrainMoCo2.vread(varargin{:});
             ifc.fileprefix = mybasename(varargin{1});
             ifc.filepath = fullfile(pwd, myfileparts(varargin{1}));

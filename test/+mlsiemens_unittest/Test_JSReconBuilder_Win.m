@@ -19,6 +19,8 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
         end
         function test_BMC_build_vatdys(this)
 
+            setenv("PROJECT_FOLDER", "VATDYS")
+
             path = fullfile("D:", "VATDYS", "sourcedata", "sub-046", "ses-20240521151158", "lm");
             tracer = "fdg";
             taus = [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4) 300*ones(1,11)];
