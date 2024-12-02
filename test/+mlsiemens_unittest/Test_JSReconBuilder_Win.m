@@ -26,7 +26,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             taus = [3*ones(1,23) 5*ones(1,6) 10*ones(1,8) 30*ones(1,4) 300*ones(1,11)];
             tic
             mlsiemens.BrainMoCo2.create_simple( ...
-                path, tracer=tracer, taus=taus);
+                path, tracer=tracer, starts = 0, taus=taus, expand_starts=false);
             toc
             % Elapsed time is 4629.934149 seconds.
         end
