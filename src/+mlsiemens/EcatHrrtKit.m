@@ -1,4 +1,4 @@
-classdef (Sealed) EcatExactHRPlusKit < handle & mlkinetics.ScannerKit
+classdef (Sealed) EcatHrrtKit < handle & mlkinetics.ScannerKit
     %% line1
     %  line2
     %  
@@ -9,7 +9,7 @@ classdef (Sealed) EcatExactHRPlusKit < handle & mlkinetics.ScannerKit
         function this = instance(varargin)
             persistent uniqueInstance
             if (isempty(uniqueInstance))
-                this = mlsiemens.EcatExactHRPlusKit();
+                this = mlsiemens.EcatHrrtKit();
                 this.install_scanner(varargin{:});
                 uniqueInstance = this;
             else
@@ -22,7 +22,7 @@ classdef (Sealed) EcatExactHRPlusKit < handle & mlkinetics.ScannerKit
     %% PRIVATE
 
     methods (Access = private)
-        function this = EcatExactHRPlusKit()
+        function this = EcatHrrtKit()
         end
     end
     

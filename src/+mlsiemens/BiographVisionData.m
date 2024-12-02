@@ -6,21 +6,39 @@ classdef BiographVisionData < handle & mlsiemens.BiographData
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
  	%% It was developed on Matlab 9.7.0.1296695 (R2019b) Update 4 for MACI64.  Copyright 2020 John Joowon Lee.
  	
-	properties
- 		
+	properties 		
  	end
 
     methods (Static)
-        function this = createFromSession(sesd)
-            assert(isa(sesd, 'mlpipeline.ISessionData'))
+        function consoleTaus(varargin)
+            error('mlsiemens:NotImplementedError', stackstr());
+        end
+        function this = create(bids_med, opts)
+            arguments
+                bids_med mlpipeline.ImagingMediator {mustBeNonempty}
+                opts.counter = [];
+            end
+
+            this = mlsiemens.BiographVisionData( ...
+                'isotope', bids_med.isotope, ...
+                'tracer', bids_med.tracer, ...
+                'datetimeMeasured', bids_med.datetime, ...
+                'times', bids_med.times, ...
+                'taus', bids_med.taus, ...
+                'radMeasurements', opts.counter);
+            this.imagingContext_ = bids_med.imagingContext;
+        end
+        function this = createFromSession(sesd, varargin)
             this = mlsiemens.BiographVisionData( ...
                 'isotope', sesd.isotope, ...
                 'tracer', sesd.tracer, ...
                 'datetimeMeasured', sesd.datetime, ...
-                'taus', sesd.taus);
-            this = this.read(sesd.tracerResolvedToSubject());
+                'taus', sesd.taus, ...
+                varargin{:});
+            this.read(sesd.tracerOnAtlas());
+            this.decayUncorrect(); % ensure decay-uncorrected state for legacy pipelines
         end
-        function fwhh = petPointSpread
+        function fwhh = petPointSpread()
             fwhh = mlsiemens.VisionRegistry.instance.petPointSpread;
         end
     end

@@ -1,4 +1,4 @@
-classdef (Sealed) EcatExactHRPlusKit < handle & mlkinetics.ScannerKit
+classdef (Sealed) EcatExactHRPlusKit2 < handle & mlkinetics.ScannerKit2
     %% line1
     %  line2
     %  
@@ -7,14 +7,22 @@ classdef (Sealed) EcatExactHRPlusKit < handle & mlkinetics.ScannerKit
     
     methods (Static)
         function this = instance(varargin)
+            %% INSTANCE
+            %  @param optional qualifier is char \in {'initialize' ''}
+            
+            ip = inputParser;
+            addOptional(ip, 'qualifier', '', @ischar)
+            parse(ip, varargin{:})
+            
             persistent uniqueInstance
+            if (strcmp(ip.Results.qualifier, 'initialize'))
+                uniqueInstance = [];
+            end          
             if (isempty(uniqueInstance))
-                this = mlsiemens.EcatExactHRPlusKit();
-                this.install_scanner(varargin{:});
+                this = mlsiemens.EcatExactHRPlusKit2();
                 uniqueInstance = this;
             else
                 this = uniqueInstance;
-                this.install_scanner(varargin{:});
             end
         end
     end 
@@ -22,7 +30,7 @@ classdef (Sealed) EcatExactHRPlusKit < handle & mlkinetics.ScannerKit
     %% PRIVATE
 
     methods (Access = private)
-        function this = EcatExactHRPlusKit()
+        function this = EcatExactHRPlusKit2()
         end
     end
     

@@ -27,7 +27,7 @@ classdef CommonTracerDirector < mlpipeline.AbstractDirector
         
             ip = inputParser;
             ip.KeepUnmatched = true;
-            addParameter(ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
+            addParameter(ip, 'sessionData');
             parse(ip, varargin{:});            
             sess = ip.Results.sessionData;
             

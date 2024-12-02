@@ -19,7 +19,7 @@ classdef LhdrParser < mlsiemens.AbstractHdrParser
         
         function this = LhdrParser(varargin)
  			ip = inputParser;
-            addParameter(ip, 'filepath', pwd, @isdir)
+            addParameter(ip, 'filepath', pwd, @isfolder)
             addParameter(ip, 'fileprefix', '', @ischar);
             parse(ip, varargin{:});
             

@@ -13,10 +13,7 @@ classdef EcatExactHRPlusData < handle & mlpet.AbstractTracerData
 	methods 
 		  
  		function this = EcatExactHRPlusData(varargin)
- 			%% ECATEXACTHRPLUSDATA
- 			%  @param .
-
- 			this = this@mlpet.AbstractTracerData(varargin{:});
+ 			this = this@mlpet.AbstractTracerData(varargin{:}, decayCorrected = true);
  		end
  	end 
 

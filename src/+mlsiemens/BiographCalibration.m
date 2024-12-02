@@ -10,40 +10,8 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
  		invEfficiency
         calibrationAvailable
     end
-    
-    methods (Static)        
-        function buildCalibration()
-        end
-        function this = createFromSession(sesd, varargin)
-            %% CREATEBYSESSION
-            %  @param required sessionData is an mlpipeline.ISessionData.
-            
-            import mlsiemens.BiographCalibration
-            
-            this = BiographCalibration(sesd, varargin{:});  
-            
-            offset = 0;
-            while ~this.calibrationAvailable              
-                offset = offset + 1;
-                sesd1 = sesd.findProximal(offset);
-                this = BiographCalibration(sesd1, varargin{:});
-            end
-        end
-        function ie = invEfficiencyf(sesd)
-            %% INVEFFICIENCYF attempts to use calibration data from the nearest possible datetime.
-            %  @param obj is an mlpipeline.ISessionData
-            
-            assert(isa(sesd, 'mlpipeline.ISessionData'))
-            this = mlsiemens.BiographCalibration.createFromSession(sesd);
-            ie = this.invEfficiency;
-            ie = asrow(ie);
-        end
-    end
 
-	methods 
-        
-        %% GET
-        
+	methods %% GET        
         function g = get.calibrationAvailable(this)
             try
                 rm = this.radMeasurements_;
@@ -60,11 +28,56 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
         function g = get.invEfficiency(this)
             g = this.invEfficiency_;
         end
-        
-        %%
-        
-    end 
+    end     
     
+    methods (Static)
+        function dispCalibration(cal)
+            cal = mlfourd.ImagingContext2(cal);
+            assert(isfile(cal.fqfn))
+            cal.nifti;
+            json = cal.json_metadata;
+            b8 = cal.blurred(8);
+            b8 = b8.thresh(0.9*dipmax(b8));
+            vec = b8.nifti.img(b8.nifti.img > 0);
+            dvol = prod(b8.nifti.mmppix); % \muL
+            
+            fprintf('scan start: %s\n', json.AcquisitionTime)
+            fprintf('roi mean (kBq/mL): %g\n', mean(vec)/1e3)
+            fprintf('roi std (kBq/mL): %g\n', std(vec)/1e3)
+            fprintf('roi vol (mL): %g\n', numel(vec)*dvol/1e3)
+            fprintf('roi voxels: %g\n', numel(vec))
+            fprintf('roi min (kBq/mL): %g\n', min(vec)/1e3)
+            fprintf('roi max (kBq/mL): %g\n', max(vec)/1e3)
+        end
+        function this = create(bids_med, counter, radionuclide)
+            this = mlsiemens.BiographCalibration(bids_med, ...
+                'radMeasurements', counter, ...
+                'radionuclide', radionuclide);
+            assert(this.calibrationAvailable)
+        end
+        function this = createFromSession(sesd, varargin)
+            %% CREATEBYSESSION
+            %  @param required sessionData is an mlpipeline.{ISessionData,ImagingMediator}.
+            
+            this = mlsiemens.BiographCalibration(sesd, varargin{:});  
+            
+            offset = 0;
+            while ~this.calibrationAvailable
+                offset = offset + 1;
+                sesd1 = sesd.findProximal(offset);
+                this = BiographCalibration(sesd1, varargin{:});
+            end
+        end
+        function ie = invEfficiencyf(sesd)
+            %% INVEFFICIENCYF attempts to use calibration data from the nearest possible datetime.
+            %  @param obj is an mlpipeline.{ISessionData,ImagingData}
+
+            this = mlsiemens.BiographCalibration.createFromSession(sesd);
+            ie = this.invEfficiency;
+            ie = asrow(ie);
+        end
+    end
+
     %% PROTECTED
     
     properties (Access = protected)
@@ -86,7 +99,7 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                 
                 rm = this.radMeasurements_;
                 rowSelect = ...
-                    strcmp(rm.wellCounter.TRACER, '[18F]DG') & ...
+                    strcmp(rm.wellCounter.TRACER, this.CAL_TRACER) & ...
                     isnice(rm.wellCounter.MassSample_G) & ...
                     isnice(rm.wellCounter.Ge_68_Kdpm);
                 mass = rm.wellCounter.MassSample_G(rowSelect);
@@ -97,12 +110,19 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
                     rm.wellCounter.TIMECOUNTED_Hh_mm_ss(rowSelect)); % backwards in time, clock-adjusted            
                 capCal = mlcapintec.CapracCalibration.createFromSession(sesd, 'radMeasurements', rm, 'exactMatch', true);
                 activityDensityCapr = capCal.activityDensity('mass', mass, 'ge68', ge68, 'solvent', 'water');
-                activityDensityCapr = this.shiftWorldLines(activityDensityCapr, shift, this.radionuclide_.halflife);
+                activityDensityCapr = this.shiftWorldLines(activityDensityCapr, shift, this.calibration_halflife);
                 
                 % get activity density from rad measurement NiftyPET field && form efficiency^{-1}
+
+                % branching ratios cancel for this.invEfficiency_
                 
                 activityDensityBiograph = 1e3 * rm.mMR.ROIMean_KBq_mL('NiftyPET'); % Bq/mL   
                 this.invEfficiency_ = mean(activityDensityCapr)/mean(activityDensityBiograph);
+
+                S = struct( ...
+                    'radMeasurementsFqfn', rm.fqfn, ...
+                    'invEfficiency', this.invEfficiency_);
+                sesd.json_metadata.(stackstr()) = S;
             catch ME
                 
                 % calibration data was inadequate, but proximal session may be useable

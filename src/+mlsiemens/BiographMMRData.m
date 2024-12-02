@@ -11,6 +11,25 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
  	end
 
     methods (Static)
+        function consoleTaus(varargin)
+            error('mlan:NotImplementedError', stackstr());
+        end
+        function this = create(bids_med, opts)
+            arguments
+                bids_med mlpipeline.ImagingMediator {mustBeNonempty}
+                opts.counter = [];
+            end
+
+            bids_med.rnumber = mlsiemens.BiographMMRData.R_NUMBER_FINAL;
+            this = mlsiemens.BiographMMRData( ...
+                'isotope', bids_med.isotope, ...
+                'tracer', bids_med.tracer, ...
+                'datetimeMeasured', bids_med.datetime, ...
+                'times', bids_med.times, ...
+                'taus', bids_med.taus, ...
+                'radMeasurements', opts.counter);
+            this.imagingContext_ = bids_med.imagingContext;
+        end
         function this = createFromSession(sesd, varargin)
             sesd.rnumber = mlsiemens.BiographMMRData.R_NUMBER_FINAL;
             this = mlsiemens.BiographMMRData( ...
@@ -19,7 +38,8 @@ classdef BiographMMRData < handle & mlsiemens.BiographData
                 'datetimeMeasured', sesd.datetime, ...
                 'taus', sesd.taus, ...
                 varargin{:});
-            this = this.read(sesd.tracerOnAtlas());
+            this.read(sesd.tracerOnAtlas());
+            this.decayUncorrect(); % ensure decay-uncorrected state for legacy pipelines
         end
         function fwhh = petPointSpread
             fwhh = mlsiemens.MMRRegistry.instance.petPointSpread;

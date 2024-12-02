@@ -1,4 +1,4 @@
-classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
+classdef EcatExactHRPlus < mlpet.AbstractScannerData_20190611 & mlpet.IWellData
 	%% ECATEXACTHRPLUS implements mlpet.IScannerData for data from detection array of Ecat Exact HR+ scanners.
     %  Most useful properties will be times, timeInterpolants, counts, countInterpolants.  It is also a NIfTIdecorator.
     %  The corresponding class for well-counter data is mlpet.AbstractWellData.  Also see mlpet.TSC.
@@ -187,7 +187,7 @@ classdef EcatExactHRPlus < mlpet.AbstractScannerData & mlpet.IWellData
         end               
         
  		function this = EcatExactHRPlus(cmp, varargin)
-            this = this@mlpet.AbstractScannerData(cmp, varargin{:});
+            this = this@mlpet.AbstractScannerData_20190611(cmp, varargin{:});
             
             % avoid decorator redundancy
             if (nargin == 1 && isa(cmp, 'mlsiemens.EcatExactHRPlus'))
