@@ -17,6 +17,19 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
+        function test_BMC_build_eva109(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01483")
+
+            path = fullfile("D:", "CCIR_01483", "sourcedata", "sub-eva109", "ses-20241122", "lm");
+            tracer = "fdg";
+            taus = [15*ones(1,4) 30*ones(1,8) 60*ones(1,5) 120*ones(1,55)];
+            tic
+            mlsiemens.BrainMoCo2.create_simple( ...
+                path, tracer=tracer, starts = 0, taus=taus, expand_starts=false);
+            toc
+            % Elapsed time is ~64 min.
+        end
         function test_BMC_build_laforest(this)
 
             setenv("PROJECT_FOLDER", "Laforest")
@@ -43,6 +56,19 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             toc
             % Elapsed time is 4629.934149 seconds.
         end
+        function test_BMC_build_co(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+
+            path = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108334", "ses-20241216102236", "lm");
+            tracer = "co";
+            taus = [3*ones(1,20) 5*ones(1,48)];
+            tic
+            mlsiemens.BrainMoCo2.create_simple( ...
+                path, tracer=tracer, starts=0, taus=taus, expand_starts=false);
+            toc
+            % Elapsed time is ___ seconds.
+        end
         function test_BMC_build_sub_oo(this)
             if isempty(gcp('nocreate'))
                 parpool(8)
@@ -55,15 +81,100 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
                 tic
                 pwd0 = pushd(fullfile("D:\CCIR_01211\sourcedata", subs(si), sess(si), "lm"));
                 bmc = mlsiemens.BrainMoCo2(source_lm_path=pwd);
-                bmc.build_sub(ses0=2, sesF=3);
+                bmc.build_sub();
                 clear bmc
                 ls(fullfile("S:\Singularity\CCIR_01211\sourcedata", subs(si)))
                 popd(pwd0);
                 toc
             end
         end
+        function test_BMC_build_all(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+
+            src_dir = fullfile("D:", "CCIR_01211", "sourcedata");
+            cd(src_dir);
+
+            mglobbed_sub_dir = mglob(fullfile(src_dir, "sub-1082*"));
+            %mglobbed_sub_dir = mglob(fullfile(src_dir, "sub-108329"));  % test single sub
+            %mglobbed_sub_dir = fullfile(src_dir, "sub-108" + [320, 321, 322]);
+            for sub_dir = mglobbed_sub_dir
+                try
+                    lm_dirs = mglob(fullfile(sub_dir, "ses-*", "lm"));
+                    if isempty(lm_dirs); continue; end
+                    lm_dir = lm_dirs(1);
+                    tic
+                    bmc = mlsiemens.BrainMoCo2(source_lm_path=lm_dir);
+                    bmc.build_sub(tracers=["co", "oc", "oo", "ho"], clean_up=true);
+                    toc
+                catch ME
+                    handwarning(ME)
+                end
+            end
+        end
+        function test_BMC_build_niftis(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+
+            src_dir = fullfile("D:", "CCIR_01211", "sourcedata");
+            cd(src_dir);
+
+            %mglobbed_sub_dir = mglob(fullfile(src_dir, "sub-1083*"));
+            mglobbed_sub_dir = mglob(fullfile(src_dir, "sub-108140"));  % test single sub
+            for sub_dir = mglobbed_sub_dir
+                try
+                    lm_dirs = mglob(fullfile(sub_dir, "ses-*", "lm"));
+                    if isempty(lm_dirs); continue; end
+                    lm_dir = lm_dirs(1);
+                    tic
+                    bmc = mlsiemens.BrainMoCo2(source_lm_path=lm_dir);
+                    bmc.build_sub( ...
+                        tracers=["co", "oc", "oo", "ho"], ...
+                        clean_up=false, ...
+                        nifti_only=true, ...
+                        reuse_source_sub_table=true);
+                    toc
+                catch ME
+                    handwarning(ME)
+                end
+            end
+        end
+        function test_BMC_build_clean(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+
+            src_dir = fullfile("D:", "CCIR_01211", "sourcedata");
+            cd(src_dir);
+
+            %mglobbed_sub_dir = mglob(fullfile(src_dir, "sub-1083*"));
+            mglobbed_sub_dir = mglob(fullfile(src_dir, "sub-108140"));  % test single sub
+            for sub_dir = mglobbed_sub_dir
+                lm_dir = mglob(fullfile(sub_dir, "ses-*", "lm*"));  % single lm dir needed by ctor
+                assert(isfolder(lm_dir(1)))
+                bmc = mlsiemens.BrainMoCo2(source_lm_path=lm_dir(1));
+                bmc.build_clean(tag="-start", starts=0, deep=false);
+            end
+        end
         function test_BMC_build_sub(this)
             % single subject
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+
+            tic
+            pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108007");
+            for mg = mglob(fullfile("ses-*", "lm"))
+                bmc = mlsiemens.BrainMoCo2(source_lm_path=fullfile(pwd, mg));
+                bmc.build_sub();
+            end
+            ls("V:\jjlee\Singularity\CCIR_01211\sourcedata\sub-108007")
+            popd(pwd0);
+            toc
+        end
+        function test_BMC_build_sub_single_lm(this)
+            % single subject
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+
             tic
             pwd0 = pushd("D:\CCIR_01211\sourcedata\sub-108284\ses-20230220095210\lm");
             bmc = mlsiemens.BrainMoCo2(source_lm_path=pwd);
@@ -72,7 +183,58 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             popd(pwd0);
             toc
         end
+        function test_BMC_create_moving_average_single_start(this)
+            % single subject
+
+            error("mlsiemens:NotImplementedError", stackstr())
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+
+            source_ses_path = "D:\CCIR_01211\sourcedata\sub-108032\ses-20221003140439";
+            source_lm_path = fullfile(source_ses_path, "lm-oo1");
+            cd(source_lm_path);
+            
+            opts.starts = {[0 1 2 3 4 5 6 7 8 9], 0};
+            opts.taus = {[10 10 10], [20 20 20 20]};
+            opts.time_delay = 0;
+            opts.tracer = "oo";
+            opts.tag = "-start";
+            opts.tag0 = "-start0";
+
+            for parti = 1:length(opts.taus)
+                try
+                    [starts,taus] = mlsiemens.BrainMoCo2.expand_starts( ...
+                        opts.starts{parti}, opts.taus{parti}, time_delay=opts.time_delay, dt=1);
+
+                    % mlsiemens.BrainMoCo2.create_v_moving_average( ...
+                    %     source_lm_path, ...
+                    %     tag="-start", ...
+                    %     taus=taus, ...
+                    %     starts=starts, ...
+                    %     coarsening_time=3600, ...
+                    %     tracer="oo", ...
+                    %     do_jsr=false, ...
+                    %     do_bmc=true);
+                catch ME
+                    disp(ME)
+                end
+
+
+                si = 8;  % start offset
+                try
+                    obj = mlsiemens.BrainMoCo2.create_tagged(source_lm_path, tag=opts.tag, starts=starts(si));
+                    [lmframes,skip] = mlsiemens.BrainMoCo2.mat2lmframes(taus, start=starts(si));
+                    obj.build_scan( ...
+                        LMFrames=lmframes, Skip=skip, tracer=opts.tracer, tag=opts.tag, tag0=opts.tag0, starts=starts(si), ...
+                        do_jsr=false, do_bmc=true);
+                catch ME
+                    handwarning(ME)
+                end
+            end
+        end
         function test_BMC_create_fdg_phantom(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01211")
 
             if isempty(gcp('nocreate'))
                 parpool(2)

@@ -5,7 +5,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
     %  Developed on Matlab 9.13.0.2105380 (R2022b) Update 2 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Constant)
-        N_PROC = 4
+        N_PROC = 10
         SHAPE = [440 440 159]
         USE_SKIP = true
     end
@@ -15,7 +15,6 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
     end
 
     properties (Dependent)
-        bmc_js
         inki_home
         jsrecon_home
         jsrecon_js
@@ -35,9 +34,6 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
     end
 
     methods %% GET
-        function g = get.bmc_js(this)
-            g = fullfile(this.jsrecon_home, "BrainMotionCorrection", "BMC.js"); % BMC.js BMC_VG76.js, BMC_VG80.js
-        end
         function g = get.inki_home(this)
             g = fullfile("C:", "Inki");
         end
@@ -96,7 +92,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
     methods
         function this = BrainMoCo2(opts)
             %  Args:
-            %  opts.source_lm_path {mustBeFolder} = pwd
+            %  opts.source_lm_path {mustBeFolder} = pwd; used to parse folder hierarchies
 
             arguments
                 opts.source_lm_path {mustBeFolder} = pwd
@@ -129,13 +125,30 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     try
                         fileattrib(m(1), '+w -h');
                         rmdir(m(1), "s");
-                    catch
+                    catch ME
+                        handwarning(ME)
                         fprintf("%s: rmdir %s had errors.\n", stackstr(), m(1))
                     end
                 end
             catch ME
                 handwarning(ME)
-            end             
+            end  
+
+            try
+                ses_paths = fileparts(lmpath);
+                mg = mglob(fullfile(ses_paths, "lm*"));
+                for m = mg
+                    try
+                        fileattrib(m(1), '+w -h');
+                        rmdir(m(1), "s");
+                    catch ME
+                        handwarning(ME)
+                        fprintf("%s: rmdir %s had errors.\n", stackstr(), m(1))
+                    end
+                end
+            catch ME
+                handwarning(ME)
+            end  
 
             if opts.deep
                 for idx = 1:length(lmpathn)
@@ -193,9 +206,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             pwd0 = pushd(opts.source);
             vhdr = this.lm_prefix+opts.tag0+"-BMC-LM-00-dynamic_mc0_000_000.v.hdr";
             if2dicom_js = fullfile("C:", "JSRecon12", "IF2Dicom.js");
-            mysystem( ...
-                sprintf("cscript %s %s Run-05-lm"+opts.tag0+"-BMC-LM-00-IF2Dicom.txt", ...
-                if2dicom_js, vhdr));
+            mlsiemens.JSRecon12.cscript(if2dicom_js, [vhdr, "Run-05-lm"+opts.tag0+"-BMC-LM-00-IF2Dicom.txt"]);
 
             try
                 mlsiemens.BrainMoCoBuilder.dcm2niix( ...
@@ -204,8 +215,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     toglob_mhdr="*-dynamic_mc0.mhdr", ...
                     toglob_vhdr="*-dynamic_mc0_000_000.v.hdr");
                 if2mip_js = fullfile("C:", "JSRecon12", "IF2MIP", "IF2MIP.js");
-                mysystem(sprintf("cscript %s %s", ...
-                    if2mip_js, vhdr));
+                mlsiemens.JSRecon12.cscript(if2mip_js, vhdr);
             catch ME
                 handwarning(ME)
             end
@@ -241,10 +251,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             copts = namedargs2cell(opts);
             jsrp = mlsiemens.JSReconParams(copts{:});
             jsrp.writelines();
-            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                this.jsrecon_js, ...
-                this.source_lm_path, ...
-                jsrp.fqfilename));
+            [~,r] = mlsiemens.JSRecon12.cscript_jsrecon12(this.source_lm_path, jsrp.fqfilename);
             disp(r)
             popd(pwd0);
 
@@ -293,15 +300,12 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             pwd0 = pushd(this.source_pet_path);
 
             if opts.do_jsr
-                cscript JSRecon.js
+                % cscript JSRecon.js
                 if startsWith(opts.tracer, "oo")
                     pwd0 = pushd(this.source_pet_path);
                     jsrp = mlsiemens.JSReconParams(copts{:});
                     jsrp.writelines();
-                    [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                        this.jsrecon_js, ...
-                        this.source_lm_path, ...
-                        jsrp.fqfilename));
+                    [~,r] = mlsiemens.JSRecon12.cscript_jsrecon12(this.source_lm_path, jsrp.fqfilename);
                     disp(r)
                     path00 = fullfile(this.source_pet_path+"-Converted", this.lm_prefix+opts.tag0+"-LM-00");
                     [~,r] = mysystem(fullfile(path00, sprintf("Run-99-"+this.lm_prefix+opts.tag0+"-LM-00-All.bat")));
@@ -314,12 +318,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 % cscript BMC.js
                 bmcp = mlsiemens.BrainMoCoParams2(copts{:});
                 bmcp.writelines();
-                [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                    this.bmc_js, ...
-                    this.source_lm_path, ...
-                    bmcp.fqfilename));
+                [~,r] = this.cscript_bmc(this.source_lm_path, bmcp.fqfilename);
                 disp(r)
-
                 % move output/* to source_ses_path
                 g = asrow(globFolders(fullfile(this.output_path, '*')));
                 for gidx = 1:length(g)
@@ -372,11 +372,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             bmcp.doConventional = true; % <-
             bmcp.doBMCRecon = false;    % <-
             bmcp.doBMCDynamic = false;  % <-
-            bmcp.writelines();
-            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                this.bmc_js, ...
-                this.source_lm_path, ...
-                bmcp.fqfilename));
+            bmcp.writelines();            
+            [~,r] = this.cscript_bmc(this.source_lm_path, bmcp.fqfilename);
             disp(r)
 
             % move output/* to source_ses_path
@@ -407,17 +404,27 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.sesF double = []
                 opts.tag string {mustBeTextScalar} = "-start"
                 opts.starts double {mustBeScalarOrEmpty} = 0
+                opts.tracers {mustBeText} = ["co", "oc", "oo", "ho", "fdg"]
                 opts.clean_up logical = false
                 opts.do_jsr logical = false
                 opts.do_bmc logical = true
+                opts.nifti_only logical = false
+                opts.reuse_source_sub_table logical = false
             end
 
-            if isfile(this.source_sub_table_fqfn)
-                new_fqfn = myfileprefix(this.source_sub_table_fqfn) ...
-                    + "_" + string(datetime("now", Format="yyyyMMddHHmmss")) + ".mat";
-                movefile(this.source_sub_table_fqfn, new_fqfn);
+            % store session info in source_sub_table.mat
+            if ~opts.reuse_source_sub_table
+                if isfile(this.source_sub_table_fqfn)
+                    new_fqfn = myfileprefix(this.source_sub_table_fqfn) ...
+                        + "_" + string(datetime("now", Format="yyyyMMddHHmmss")) + ".mat";
+                    movefile(this.source_sub_table_fqfn, new_fqfn);
+                end
+                T = this.build_sub_table();
+            else
+                ld = load(this.source_sub_table_fqfn);
+                T = ld.T;
             end
-            T = this.build_sub_table();
+
             if ~isempty(opts.ses1)
                 opts.ses0 = opts.ses1;
             end
@@ -425,40 +432,43 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.sesF = size(T, 1);
             end
             for sesi = opts.ses0:opts.sesF
-                apath = T{sesi, "lmpath"};
-                apath = strrep(apath, "/data/nil-bluearc/vlassenko/jjlee/Singularity", "d:"); % KLUDGE
-                apath = strrep(apath, "/home/usr/jjlee/mnt/CHPC_scratch/Singularity", "d:");  % KLUDGE
-                atracer = T{sesi, "trc"};
-                thetaus = T{sesi, "taus"}{1};
-                thestarts = T{sesi, "starts"}{1};
-                thetimedelays = T{sesi, "timedelays"}{1};
+                try
+                    apath = this.adjust_lmpath(T{sesi, "lmpath"});
+                    atracer = T{sesi, "trc"};
+                    if ~contains(atracer, opts.tracers); continue; end
+                    thetaus = T{sesi, "taus"}{1};
+                    thestarts = T{sesi, "starts"}{1};
+                    thetimedelays = T{sesi, "timedelays"}{1};
 
-                pwd0 = pushd(apath);
-                if isnumeric(thetaus)
-                    tic
-                    try
-                        mlsiemens.BrainMoCo2.create_moving_average( ...
-                            apath, tracer=atracer, taus=thetaus, starts=thestarts, time_delay=thetimedelays, ...
-                            do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
-                    catch ME
-                        disp(ME)
-                    end
-                    toc
-                end
-                if iscell(thetaus)
-                    for parti = 1:length(thetaus)
+                    pwd0 = pushd(apath);
+                    if isnumeric(thetaus)
                         tic
                         try
                             mlsiemens.BrainMoCo2.create_moving_average( ...
-                                apath, tracer=atracer, taus=thetaus{parti}, starts=thestarts{parti}, time_delay=thetimedelays(parti), ...
-                                do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
+                                apath, tracer=atracer, taus=thetaus, starts=thestarts, time_delay=thetimedelays, ...
+                                do_jsr=opts.do_jsr, do_bmc=opts.do_bmc, nifti_only=opts.nifti_only);
                         catch ME
-                            disp(ME)                
+                            disp(ME)
                         end
                         toc
                     end
+                    if iscell(thetaus)
+                        for parti = 1:length(thetaus)
+                            tic
+                            try
+                                mlsiemens.BrainMoCo2.create_moving_average( ...
+                                    apath, tracer=atracer, taus=thetaus{parti}, starts=thestarts{parti}, time_delay=thetimedelays(parti), ...
+                                    do_jsr=opts.do_jsr, do_bmc=opts.do_bmc, nifti_only=opts.nifti_only);
+                            catch ME
+                                disp(ME)
+                            end
+                            toc
+                        end
+                    end
+                    popd(pwd0);
+                catch ME
+                    handwarning(ME)
                 end
-                popd(pwd0);
             end
             
             % delete large files
@@ -579,7 +589,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
         function check_env(this)
             % e7 requirements
             assert(strcmpi('PCWIN64', computer), ...
-                'mlsiemens.{JSRecon,BrainMoCo2} require e7 in Microsoft Windows 64-bit')
+                'mlsiemens.{JSRecon12,BrainMoCo2} require e7 in Microsoft Windows 64-bit')
             assert(isfolder(fullfile('C:', 'JSRecon12')))
             assert(isfolder(fullfile('C:', 'Service')))
             assert(isfolder(fullfile('C:', 'Siemens', 'PET', this.bin_version_folder)))
@@ -627,6 +637,21 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             % assign struct
             st.(mybasename(re.fqfp)) = struct("mhdr", mhdr, "vhdr", vhdr);
             ic.addJsonMetadata(st);
+        end
+        function apath = adjust_lmpath(apath)
+            if contains(computer, "PCWIN64")
+                apath = strrep(apath, "/data/nil-bluearc/vlassenko/jjlee/Singularity", "d:"); % KLUDGE
+                apath = strrep(apath, "/home/usr/jjlee/mnt/CHPC_scratch/Singularity", "d:");  % KLUDGE
+                apath = strrep(apath, "/", filesep);
+            end
+            if contains(computer, "GLNXA64")
+                if contains(hostname, "vglab2")
+                    apath = strrep(apath, "D:", "/vgpool02/data2/jjlee/Singularity"); % KLUDGE
+                else
+                    apath = strrep(apath, "D:", "/data/nil-bluearc/vlassenko/jjlee/Singularity"); % KLUDGE
+                end
+                apath = strrep(apath, "\", filesep);
+            end
         end
         function idx = coarsening_index(taus, opts)
             %% index at which coarsening should commence
@@ -1476,6 +1501,14 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     handwarning(ME)
                 end
             end
+        end        
+        function [s,r] = cscript_bmc(data_folder, params_file)
+            arguments
+                data_folder {mustBeFolder}
+                params_file {mustBeFile}
+            end
+            js = fullfile("C:", "JSRecon12", "BrainMotionCorrection", "BMC.js");
+            [s,r] = mlsiemens.JSRecon12.cscript(js, [data_folder, params_file]);
         end
         function ic = cumul2frames(ic, opts)
             arguments
@@ -1574,14 +1607,19 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 movefile(mg(mgi), opts.source_pet_path);
             end
 
-            % copy recons to chpc
-            try
-                chpc_pet_path = strrep(opts.source_pet_path, ...
-                    "D:", fullfile("S:", "Singularity"));
-                copyfile(opts.source_pet_path, fileparts(chpc_pet_path));
-            catch ME
-                handwarning(ME)
-            end
+            %% copy recons to chpc
+
+            % try
+            %     s = ""; m = ""; mid = "";
+            %     chpc_pet_path = strrep(opts.source_pet_path, ...
+            %         "D:", fullfile("V:", "jjlee", "Singularity"));
+            %     [s,m,mid] = copyfile(opts.source_pet_path, chpc_pet_path);
+            % catch ME
+            %     handwarning(ME)
+            %     disp(s)
+            %     disp(m)
+            %     disp(mid)
+            % end
         end
         function ic = deconv_moving(ic, opts)
             %% https://stats.stackexchange.com/questions/67907/extract-data-points-from-moving-average
@@ -1776,6 +1814,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             s(s < 0) = 0;
             s = reshape(s, shape);
             s = flip(flip(s, 1), 2);
+            fclose(fid);
         end
         function [st,T] = taus2starts(taus)
             arguments
@@ -1811,6 +1850,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             v(v < 0) = 0;
             v = reshape(v, shape);
             v = flip(flip(v, 1), 2);
+            fclose(fid);
         end
     end
 

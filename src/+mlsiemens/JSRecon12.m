@@ -112,8 +112,7 @@ classdef JSRecon12 < handle & mlsystem.IHandle
                 fdrconv = sprintf('%s-Converted',DataFolder);
                 files = dir(fdrconv);
                 if isempty(files) || ipr.ForceJSRecon
-                    cmd = sprintf('!cscript C:\\JSRecon12\\JSRecon12.js %s %s', DataFolder, ipr.ParamsFile);
-                    eval(cmd);
+                    mlsiemens.JSRecon12.cscript_jsrecon12(DataFolder, ipr.ParamsFile);
                 else
                     fprintf('JSRecon already done...\n');
                 end
@@ -203,15 +202,6 @@ classdef JSRecon12 < handle & mlsystem.IHandle
             assert(isfolder(fullfile('C:', 'Service')))
             assert(isfolder(fullfile('C:', 'Siemens', 'PET', this.bin_version_folder)))
         end
-        function eval_jsrecon12(this, opts)
-            arguments
-                this mlsiemens.JSRecon12
-                opts.DataFolder {mustBeFolder} = this.DataFolder
-                opts.ParamsFile {mustBeFile} = this.ParamsFile
-            end
-            cmd = sprintf("!cscript %s %s %s", this.jsrecon12_js, opts.DataFolder, opts.ParamsFile);
-            eval(cmd)
-        end
         function this = JSRecon12(dtor, opts)
             %% JSRECON12 
             %  Args:
@@ -243,6 +233,45 @@ classdef JSRecon12 < handle & mlsystem.IHandle
             end
             this.scanner = opts.scanner;
             this.tracer = opts.tracer;
+        end
+    end
+
+    methods (Static)
+        function [s,r] = cscript(js, args, opts)
+            arguments
+                js string {mustBeTextScalar}
+                args string {mustBeText}
+                opts.do_logging logical = false
+                opts.log_file {mustBeTextScalar} = fullfile("D:", stackstr() + ".log")
+            end
+            suffix = "";
+            if opts.do_logging
+                suffix = ">> " + opts.log_file;
+            end
+            switch length(args)
+                case 1                    
+                    cmd = sprintf("cscript /E:JScript %s %s %s", js, args(1), suffix);
+                case 2
+                    cmd = sprintf("cscript /E:JScript %s %s %s %s", js, args(1), args(2), suffix);
+                otherwise
+                    error("mlraut:ValueError", stackstr());
+            end
+            [s,r] = mysystem(cmd);
+        end
+        function [s,r] = cscript_jsrecon12(data_folder, params_file)
+            arguments
+                data_folder {mustBeFolder}
+                params_file {mustBeFile}
+            end
+            js = fullfile("C:", "JSRecon12", "JSRecon12.js");
+            [s,r] = mlsiemens.JSRecon12.cscript(js, [data_folder, params_file]);
+        end
+        function [s,r] = cscript_staticrecon(data_folder)
+            arguments
+                data_folder {mustBeFolder}
+            end
+            js = fullfile("C:", "JSRecon12", "StaticRecon", "StaticRecon.js");
+            [s,r] = mlsiemens.JSRecon12.cscript(js, data_folder);
         end
     end
 

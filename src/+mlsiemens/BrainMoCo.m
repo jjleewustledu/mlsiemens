@@ -108,10 +108,8 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             pwd0 = pushd(this.source_pet_path);
             bmcp = mlsiemens.BrainMoCoParams(copts{:});
             bmcp.writelines();
-            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                this.jsrecon_js, ...
-                this.source_lm_path, ...
-                bmcp.fqfilename));
+            [~,r] = mlsiemens.JSRecon12.cscript_jsrecon12( ...
+                this.source_lm_path, bmcp.fqfilename);
             disp(r)
             try
                 rmdir(fullfile(this.source_ses_path, "lm"+opts.tag), "s");
@@ -137,9 +135,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
         end
         function build_static(this)
             pwd0 = pushd(this.source_pet_path);
-            [~,r] = mysystem(sprintf("cscript C:\JSRecon12\StaticRecon\StaticRecon.js %s", ...
-                this.jsrecon_js, ...
-                this.source_lm_path));
+            [~,r] = mlsiemens.JSRecon12.cscript_staticrecon(this.source_lm_path);
             disp(r)
             popd(pwd0);
         end
@@ -159,17 +155,15 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             pwd0 = pushd(this.test_project_path);
             bmcp = mlsiemens.BrainMoCoParams(copts{:});
             bmcp.writelines();
-            [~,r] = mysystem(sprintf("cscript %s %s %s", ...
-                this.jsrecon_js, ...
-                fullfile("+Input", "VisionTestData"), ...
-                bmcp.fqfilename));
+            [~,r] = mlsiemens.JSRecon12.cscript_jsrecon12( ...               
+                fullfile("+Input", "VisionTestData"), bmcp.fqfilename);
             disp(r)
             popd(pwd0);
         end
         function check_env(this)
             % e7 requirements
             assert(strcmpi('PCWIN64', computer), ...
-                'mlsiemens.{JSRecon,BrainMoCo} require e7 in Microsoft Windows 64-bit')
+                'mlsiemens.{JSRecon12,BrainMoCo} require e7 in Microsoft Windows 64-bit')
             assert(isfolder(fullfile('C:', 'JSRecon12')))
             assert(isfolder(fullfile('C:', 'Service')))
             assert(isfolder(fullfile('C:', 'Siemens', 'PET', this.bin_version_folder)))
@@ -369,6 +363,7 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             fid = fopen(filename, "r", "ieee-le");
             v = fread(fid, Inf, "single");
             v = reshape(v, shape);
+            fclose(fid);
         end
     end
 

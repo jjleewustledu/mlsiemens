@@ -336,10 +336,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 rmdir(myfileparts(static_dcm_path), "s")
             end
             popd(pwd0);
-
-        end
-        function build_output_folders(this, s)
-        end        
+        end              
         function build_raw_dcm(this)
             pwd0 = pushd(this.raw_dcm_path);
             [~,r] = this.dcm2niix();
