@@ -66,7 +66,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             fn = globbed{end};
             fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
             if ~isfile(fn)
-                this.build_orientstd(this.t1w_toglob);
+                this.build_orientstd(this.flair_toglob);
             end
             this.flair_ic_ = mlfourd.ImagingContext2(fn);
             g = copy(this.flair_ic_);
@@ -271,18 +271,19 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             addOptional(ip, 'destination_path', this.anatPath, @isfolder)
             parse(ip, varargin{:});
             ipr = ip.Results;
-            ipr.patt = convertStringsToChars(ipr.patt);
 
+            ic = [];
             for g = glob(ipr.patt)
-                [~,fp] = myfileparts(g{1});
-                fqfn = fullfile(ipr.destination_path, strcat(fp, '_orient-std.nii.gz'));
-                ensuredir(strrep(myfileparts(g{1}), 'sourcedata', 'derivatives'));
-                cmd = sprintf('fslreorient2std %s %s', g{1}, fqfn);
-                [s,r] = mlbash(cmd);
-                ic = mlfourd.ImagingContext2(fqfn);
-                ic.selectNiftiTool();
-                ic.save();
+
+                ensuredir(ipr.destination_path);
+                ic = mlfourd.ImagingContext2(g{1});
+                ic.afni_3dresample(orient_std=true);
+                if ~strcmp(ipr.destination_path, ic.filepath)
+                    movefile(ic.fqfileprefix + ".*", ipr.destination_path);
+                end
             end
+            s = [];
+            r = "";
         end
         function [s,r] = build_robustfov(this, varargin)
             %  Args:

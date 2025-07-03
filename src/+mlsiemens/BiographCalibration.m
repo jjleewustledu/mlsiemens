@@ -53,7 +53,9 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
             this = mlsiemens.BiographCalibration(bids_med, ...
                 'radMeasurements', counter, ...
                 'radionuclide', radionuclide);
-            assert(this.calibrationAvailable)
+            if ~this.calibrationAvailable
+                fprintf("%s: independent calibration data not available\n", stackstr());
+            end
         end
         function this = createFromSession(sesd, varargin)
             %% CREATEBYSESSION
@@ -97,6 +99,9 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
             
                 % get activity density from Caprac
                 
+                if isempty(this.radMeasurements_)
+                    return
+                end
                 rm = this.radMeasurements_;
                 rowSelect = ...
                     strcmp(rm.wellCounter.TRACER, this.CAL_TRACER) & ...
@@ -126,7 +131,8 @@ classdef BiographCalibration < handle & mlpet.AbstractCalibration
             catch ME
                 
                 % calibration data was inadequate, but proximal session may be useable
-                handwarning(ME)
+                fprintf("%s: independent calibration data not available\n", stackstr());
+                fprintf("\t%s\n", ME.message);
                 this.invEfficiency_ = NaN;
             end
             assert(isscalar(this.invEfficiency_))

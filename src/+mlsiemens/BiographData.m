@@ -64,7 +64,11 @@ classdef BiographData < handle & mlpet.AbstractTracerData
             try
                 sec = seconds(this.radMeasurements_.clocks.TimeOffsetWrtNTS____s('mMR console'));
             catch
-                sec = seconds(this.radMeasurements_.clocks.TIMEOFFSETWRTNTS____S('mMR console'));
+                try
+                    sec = seconds(this.radMeasurements_.clocks.TIMEOFFSETWRTNTS____S('mMR console'));
+                catch
+                    sec = 0;
+                end
             end
         end 
         function c = countRate(this, varargin)

@@ -182,16 +182,18 @@ classdef (Abstract) VisionBids < handle & mlpipeline.Bids
             parse(ip, varargin{:});
             ipr = ip.Results;
 
+            ic = [];
             for g = glob(ipr.patt)
-                [~,fp] = myfileparts(g{end});
-                fqfn = fullfile(ipr.destination_path, strcat(fp, '_orient-std.nii.gz'));
-                ensuredir(strrep(myfileparts(g{1}), 'sourcedata', 'derivatives'));
-                cmd = sprintf('fslreorient2std %s %s', g{1}, fqfn);
-                [s,r] = mlbash(cmd);
-                ic = mlfourd.ImagingContext2(fqfn);
-                ic.selectNiftiTool();
-                ic.save();
+
+                ensuredir(ipr.destination_path);
+                ic = mlfourd.ImagingContext2(g{1});
+                ic.afni_3dresample(orient_std=true);
+                if ~strcmp(ipr.destination_path, ic.filepath)
+                    movefile(ic.fqfileprefix + ".*", ipr.destination_path);
+                end
             end
+            s = [];
+            r = "";
         end
         function [s,r] = build_robustfov(this, varargin)
             %  Args:
