@@ -146,46 +146,61 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
                 g = copy(this.tof_ic_);
                 return
             end
-            globbed = globT(this.tof_toglob);
-            globbed = globbed(~contains(globbed, 'MIP'));
-            fn = globbed{1};
-            fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
-            if ~isfile(fn)
-                this.build_orientstd(this.tof_toglob);
+            try
+                globbed = globT(this.tof_toglob);
+                globbed = globbed(~contains(globbed, 'MIP'));
+                fn = globbed{1};
+                fn = fullfile(this.anatPath, strcat(mybasename(fn), '_orient-std.nii.gz'));
+                if ~isfile(fn)
+                    this.build_orientstd(this.tof_toglob);
+                end
+                this.tof_ic_ = mlfourd.ImagingContext2(fn);
+                g = copy(this.tof_ic_);
+            catch ME
+                handwarning(ME)
+                g = [];
             end
-            this.tof_ic_ = mlfourd.ImagingContext2(fn);
-            g = copy(this.tof_ic_);
         end
         function g = get.tof_mask_ic(this)
             if ~isempty(this.tof_mask_ic_)
                 g = copy(this.tof_mask_ic_);
                 return
             end
-            tmp_ = this.tof_ic.blurred(6);
-            tmp_ = tmp_.thresh(30);
-            tmp_ = tmp_.binarized();
-            this.tof_mask_ic_ = tmp_;
-            g = copy(this.tof_mask_ic_);
+            try
+                tmp_ = this.tof_ic.blurred(6);
+                tmp_ = tmp_.thresh(30);
+                tmp_ = tmp_.binarized();
+                this.tof_mask_ic_ = tmp_;
+                g = copy(this.tof_mask_ic_);
+            catch ME
+                handwarning(ME)
+                g = [];
+            end
         end
         function g = get.tof_on_t1w_ic(this)
             if ~isempty(this.tof_on_t1w_ic_)
                 g = copy(this.tof_on_t1w_ic_);
                 return
             end
-            fn = strcat(this.tof_ic.fqfp, '_on_T1w.nii.gz');
-            if isfile(fn)
+            try
+                fn = strcat(this.tof_ic.fqfp, '_on_T1w.nii.gz');
+                if isfile(fn)
+                    this.tof_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
+                    g = copy(this.tof_on_t1w_ic_);
+                    return
+                end
+                f = mlfsl.Flirt( ...
+                    'in', this.tof_ic.fqfn, ...
+                    'ref', this.t1w_ic.fqfn, ...
+                    'out', fn, ...
+                    'noclobber', true);
+                f.flirt();
                 this.tof_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
                 g = copy(this.tof_on_t1w_ic_);
-                return
+            catch ME
+                handwarning(ME)
+                g = [];
             end
-            f = mlfsl.Flirt( ...
-                'in', this.tof_ic.fqfn, ...
-                'ref', this.t1w_ic.fqfn, ...
-                'out', fn, ...
-                'noclobber', true);
-            f.flirt();
-            this.tof_on_t1w_ic_ = mlfourd.ImagingContext2(fn);
-            g = copy(this.tof_on_t1w_ic_);
         end        
         function g = get.wmparc_ic(this)
             if ~isempty(this.wmparc_ic_) && isfile(this.wmparc_ic_.fqfn)
