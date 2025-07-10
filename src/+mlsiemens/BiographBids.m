@@ -1,6 +1,6 @@
 classdef (Abstract) BiographBids < handle & mlpipeline.Bids
 	%% BIOGRAPHBIDS  
-
+    %
 	%  $Revision$
  	%  was created 13-Nov-2021 14:57:47 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlvg/src/+mlvg.
@@ -49,7 +49,7 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
                 this.dlicv_ic_ = mlfourd.ImagingContext2( ...
                     sprintf('%s_%s.nii.gz', this.t1w_ic.fqfileprefix, this.DLICV_TAG));
                 if ~isfile(this.dlicv_ic_.fqfn)
-                    this.build_dlicv(this.t1w_ic, this.dlicv_ic_);
+                    this.dlicv_ic_ = this.deepmrseg_apply(this.t1w_ic, this.dlicv_ic_);
                     assert(isfile(this.dlicv_ic_))
                 end
                 g = copy(this.dlicv_ic_);
