@@ -99,6 +99,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             end
             assert(contains(opts.source_lm_path, "lm"), stackstr())
             this.source_lm_path_ = convertCharsToStrings(opts.source_lm_path);
+
+            assert(~isemptytext(getenv("PROJECT_FOLDER")))
         end
         
         function build_clean(this, opts)
@@ -503,7 +505,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     case 'ho'
                         taus{idx} = 10*ones(1,11);
                     case 'fdg'
-                        taus{idx} = {10*ones(1,30), 20*ones(1,165)};
+                        taus{idx} = {10*ones(1,30), 300*ones(1,11)};
                     otherwise
                         error("mlsiemens:ValueError", stackstr())
                 end            
@@ -1062,7 +1064,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     try
                         lmtag = opts.tag+starts(m);
                         lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                            getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);    
+                            getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+lmtag+opts.folder_tag);
     
                         v_fqfn = mglob( ...
                             fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-dynamic_mc%i_*_*.v", opts.lm_prefix, lmtag, n-1)));
