@@ -1,5 +1,8 @@
 classdef BrainMoCoBuilder < handle & mlsystem.IHandle
-    %% >> bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd)
+    %% Build sourcedata for e7, JSRecon12, and BMC. 
+    %  Run on machine equipped with dcm2niix and conda env supporting py.fw_file.siemens.PTDFile.
+    %
+    %  >> bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd)
     %  >> bmcb.build_all
     %  
     %  Created 29-Aug-2023 15:00:03 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
@@ -12,12 +15,17 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
     properties (Dependent)
         output_path % determined by Judd's BMC.js
 
+        raw_dcm_mri_path
+        raw_dcm_pet_path
         raw_dcm_path % initially unstructured, from external sources
         raw_lm_path % initially unstructured, from external sources
         raw_sub_path
 
         source_ses_paths
         source_sub_path
+
+        sourcedata
+        sub
     end
 
     methods % GET
@@ -31,6 +39,12 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         function g = get.raw_lm_path(this)
             g = this.raw_lm_path_;
         end
+        function g = get.raw_dcm_mri_path(this)
+            g = fullfile(this.raw_sub_path, "dcm", "mri");
+        end
+        function g = get.raw_dcm_pet_path(this)
+            g = fullfile(this.raw_sub_path, "dcm", "pet");
+        end
         function g = get.raw_sub_path(this)
             g = myfileparts(this.raw_lm_path);
         end
@@ -40,6 +54,14 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         function g = get.source_sub_path(this)
             g = strrep(this.raw_sub_path, "rawdata", "sourcedata");
         end
+        function g = get.sourcedata(~)
+            g = fullfile( ...
+                getenv("HOME"), "mnt", "CHPC_scratch", "Singularity", "CCIR_01211", "sourcedata");
+            assert(isfolder(g))
+        end
+        function g = get.sub(this)
+            g = mybasename(fileparts(this.raw_lm_path));
+        end
     end
 
     methods
@@ -47,14 +69,14 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %% opts.raw_lm_path specifies subject for building in properties raw_sub_path, source_sub_path
 
             arguments
-                opts.raw_lm_path {mustBeFolder} = pwd
+                opts.raw_lm_path {mustBeTextScalar} = ""
             end
 
-            this.raw_lm_path_ = this.ensureEndsWithLm(opts.raw_lm_path);
-            this.ensureEndsWithLm(opts.raw_lm_path);
-            ensuredir(this.raw_lm_path);
-            ensuredir(this.raw_dcm_path);            
-            fprintf("%s:\nmanually inspect %s and\n%s for appropriate raw data.\n", stackstr(), this.raw_lm_path, this.raw_dcm_path)
+            if ~isemptytext(opts.raw_lm_path)
+                this.raw_lm_path_ = this.ensureEndsWithLm(opts.raw_lm_path);
+                ensuredir(this.raw_lm_path);
+                ensuredir(this.raw_dcm_path);
+            end
 
             this.sessions = "";
         end
@@ -68,15 +90,78 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             
             map = this.build_map_of_lm();
             keys = map.keys;
-            save("map.mat", "map");
+            save(fullfile(this.raw_lm_path, "map.mat"), "map");
 
-            this.build_sourcedata_dcm();    
+            this.build_sourcedata_dcm_2();    
             for k = asrow(keys) % *LISTMODE* 
                 this.build_sourcedata_lm(map(k{1}));
             end
         end
 
-        function build_all_part2(this, opts)
+        function build_t1ws_parcs(this)
+            %% ad hoc for Nick Metcalf's pipeline ca. 20250814
+
+            % init info
+            derivsdir = "~/mnt/CHPC_scratch/Singularity/CCIR_01211/derivatives";
+            ld = load("~/mnt/CHPC_scratch/Singularity/CCIR_01211/JeremyDTI+Schaeffer_info.mat");
+            T = ld.jeremy_dti_schaeffer_info;  % 47 x 4
+            subs = asrow("sub-" + extractBefore(string(T.MRI_ID), "_"));
+            sess = asrow("ses-" + this.extract_trailing_dates(T.MRI_ID));
+            assert(length(subs) == length(sess));
+            
+            for sidx = 1:length(subs)
+                
+                % copy parc and parc-aligned T1 to derivatives/sub-*/ses-*/Parcellations
+                parcdir = fullfile(derivsdir, subs(sidx), sess(sidx), "Parcellations");
+                ensuredir(parcdir);
+                copyfile(myfileparts(T.PARCEL_PATH{sidx}), parcdir);
+                jdsdir = fullfile(parcdir, "Jeremy_DTI+Schaeffer");
+                copyfile(T.T1_PATH{sidx}, jdsdir);
+
+                % ensure T1w_MPR_vNAV_*_orient-std
+                subdir = fullfile(derivsdir, subs(sidx));
+                subdir0 = strrep(subdir, "derivatives", "sourcedata");
+                sesdir = fullfile(subdir, sess(sidx));
+                t1w_orient_std = mglob(fullfile(subdir, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS_orient-std.nii.gz"));
+                if isempty(t1w_orient_std)
+                    t1w = mglob(fullfile(subdir0, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS.nii.gz"));
+                    assert(~isempty(t1w))
+                    t1w_ic = mlfourd.ImagingContext2(t1w(end));
+                    t1w_ic = t1w_ic.afni_3dresample(orient_std=true);
+                    t1w_ic.filepath = fullfile(sesdir, "anat");
+                    t1w_ic.save();
+                end
+                t1w_orient_std = mglob(fullfile(subdir, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS_orient-std.nii.gz"));
+                assert(~isempty(t1w_orient_std))
+                t1w_orient_std = t1w_orient_std(end);
+
+                % register parc to T1w_MPR_vNAV_*_orient-std (orient-rpi)
+                pwd0 = pushd(jdsdir);
+                t1_on_t1w = fullfile(jdsdir, "T1_on_T1w.nii.gz");
+                flirt = mlfsl.Flirt( ...
+                    'in', mybasename(T.T1_PATH{sidx}, withext=true, withpath=false), ...
+                    'ref', t1w_orient_std, ...
+                    'out', t1_on_t1w, ...
+                    'bins', 1024, ...
+                    'cost', 'corratio', ...
+                    'dof', 6, ...
+                    'interp', 'spline', ...
+                    'noclobber', false);
+                flirt.flirt();
+                assert(isfile(t1_on_t1w))
+                parc = fullfile(jdsdir, "Jeremy_DTI+Schaeffer.nii.gz");
+                parc_out = fullfile(jdsdir, "Jeremy_DTI+Schaeffer_on_T1w.nii.gz");
+                flirt.in = parc;
+                flirt.out = parc_out;
+                flirt.ref = t1w_orient_std;
+                flirt.interp = "nearestneighbour";
+                flirt.applyXfm();
+                assert(isfile(parc_out))
+                popd(pwd0);
+            end
+        end
+
+        function build_bmc_nmaf(this, opts)
             %% in sourcedata, build
             arguments
                 this mlsiemens.BrainMoCoBuilder
@@ -132,6 +217,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         end
 
         function build_sourcedata_dcm(this)
+            %% original logic for building sourcedata/sub-*/ses-*
+
             pwd0 = pushd(this.raw_dcm_path);
 
             % ensure session folders
@@ -140,6 +227,38 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             for dtidx = 1:length(dts)
                 this.sessions(dtidx) = sprintf("ses-%s", string(datetime(dts(dtidx), Format="yyyyMMdd")));
                 ensuredir(fullfile(this.source_sub_path, this.sessions(dtidx) ));
+            end
+
+            % populate pet
+            for ses = asrow(this.sessions)
+                src_pet_pth = fullfile(this.source_sub_path, ses, "pet");
+                g = mglob([ ...
+                    "sub-*_"+ses+"*arbon*.*", ...
+                    "sub-*_"+ses+"*kvp*ct*.*", ...
+                    "sub-*_"+ses+"*CT_Brain*.*", ...
+                    "sub-*_"+ses+"*trc-co*.*", ...
+                    "sub-*_"+ses+"*trc-oc*.*", ...
+                    "sub-*_"+ses+"*trc-oo*.*", ...
+                    "sub-*_"+ses+"*trc-ho*.*", ...
+                    "sub-*_"+ses+"*trc-fdg*.*", ...
+                    "sub-*_"+ses+"*CO*.*", ...
+                    "sub-*_"+ses+"*oxide*.*", ...   
+                    "sub-*_"+ses+"*Oxygen*.*", ...
+                    "sub-*_"+ses+"*FDG*.*", ...      
+                    "sub-*_"+ses+"*tatic*.*", ...                 
+                    "sub-*_"+ses+"*Topogram*.*", ...                      
+                    "sub-*_"+ses+"*Water*.*", ...       
+                    "sub-*_"+ses+"*yn*.*", ...             
+                    "sub-*_"+ses+"*Phantom*.*"]);
+                if ~isemptytext(g)
+                    ensuredir(src_pet_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g1, src_pet_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
             end
 
             % populate anat
@@ -165,6 +284,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     end
                 end
             end
+
+            popd(pwd0)
+            return
 
             % populate dwi
             for ses = asrow(this.sessions)
@@ -226,9 +348,24 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 end
             end
 
+        end
+
+        function build_sourcedata_dcm_2(this)
+            %% logic for building sourcedata/sub-*/ses-*/{pet,anat} for schemas of 20250814
+
+            pwd0 = pushd(this.raw_dcm_pet_path);
+
+            % ensure sourcedata/sub-*/ses-* folders
+            ensuredir(fullfile(this.sourcedata, this.sub));
+            dts = this.find_dcm_dates();
+            for dtidx = 1:length(dts)
+                sessions_(dtidx) = sprintf("ses-%s", string(datetime(dts(dtidx), Format="yyyyMMdd")));
+                ensuredir(fullfile(this.sourcedata, this.sub, sessions_(dtidx)));
+            end
+
             % populate pet
-            for ses = asrow(this.sessions)
-                src_pet_pth = fullfile(this.source_sub_path, ses, "pet");
+            for ses = asrow(sessions_)
+                sourcedata_pet_pth = fullfile(this.sourcedata, this.sub, ses, "pet");
                 g = mglob([ ...
                     "sub-*_"+ses+"*arbon*.*", ...
                     "sub-*_"+ses+"*kvp*ct*.*", ...
@@ -248,10 +385,46 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     "sub-*_"+ses+"*yn*.*", ...             
                     "sub-*_"+ses+"*Phantom*.*"]);
                 if ~isemptytext(g)
-                    ensuredir(src_pet_pth);
+                    ensuredir(sourcedata_pet_pth);
                     for g1 = asrow(g)
                         try
-                            movefile(g1, src_pet_pth);
+                            movefile(g1, sourcedata_pet_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
+            end
+
+            popd(pwd0)
+
+            pwd0 = pushd(this.raw_dcm_mri_path);
+
+            % ensure sourcedata/sub-*/ses-* folders
+            ensuredir(fullfile(this.sourcedata, this.sub));
+            dts = this.find_dcm_dates();
+            for dtidx = 1:length(dts)
+                sessions_(dtidx) = sprintf("ses-%s", string(datetime(dts(dtidx), Format="yyyyMMdd")));
+                ensuredir(fullfile(this.sourcedata, this.sub, sessions_(dtidx)));
+            end
+
+            % populate anat
+            for ses = asrow(sessions_)
+                sourcedata_anat_pth = fullfile(this.sourcedata, this.sub, ses, "anat");
+                g = mglob([ ...
+                    "sub-*_"+ses+"*ocalizer*.*", ...
+                    "sub-*_"+ses+"*FastIR*.*", ...
+                    "sub-*_"+ses+"*FLAIR*.*", ...
+                    "sub-*_"+ses+"*quick_tof*.*", ...                    
+                    "sub-*_"+ses+"*sag_loc*.*", ...                  
+                    "sub-*_"+ses+"*tof*.*", ...                
+                    "sub-*_"+ses+"*_T1-*.*", ...                
+                    "sub-*_"+ses+"*_T1w*vNav*.*", ...              
+                    "sub-*_"+ses+"*_T2w*vNav*.*"]);
+                if ~isemptytext(g)
+                    ensuredir(sourcedata_anat_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g1, sourcedata_anat_pth);
                         catch %#ok<CTCH>
                         end
                     end
@@ -262,15 +435,15 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         end
 
         function build_sourcedata_lm(this, s)
-            %% links sourcedata to rawdata; use rsync -raL to rsync listmode to Windows/e7
+            %% migrates to sourcedata; use rsync -aL to rsync listmode to Windows/e7
             
             pwd0 = pushd(this.raw_lm_path);
-            lm_path = fullfile(this.source_sub_path, "ses-"+string(s.datetimestr), "lm");
+            lm_path = fullfile(this.sourcedata, this.sub, "ses-"+string(s.datetimestr), "lm");
             ensuredir(lm_path);
             copyfile(s.ct, fullfile(lm_path, "CT"));
             copyfile(s.norm, lm_path);
             try
-                movefile(s.ptd, lm_path);
+                copyfile(s.ptd, lm_path);
             catch ME
                 handexcept(ME);
             end
@@ -289,7 +462,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             pwd0 = pushd(this.raw_lm_path);
             m = containers.Map;
 
-            g = mglob(fullfile(this.raw_lm_path, "**", "*LISTMODE*.ptd"));
+            g = mglob(fullfile(this.raw_lm_path, "*LISTMODE*.ptd"));
             for gidx = 1:length(g)
                 fp = mybasename(g(gidx));
                 s = this.siemens_get_meta(g(gidx));
@@ -305,6 +478,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             end
             popd(pwd0);
         end
+        
         function build_niftis(this, s, opts)
             arguments
                 this mlsiemens.BrainMoCoBuilder
@@ -337,18 +511,38 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             end
             popd(pwd0);
         end              
-        function build_raw_dcm(this)
-            pwd0 = pushd(this.raw_dcm_path);
-            [~,r] = this.dcm2niix();
+        
+        function build_raw_dcm(this, opts)
+            arguments
+                this mlsiemens.BrainMoCoBuilder
+                opts.series {mustBeText} = "**"  % string([3, 6, 7])
+            end
+
+            % sub-*/dcm/pet/
+            pwd0 = pushd(this.raw_dcm_pet_path);
+            for s = asrow(opts.series)
+                try
+                    [~,r] = this.dcm2niix(series=s);  % CO static
+                    disp(r)
+                catch ME
+                    fprintf("%s: %s\n", stackstr(), ME.message)
+                end
+            end
+            popd(pwd0);
+
+            % sub-*/dcm/mri/
+            pwd0 = pushd(this.raw_dcm_mri_path);
+            [~,r] = this.dcm2niix(series='10');
             disp(r)
             popd(pwd0);
         end
+        
         function build_raw_lm(this)
             pwd0 = pushd(this.raw_lm_path);
             g = mglob(fullfile("**", "*.ptd"));
             for gi = 1:length(g)
                 try
-                    movefile(g(gi), this.raw_lm_path);
+                    mysystem(sprintf('ln -s "%s"', g(gi)));
                 catch ME
                     handwarning(ME)
                 end
@@ -373,10 +567,10 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.ct_series double = 3
             end
 
-            pwd0 = pushd(this.raw_dcm_path);
+            pwd0 = pushd(this.raw_dcm_pet_path);
             
             % glob CTs
-            g = glob(fullfile(this.raw_dcm_path, '*_CT_*.nii.gz')); 
+            g = glob(fullfile(this.raw_dcm_pet_path, '*_CT_*.nii.gz')); 
             g = g(~contains(g, '_AC_CT_'));
             assert(~isemptytext(g))
             for gidx = 1:length(g)
@@ -400,7 +594,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         function dts = find_dcm_dates(this)
             %% unique session dates in this.raw_dcm_path
 
-            pwd0 = pushd(this.raw_dcm_path);
+            % pwd0 = pushd(this.raw_dcm_pet_path);
             g = mglob("sub-*_ses-*_*.nii.gz");
             dts = NaT(size(g));
             for idx = 1:length(g)
@@ -408,7 +602,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 dts(idx) = datetime(re.dt, InputFormat="yyyyMMdd");
             end
             dts = unique(dts);
-            popd(pwd0);
+            % popd(pwd0);
         end
         function fqfn = find_norm(this, opts)
             %% returns fqfn of calibration ptd.
@@ -438,6 +632,94 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
     end
 
     methods (Static)
+        function T = construct_info_table()
+            %% Create table with subs_pet related variables
+            %  subs_pet: 82 unique 6-digit strings
+            %  PET_ID: 82 unique longer strings, each containing one subs_pet element
+            %  MRI_ID: 77 unique longer strings, each containing one subs_pet element
+            %  ...
+            assert(isfile("subs_pet.mat"))
+            assert(isfile("PET_ID.mat"))
+            assert(isfile("MRI_ID.mat"))
+            assert(isfile("T1_PATH.mat"))
+            assert(isfile("PARCEL_PATH.mat"))
+            assert(isfile("PARCEL_PATH_0.mat"))
+            load("subs_pet.mat");
+            load("PET_ID.mat");
+            load("MRI_ID.mat");
+            load("T1_PATH.mat");
+            load("PARCEL_PATH.mat");
+            load("PARCEL_PATH_0.mat");
+            s.PET_ID_ = PET_ID; % struct enable loopable fields
+            s.MRI_ID_ = MRI_ID;
+            s.T1_PATH_ = T1_PATH;
+            s.PARCEL_PATH_ = PARCEL_PATH;
+            s.PARCEL_PATH_0_ = PARCEL_PATH_0;
+            s_fields = fields(s);
+
+            % Now create the matching logic
+            N = length(subs_pet);
+            t.PET_ID = strings(N, 1); % Initialize with empty strings
+            t.MRI_ID = strings(N, 1);
+            t.T1_PATH = strings(N, 1);
+            t.PARCEL_PATH = strings(N, 1);
+            t.PARCEL_PATH_0 = strings(N, 1);
+            t_fields = fields(t);
+            assert(length(t_fields) == length(s_fields))
+
+            % For each subs_pet value, find if it exists in any VARIABLE_ string
+            for isub = 1:length(subs_pet)
+
+                for ifield = 1:length(s_fields)
+
+                    s_field = s_fields{ifield};
+                    t_field = t_fields{ifield};
+
+                    % Check which .VARIABLE_ strings contain the current subs_pet value
+                    contains_current = contains(s.(s_field), subs_pet(isub));
+
+                    if any(contains_current)
+                        % Find the first s.VARIABLE_ that contains this subs_pet value
+                        found = find(contains_current, 1);
+                        t.(t_field) = s.(s_field)(found);
+                    else
+                        % If no s.VARIABLE_ contains this subs_pet, leave as empty string
+                        t.(t_field)(isub) = "";
+                    end
+                end
+            end
+
+            % Create the table
+            T = table(subs_pet, t.PET_ID, t.MRI_ID, t.T1_PATH, t.PARCEL_PATH, t.PARCEL_PATH_0, ...
+                VariableNames = ["subs_pet", "PET_ID", "MRI_ID", "T1_PATH", "PARCEL_PATH", "PARCEL_PATH_0"]);
+
+            % Display first few rows to verify
+            disp('First 10 rows of the table:');
+            disp(T(1:10, :));
+
+            % Display summary statistics
+            fprintf('\nTable summary:\n');
+            fprintf('Total rows: %d\n', height(T));
+            for ifield = 1:length(t_fields)
+                field = t_fields{ifield};
+                fprintf('Non-empty, empty %s entries: %d, %d\n', ...
+                    field, sum(t.(field) ~= ""), sum(t.(field) == ""));
+            end
+
+            % Verify that each MRI_ID contains its corresponding subs_pet
+            fprintf('\nVerification:\n');
+            for ifield = 1:length(t_fields)
+                field = t_fields{ifield};
+                for isub = 1:height(T)
+                    if T.(field)(isub) ~= ""
+                        if ~contains(T.(field)(isub), T.subs_pet(isub))
+                            fprintf('Error: %s(%d) does not contain subs_pet\n', isub, field);
+                        end
+                    end
+                end
+            end
+            fprintf('Verification complete.\n');
+        end
         function [s,r,fn] = dcm2niix(folder, opts)
             %% https://github.com/rordenlab/dcm2niix
             %  e.g., $ dcm2niix -f sub-%n_ses-%t_%d-%s -i 'n' -o $(pwd) -d 5 -v 0 -w 2 -z y $(pwd)
@@ -495,6 +777,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.w {mustBeInteger} = 1
                 opts.toglob_mhdr {mustBeTextScalar} = "*.mhdr"
                 opts.toglob_vhdr {mustBeTextScalar} = "*.v.hdr"
+                opts.series {mustBeTextScalar} = "**"
             end
             tempfolder = fullfile(folder, "temp");
             
@@ -536,7 +819,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             % call mysystem(), depositing .nii.gz in folder
             ensuredir(opts.o)
             ensuredir(tempfolder);
-            folders = find_dcm_folders(folder);
+            folders = find_dcm_folders(folder, opts.series);
             Nfolds = length(folders);
             s = zeros(1, Nfolds);
             r = cell(1, Nfolds);
@@ -607,12 +890,26 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     end
                 end
             end
-            function folds = find_dcm_folders(fold0)
+            function folds = find_dcm_folders(fold0, series)
                 %% find all unique folders contain dicoms within fold0
 
-                dcms = glob(fullfile(fold0, '**', '*.dcm'));
-                dcms = cellfun(@fileparts, dcms, UniformOutput=false);
-                folds = unique(dcms);
+                series = convertStringsToChars(series);
+                dcms = glob(fullfile(fold0, '*', 'DICOM*', series, 'DICOM', '*.dcm'));
+                folds = unique(cellfun(@fileparts, dcms, UniformOutput=false));
+            end
+        end
+        function dates = extract_trailing_dates(strings)
+            %% Extract 8-digit dates that appear after the last underscore
+            %  strings ~ cell-array of char
+            %  dates ~ cell-array of char
+
+            % Using regular expressions
+            pattern = '[_-](\d{8})$';  % Match underscore followed by exactly 8 digits at end
+            dates = regexp(strings, pattern, 'tokens', 'once');
+
+            % Convert cell array of cells to cell array of strings
+            if iscell(dates)
+                dates = cellfun(@(x) x{1}, dates, 'UniformOutput', false);
             end
         end
         function s = siemens_get_meta(ptd)
@@ -772,6 +1069,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 pth = fullfile(pth, "lm");
             end
         end
+        
     end
     
     %  Created with mlsystem.Newcl, inspired by Frank Gonzalez-Morphy's newfcn.

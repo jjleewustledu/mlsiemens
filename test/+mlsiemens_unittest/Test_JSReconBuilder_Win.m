@@ -1,6 +1,5 @@
 classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
-    %% line1
-    %  line2
+    %% Demonstrates rawdata management with BrainMoCoBuilder, reconstructions with BrainMoCo2.
     %  
     %  Created 04-Sep-2023 11:58:00 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/test/+mlsiemens_unittest.
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
@@ -17,6 +16,95 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
+        
+        %% examples of using BrainMoCoBuilder to manage LM and DICOM
+
+        function test_BMCBuilder_build_all(this)
+
+            % specify subjects and their info
+            % problems:  108087,             108301 may be missing ct for FDG
+            % complete:  108197, 108219,     108240, 108313, 108314
+            sub_nums = [ ...
+                108237, 108246, 108250, 108254, 108303, 108324, 108325, 108326];
+            sub_nums = string(sub_nums);
+            sub_nums = sort(sub_nums);
+            ld = load("~/mnt/CHPC_scratch/Singularity/CCIR_01211/JeremyDTI+Schaeffer_info.mat");
+            T_ori = ld.jeremy_dti_schaeffer_info;
+            PET_ID = {'108240_20230821'; '108301_WMH_PET_20230828'};
+            MRI_ID = {'108240_MR2_20220812'; '108301_MR20210323143736'};
+            T1_PATH = { ...
+                '/data/nil-bluearc/vlassenko/Pipeline/Projects/MRI/Reprocess/108240_MR2_20220812/Anatomical/Volume/T1/108240_MR2_20220812_T1.nii.gz'; ...
+                '/data/nil-bluearc/vlassenko/Pipeline/Projects/MRI/Reprocess/108301_MR20210323143736/Anatomical/Volume/T1/108301_MR20210323143736_T1.nii.gz'};
+            PARCEL_PATH = { ...
+                ''; ...
+                ''};
+            T_adhoc = table(PET_ID, MRI_ID, T1_PATH, PARCEL_PATH);
+            T_ori = [T_adhoc; T_ori];
+            T = T_ori(contains(T_ori.PET_ID, sub_nums), :);  % select sub_nums
+            T = sortrows(T, "PET_ID");
+
+            % prefer working in vglab2:/vgpool02/data2/jjlee/bmcbuilder
+            visionlmdir = "/vgpool02/data2/listmode/vision";
+            petdcmdir = "/data/nil-bluearc/vlassenko/RAW_IMAGES/PET";
+            mridcmdir = "/data/nil-bluearc/vlassenko/RAW_IMAGES/MRI";
+            workdir = "/vgpool02/data2/jjlee/bmcbuilder";
+            ensuredir(workdir);
+            cd(workdir)
+
+            for sidx = 1:length(sub_nums)
+                
+                % init identifiers
+                sub_num = sub_nums(sidx);
+                sub = "sub-" + sub_num;
+                bmcblmdir = fullfile(workdir, sub, "lm");
+                bmcbdcmdir = fullfile(workdir, sub, "dcm");
+
+                % populate lm/
+                ensuredir(bmcblmdir);
+                pwd0 = pushd(bmcblmdir);
+                listmode_folders = mglob(fullfile(visionlmdir, sub_num + "*"));
+                for lmf = listmode_folders
+                    if ~isfolder(mybasename(lmf))
+                        mysystem(sprintf("ln -s %s", lmf));
+                    end
+                end
+                popd(pwd0);
+
+                % populate dcm/pet/
+                ensuredir(fullfile(bmcbdcmdir, "pet"))
+                pwd0 = pushd(fullfile(bmcbdcmdir, "pet"));
+                fold = extractAfter(T.PET_ID{sidx}, "_");
+                pet_folders = mglob(fullfile(petdcmdir, sub_num, fold + "*"));
+                pet_folders = pet_folders(~endsWith(pet_folders, ".zip"));
+                for pf = pet_folders
+                    raw_images_fold = sub_num + "_" + mybasename(pf);
+                    if ~isfolder(raw_images_fold)
+                        mysystem(sprintf("ln -s %s %s", pf, raw_images_fold));
+                    end
+                end
+                popd(pwd0);
+
+                % populate dcm/mri/
+                ensuredir(fullfile(bmcbdcmdir, "mri"))
+                pwd0 = pushd(fullfile(bmcbdcmdir, "mri"));
+                fold = extractAfter(T.MRI_ID{sidx}, "_");
+                mri_folders = mglob(fullfile(mridcmdir, sub_num, fold + "*"));
+                mri_folders = mri_folders(~endsWith(mri_folders, ".zip"));
+                for mf = mri_folders
+                    raw_images_fold = sub_num + "_" + mybasename(mf);
+                    if ~isfolder(raw_images_fold)
+                        mysystem(sprintf("ln -s %s %s", mf, raw_images_fold));
+                    end
+                end
+                popd(pwd0);
+
+                bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=bmcblmdir);  % assumes swappable ["lm/", "dcm/"]
+                bmcb.build_all();
+            end
+        end
+
+        %% examples of using BrainMoco2 to reconstruct
+
         function test_BMC_build_eva109(this)
 
             setenv("PROJECT_FOLDER", "CCIR_01483")

@@ -76,9 +76,15 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
                 g = copy(this.schaeffer_ic_);
                 return
             end
-            fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1_complete.nii.gz');
-            if ~isfile(fn)
-                fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1.nii.gz');
+            fn = '';
+            if contains(this.schaefferFolder, '200Parcels')
+                fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1_complete.nii.gz');
+                if ~isfile(fn)
+                    fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1.nii.gz');
+                end
+            end
+            if contains(this.schaefferFolder, 'JeremyDTI+Schaeffer')
+                fn = fullfile(this.schaefferPath, 'JeremyDTI+Schaeffer.nii.gz');
             end
             assert(isfile(fn))
             this.schaeffer_ic_ = mlfourd.ImagingContext2(fn);
