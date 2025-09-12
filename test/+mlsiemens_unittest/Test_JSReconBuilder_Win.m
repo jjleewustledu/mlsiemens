@@ -19,12 +19,20 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
         
         %% examples of using BrainMoCoBuilder to manage LM and DICOM
 
-        function test_BMCBuilder_build_all(this)
+        function test_construct_bmcbuilder(this)
             cd("/home/usr/jjlee/mnt/CHPC_scratch/Singularity/CCIR_01211");
             ld = load('info_20250905234200.mat');
             info13 = ld.info(end-12:end, :);
             
             mlsiemens.BrainMoCoBuilder.construct_bmcbuilder(info13.subs_pet', info13)
+        end
+
+        function test_construct_bmcbuilder_more_t1w(this)
+            cd("/home/usr/jjlee/mnt/CHPC_scratch/Singularity/CCIR_01211");
+            ld = load('info_20250905234200.mat');
+            info = [ld.info(ascol([60,67,69,72:74,77:82]), :)];  % 31
+            
+            mlsiemens.BrainMoCoBuilder.construct_bmcbuilder_more_t1w(info.subs_pet', info)
         end
 
         function test_BMCBuilder_build_all_jeremydti(this)

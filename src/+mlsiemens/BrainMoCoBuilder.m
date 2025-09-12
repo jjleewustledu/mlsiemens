@@ -135,16 +135,16 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 subdir = fullfile(derivsdir, subs(sidx));
                 subdir0 = strrep(subdir, "derivatives", "sourcedata");
                 sesdir = fullfile(subdir, sess(sidx));
-                t1w_orient_std = mglob(fullfile(subdir, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS_orient-std.nii.gz"));
+                t1w_orient_std = mglob(fullfile(subdir, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS*_orient-std.nii.gz"));
                 if isempty(t1w_orient_std)
-                    t1w = mglob(fullfile(subdir0, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS.nii.gz"));
+                    t1w = mglob(fullfile(subdir0, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS*.nii.gz"));
                     assert(~isempty(t1w))
                     t1w_ic = mlfourd.ImagingContext2(t1w(end));
                     t1w_ic = t1w_ic.afni_3dresample(orient_std=true);
                     t1w_ic.filepath = fullfile(sesdir, "anat");
                     t1w_ic.save();
                 end
-                t1w_orient_std = mglob(fullfile(subdir, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS_orient-std.nii.gz"));
+                t1w_orient_std = mglob(fullfile(subdir, "ses-*", "anat", "sub-*_ses-*_T1w_MPR_vNav_4e_RMS*_orient-std.nii.gz"));
                 assert(~isempty(t1w_orient_std))
                 t1w_orient_std = t1w_orient_std(end);
 
@@ -372,7 +372,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             ensuredir(fullfile(this.sourcedata, this.sub));
             dts = this.find_dcm_dates();
             for dtidx = 1:length(dts)
-                sessions_(dtidx) = sprintf("ses-%s", string(datetime(dts(dtidx), Format="yyyyMMdd")));
+                sessions_(dtidx) = sprintf("ses-%s", string(datetime(dts(dtidx), Format="yyyyMMdd"))); %#ok<AGROW>
                 ensuredir(fullfile(this.sourcedata, this.sub, sessions_(dtidx)));
             end
 
@@ -429,6 +429,42 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     "sub-*_"+ses+"*FLAIR*.*", ...
                     "sub-*_"+ses+"*quick_tof*.*", ...                    
                     "sub-*_"+ses+"*sag_loc*.*", ...                  
+                    "sub-*_"+ses+"*tof*.*", ...                
+                    "sub-*_"+ses+"*_T1-*.*", ...                
+                    "sub-*_"+ses+"*_T1w*vNav*.*", ...              
+                    "sub-*_"+ses+"*_T2w*vNav*.*"]);
+                if ~isemptytext(g)
+                    ensuredir(sourcedata_anat_pth);
+                    for g1 = asrow(g)
+                        try
+                            movefile(g1, sourcedata_anat_pth);
+                        catch %#ok<CTCH>
+                        end
+                    end
+                end
+            end
+
+            popd(pwd0)
+        end
+
+        function build_sourcedata_dcm_3(this)
+            %% logic for building sourcedata/sub-*/ses-*/anat for schemas of 20250814
+
+            pwd0 = pushd(this.raw_dcm_mri_path);
+
+            % ensure sourcedata/sub-*/ses-* folders
+            ensuredir(fullfile(this.sourcedata, this.sub));
+            dts = this.find_dcm_dates();
+            for dtidx = 1:length(dts)
+                sessions_(dtidx) = sprintf("ses-%s", string(datetime(dts(dtidx), Format="yyyyMMdd"))); %#ok<AGROW>
+                ensuredir(fullfile(this.sourcedata, this.sub, sessions_(dtidx)));
+            end
+
+            % populate anat
+            for ses = asrow(sessions_)
+                sourcedata_anat_pth = fullfile(this.sourcedata, this.sub, ses, "anat");
+                g = mglob([ ...
+                    "sub-*_"+ses+"*FLAIR*.*", ...        
                     "sub-*_"+ses+"*tof*.*", ...                
                     "sub-*_"+ses+"*_T1-*.*", ...                
                     "sub-*_"+ses+"*_T1w*vNav*.*", ...              
@@ -529,40 +565,55 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             arguments
                 this mlsiemens.BrainMoCoBuilder
                 opts.series_pet {mustBeText} = ""  % string(3:21)
-                opts.series_mri {mustBeText} = string([10, 16])
+                opts.series_mri {mustBeText} = ""  % at least [9,16], possibly more
+                opts.do_pet logical = true
+                opts.do_mri logical = true
             end
 
             % sub-*/dcm/pet/
-            pwd0 = pushd(this.raw_dcm_pet_path);
-            if isemptytext(opts.series_pet)
-                try
-                    this.dcm2niix();
-                catch ME
-                    fprintf("%s: %s\n", stackstr(), ME.message)
-                end
-            else
-                for s = asrow(opts.series_pet)
+            if opts.do_pet
+                pwd0 = pushd(this.raw_dcm_pet_path);
+                if isemptytext(opts.series_pet)
                     try
-                        [~,r] = this.dcm2niix(series=s);  % CO static
+                        this.dcm2niix();
                     catch ME
-                        disp(r)
                         fprintf("%s: %s\n", stackstr(), ME.message)
                     end
+                else
+                    for s = asrow(opts.series_pet)
+                        try
+                            [~,r] = this.dcm2niix(series=s);  % CO static
+                        catch ME
+                            disp(r)
+                            fprintf("%s: %s\n", stackstr(), ME.message)
+                        end
+                    end
                 end
+                popd(pwd0);
             end
-            popd(pwd0);
 
             % sub-*/dcm/mri/
-            pwd0 = pushd(this.raw_dcm_mri_path);
-            for s = asrow(opts.series_mri)
-                try
-                    [~,r] = this.dcm2niix(series=s);  % MPR vNav
-                    disp(r)
-                catch ME
-                    fprintf("%s: %s\n", stackstr(), ME.message)
+            if opts.do_mri
+                pwd0 = pushd(this.raw_dcm_mri_path);
+                if isemptytext(opts.series_mri)
+                    try
+                        [~,r] = this.dcm2niix();  % MPR vNav
+                        %disp(r)
+                    catch ME
+                        fprintf("%s: %s\n", stackstr(), ME.message)
+                    end
+                else
+                    for s = asrow(opts.series_mri)
+                        try
+                            [~,r] = this.dcm2niix(series=s);  % MPR vNav
+                            %disp(r)
+                        catch ME
+                            fprintf("%s: %s\n", stackstr(), ME.message)
+                        end
+                    end
                 end
+                popd(pwd0);
             end
-            popd(pwd0);
         end
         
         function build_raw_lm(this)
@@ -743,6 +794,60 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     handwarning(ME)
                 end
             end            
+        end
+
+        function construct_bmcbuilder_more_t1w(sub_nums, info_table)
+            %% calls build_all() as requested
+
+            arguments
+                sub_nums string
+                info_table table
+            end
+            sub_nums = sort(sub_nums);
+
+            % init
+            T = info_table(contains(info_table.PET_ID, sub_nums), :);  % select sub_nums
+            T = sortrows(T, "PET_ID");
+
+            % prefer working in vglab2:/vgpool02/data2/jjlee/bmcbuilder
+            mridcmdir = "/data/nil-bluearc/vlassenko/RAW_IMAGES/MRI";
+            workdir = "/vgpool02/data2/jjlee/bmcbuilder";
+            ensuredir(workdir);
+            cd(workdir)
+
+            for sidx = 1:length(sub_nums)
+                
+                % init identifiers
+                sub_num = sub_nums(sidx);
+                sub = "sub-" + sub_num;
+                bmcblmdir = fullfile(workdir, sub, "lm");
+                bmcbdcmdir = fullfile(workdir, sub, "dcm");
+
+                try
+                    % populate dcm/mri/
+                    ensuredir(fullfile(bmcbdcmdir, "mri"))
+                    pwd0 = pushd(fullfile(bmcbdcmdir, "mri"));
+                    fold = extractAfter(T.MRI_ID{sidx}, "_");
+                    mri_folders = mglob(fullfile(mridcmdir, sub_num, fold + "*"));
+                    mri_folders = mri_folders(~endsWith(mri_folders, ".zip"));
+                    for mf = mri_folders
+                        raw_images_fold = sub_num + "_" + mybasename(mf);
+                        if ~isfolder(raw_images_fold)
+                            mysystem(sprintf("ln -s %s %s", mf, raw_images_fold));
+                        end
+                    end
+                    popd(pwd0);
+
+                    bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=bmcblmdir);  % assumes swappable ["lm/", "dcm/"]
+                    bmcb.build_raw_dcm(do_pet=false, do_mri=true)
+                    bmcb.build_sourcedata_dcm_3()
+                catch ME
+                    fprintf("%s: while working in:\n", stackstr());
+                    fprintf("\t%s\n", bmcblmdir);
+                    fprintf("\t%s\n", bmcbdcmdir);
+                    handwarning(ME)
+                end
+            end    
         end
 
         function T = construct_info_table()

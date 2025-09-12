@@ -303,7 +303,8 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
                 ic = mlfourd.ImagingContext2(g{1});
                 ic.afni_3dresample(orient_std=true);
                 if ~strcmp(ipr.destination_path, ic.filepath)
-                    movefile(ic.fqfileprefix + ".*", ipr.destination_path);
+                    mysystem(sprintf("mv -f %s.* %s", ic.fqfileprefix, ipr.destination_path));
+                    % movefiles() should also work; movefile() will fail on "*"
                 end
             end
             s = [];
