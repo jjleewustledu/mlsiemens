@@ -185,17 +185,18 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
 
             subs_sess = [ ...
                 "sub-108032/ses-20221003135003", ...
-                "sub-108183/ses-20220801102035", ...
-                "sub-108319/ses-20240930092620", ...
-                "sub-108333/ses-20240930092620"];
+                "sub-108034/ses-20230717131839", ...
+                "sub-108121/ses-20231030133024", ...
+                "sub-108193/ses-20221123091954", ...
+                "sub-108239/ses-20220926131717"];
 
             for sidx = 1:length(subs_sess)
                 sub_ses = subs_sess(sidx);
                 lmpath = fullfile("D:", "CCIR_01211", "sourcedata", sub_ses, "lm");
                 tracer = "co";
-                taus = 30*ones(1,10);
+                taus = 60*ones(1,5);
                 time_delay = 0;
-                dt = 30;
+                dt = 60;
 
                 tic
                 mlsiemens.BrainMoCo2.create_moving_average( ...
@@ -239,7 +240,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
                     lm_dir = lm_dirs(1);
                     tic
                     bmc = mlsiemens.BrainMoCo2(source_lm_path=lm_dir);
-                    bmc.build_sub(tracers=["co", "oc", "oo", "ho"], clean_up=true);
+                    bmc.build_sub(tracers=["co", "oc", "oo", "ho", "fdg"], clean_up=true);
                     toc
                 catch ME
                     handwarning(ME)
@@ -268,7 +269,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
                 end
             end
         end
-        function test_BMC_create_fdg_stragglers(this)
+        function test_BMC_build_fdg_stragglers(this)
 
             setenv("PROJECT_FOLDER", "CCIR_01211");
 
@@ -305,6 +306,60 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
                     popd(pwd0);
                 end
             end
+        end
+        function test_BMC_build_fdg_108303_delay300(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01211");
+
+            sub_ses = "sub-108303/ses-20240729114354";
+            paths = fullfile("D:", "CCIR_01211", "sourcedata", sub_ses, "lm");
+            tracers = "fdg";
+            taus = 300*ones(1,9);  % only 3110 sec of LM available
+            time_delay = 300;
+            dt = 60;
+
+            pwd0 = pushd(paths);
+            tic
+            mlsiemens.BrainMoCo2.create_moving_average( ...
+                paths, tracer=tracers, taus=taus, time_delay=time_delay, dt=dt);
+            toc
+            popd(pwd0);
+        end
+        function test_BMC_build_fdg_108007_delay30(this)
+
+            setenv("PROJECT_FOLDER", "CCIR_01211");
+
+            sub_ses = "sub-108007/ses-20210219143132";
+            paths = fullfile("D:", "CCIR_01211", "sourcedata", sub_ses, "lm");
+            tracers = "oo";
+            taus = 20*ones(1,4);
+            time_delay = 30;
+            dt = 20;
+
+            pwd0 = pushd(paths);
+            tic
+            mlsiemens.BrainMoCo2.create_moving_average( ...
+                paths, tracer=tracers, taus=taus, time_delay=time_delay, dt=dt);
+            toc
+            popd(pwd0);
+        end
+        function test_BMC_build_ho_108021(this)
+            
+            setenv("PROJECT_FOLDER", "CCIR_01211");
+
+            sub_ses = "sub-108021/ses-20230320142013";
+            paths = fullfile("D:", "CCIR_01211", "sourcedata", sub_ses, "lm");
+            tracers = "ho";
+            taus = 10*ones(1,11);
+            time_delay = 0;
+            dt = 1;
+
+            pwd0 = pushd(paths);
+            tic
+            mlsiemens.BrainMoCo2.create_moving_average( ...
+                paths, tracer=tracers, taus=taus, time_delay=time_delay, dt=dt);
+            toc
+            popd(pwd0);
         end
         function test_BMC_build_niftis(this)
 

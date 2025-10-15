@@ -498,7 +498,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             for idx = 1:length(taus)
                 switch convertStringsToChars(trcs(idx))
                     case 'co'
-                        taus{idx} = 10*ones(1,29);
+                        taus{idx} = 60*ones(1,5);
+                        %taus{idx} = 10*ones(1,29);
                     case 'oo'
                         taus{idx} = {10*ones(1,3), 20*ones(1,4)};
                         %taus{idx} = {10,10,10, 20,20,20,20};
@@ -517,7 +518,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             for idx = 1:length(starts)
                 switch convertStringsToChars(trcs(idx))
                     case 'co'
-                        starts{idx} = 0:9;
+                        starts{idx} = 0;
+                        %starts{idx} = 0:9;
                     case 'oo'
                         starts{idx} = {0:9, 0};
                         %starts{idx} = {0:9,0:9,0:9, 0,0,0,0};

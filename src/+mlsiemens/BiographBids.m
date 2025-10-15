@@ -78,9 +78,9 @@ classdef (Abstract) BiographBids < handle & mlpipeline.Bids
             end
             fn = '';
             if contains(this.schaefferFolder, '200Parcels')
-                fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1_complete.nii.gz');
+                fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1_registered.nii.gz');
                 if ~isfile(fn)
-                    fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1.nii.gz');
+                    fn = fullfile(this.schaefferPath, 'Schaefer2018_200Parcels_7Networks_order_T1_complete_registered.nii.gz');
                 end
             end
             if contains(this.schaefferFolder, 'JeremyDTI+Schaeffer')
