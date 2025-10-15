@@ -3,7 +3,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
     %  Run on machine equipped with dcm2niix and conda env supporting py.fw_file.siemens.PTDFile.
     %
     %  >> bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd)
-    %  >> bmcb.build_all
+    %  >> bmcb.construct_bmcbuilder
     %  
     %  Created 29-Aug-2023 15:00:03 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlsiemens/src/+mlsiemens.
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
@@ -84,7 +84,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         end
         
         
-        function build_all(this)
+        function build_rawdata(this)
             %% in rawdata, build dcm and lm folders containing first iteration of organization of files
             %  move files needed for e7 to this.sourcedata
             %  copy this.sourcedata/sub-* to Windows machine with e7
@@ -639,6 +639,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             end
             [s,r] = copyfile(file_obj, dest_pth);
         end
+        
         function folder = find_ct(this, opts)
             %% returns folder with ct dicoms.
 
@@ -672,6 +673,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
             popd(pwd0);
         end
+        
         function dts = find_dcm_dates(this)
             %% unique session dates in this.raw_dcm_path
 
@@ -685,6 +687,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             dts = unique(dts);
             % popd(pwd0);
         end
+        
         function fqfn = find_norm(this, opts)
             %% returns fqfn of calibration ptd.
 
@@ -714,12 +717,15 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
     methods (Static)
         function construct_bmcbuilder(sub_nums, info_table, opts)
-            %% constructs /vgpool02/data2/jjlee/bmcbuilder for use by e7, then calls build_all() as requested
+            %% constructs /vgpool02/data2/jjlee/bmcbuilder for use by e7, then calls build_rawdata() as requested
 
             arguments
-                sub_nums string
+                sub_nums string  % set to [] | "" to use subs_pet from 1-row info_table
                 info_table table
-                opts.do_build_all logical = true
+                opts.do_build_rawdata logical = true
+            end
+            if isemptytext(sub_nums) && 1 == size(info_table, 1)
+                sub_nums = info_table.subs_pet;
             end
             sub_nums = sort(sub_nums);
 
@@ -783,9 +789,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     end
                     popd(pwd0);
 
-                    if opts.do_build_all
+                    if opts.do_build_rawdata
                         bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=bmcblmdir);  % assumes swappable ["lm/", "dcm/"]
-                        bmcb.build_all();
+                        bmcb.build_rawdata();
                     end
                 catch ME
                     fprintf("%s: while working in:\n", stackstr());
@@ -797,7 +803,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         end
 
         function construct_bmcbuilder_more_t1w(sub_nums, info_table)
-            %% calls build_all() as requested
+            %% calls build_rawdata() as requested
 
             arguments
                 sub_nums string
@@ -941,7 +947,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         
         function [s,r,fn] = dcm2niix(folder, opts)
             %% https://github.com/rordenlab/dcm2niix
-            %  e.g., $ dcm2niix -f sub-%n_ses-%t_%d-%s -i 'n' -o $(pwd) -d 5 -v 0 -w 2 -z y $(pwd)
+            %  e.g., $ dcm2niix -f sub-%n_ses-%t_%d-%s -i 'n' -o $(pwd) -d 8 -v 0 -w 2 -z y $(pwd)
             %  Args:
             %      folder (folder):  for recursive searching
             %      a : adjacent DICOMs (images from same series always in same folder) for faster conversion (n/y, default n)
@@ -985,7 +991,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 folder {mustBeFolder} = pwd % for recursive searching
                 opts.a {mustBeTextScalar} = "y"
                 opts.ba {mustBeTextScalar} =  "n"
-                opts.d {mustBeInteger} = 7
+                opts.d {mustBeInteger} = 8
                 opts.f {mustBeTextScalar} = "sub-%n_ses-%t_%d-%s"
                 opts.i {mustBeTextScalar} = "n"
                 opts.o {mustBeFolder} = pwd
@@ -1111,9 +1117,13 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             end
             function folds = find_dcm_folders(fold0, series)
                 %% find all unique folders contain dicoms within fold0
+                %  e.g., /vgpool02/data2/jjlee/bmcbuilder/sub-108030/dcm/pet/108030_WMH_PET_20250915/108030_WMH_PET_20250915/scans/10-Oxygen1_Dynamic/resources/DICOM/files:
 
                 series = convertStringsToChars(series);
-                dcms = glob(fullfile(fold0, '*', 'DICOM*', series, 'DICOM', '*.dcm'));
+                dcms = glob(fullfile(fold0, '**', 'DICOM*', series, 'DICOM', '*.dcm'));
+                if isempty(dcms)
+                    dcms = glob(fullfile(fold0, '**', series, 'DICOM*', 'files', '*.dcm'));
+                end
                 folds = unique(cellfun(@fileparts, dcms, UniformOutput=false));
             end
         end
