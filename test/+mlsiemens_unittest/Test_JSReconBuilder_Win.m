@@ -578,22 +578,24 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             toc
             popd(pwd0);
         end
-        function test_BMC_create_oo1(this)
-            paths = [ ...
-                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", "lm-oo1"), ...
-                fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421150523", "lm-oo1")];
-            tracers = ["oo", "oo"];
+        
+        function test_BMC_create_oo(this)
+            paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108034", "ses-20230717131839", "lm");
+            tracers = "oo";
             taus = {20*ones(1,4), 10*ones(1,3)};
             time_delay = [30, 0];
-            for ti = 1:length(paths)
+            dt = [20, 1];
+
+            for ti = 1:2
                 pwd0 = pushd(paths);
-                tic                 
+                tic
                 mlsiemens.BrainMoCo2.create_moving_average( ...
-                    paths(ti), tracer=tracers(ti), taus=taus{ti}, time_delay=time_delay(ti));
+                    paths, tracer=tracers, taus=taus{ti}, time_delay=time_delay(ti), dt=dt(ti));
                 toc
                 popd(pwd0);
             end
         end
+
         function test_BMC_create_ho(this)
             paths = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "lm-ho");
             tracers = "ho";
