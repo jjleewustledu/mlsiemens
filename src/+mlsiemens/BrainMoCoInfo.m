@@ -20,7 +20,7 @@ classdef BrainMoCoInfo < handle & mlsystem.IHandle
             arguments
                 opts.sub_id string {mustBeNonempty}
                 opts.mri_home {mustBeFolder} = "/data/nil-bluearc/vlassenko/Pipeline/Projects/MRI/Participants"
-                opts.parc_home {mustBeFolder} = "/data/nil-bluearc/vlassenko/Pipeline/Projects/PET/InProcess"
+                opts.parc_home {mustBeFolder} = "/data/nil-bluearc/vlassenko/Pipeline/Projects/PET/Participants"
                 opts.lm_home {mustBeFolder} = "/vgpool02/data2/listmode/vision"
             end
 
