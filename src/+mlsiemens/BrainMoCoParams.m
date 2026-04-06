@@ -113,11 +113,16 @@ classdef BrainMoCoParams
         doCollect             =     1
     end
 
-    methods %% GET
+    methods %% GET, SET
         function g = get.LMFrames(this)
             g = this.LMFrames_;
         end
         function g = get.Resolution(this)
+            if ~isempty(this.resolution_)
+                g = this.resolution_;
+                return
+            end
+
             switch convertCharsToStrings(lower(this.model_))
                 case "mct"
                     g = 400;
@@ -130,6 +135,10 @@ classdef BrainMoCoParams
                 otherwise
                     error("mlsiemens:ValueError", "%s: this.model->%s", stackstr(), this.model_)
             end
+        end
+        function this = set.Resolution(this, s)
+            assert(isnumeric(s))
+            this.resolution_ = s;
         end
     end
 
@@ -155,6 +164,10 @@ classdef BrainMoCoParams
             this.model_ = convertCharsToStrings(opts.model);
             this.tracer_ = convertCharsToStrings(opts.tracer);
             this.filepath_ = convertCharsToStrings(opts.filepath);
+            if ~startsWith(opts.tag, "_")
+                opts.tag = "_" + opts.tag;
+            end
+            this.tag_ = opts.tag;
 
             if ~opts.is_dyn
                 this.doBMCRecon = 1;     % static BMC recon
@@ -171,9 +184,9 @@ classdef BrainMoCoParams
             frame_lengths_ = str2num(ss(2)); %#ok<ST2NM>
             fn = fullfile( ...
                 this.filepath_, ...
-                sprintf("params_%s_%s_start%is_tau%is_nframes%i.txt", ...
+                sprintf("params_%s_%s_start%is_tau%is_nframes%i%s.txt", ...
                     lower(this.model_), lower(this.tracer_), ...
-                    start_time_, frame_lengths_(1), length(frame_lengths_)));
+                    start_time_, frame_lengths_(1), length(frame_lengths_), this.tag_));
         end
         function s = LMFramesStart(this)
             ss = strip(this.LMFrames, ":");
@@ -210,7 +223,9 @@ classdef BrainMoCoParams
         filepath_
         LMFrames_
         model_
+        resolution_
         tracer_
+        tag_
     end
     
     %  Created with mlsystem.Newcl, inspired by Frank Gonzalez-Morphy's newfcn.

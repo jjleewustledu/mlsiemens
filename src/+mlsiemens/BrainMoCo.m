@@ -133,7 +133,54 @@ classdef BrainMoCo < handle & mlsystem.IHandle
             end
             popd(pwd0);
         end
-        function build_static(this)
+        function build_static(this, opts)
+            arguments
+                this mlsiemens.BrainMoCo
+                opts.grid_search logical = false
+                opts.tracer {mustBeTextScalar} = "fdg"
+                opts.tag {mustBeTextScalar} = ""
+            end
+
+            if opts.grid_search
+                for res = [220, 440]
+                    for psf = 0:1
+                        for tof = 0:1
+                            for iter = [4,8,12,16]
+                                for nac_flag = 0:1
+                                    for abs_flag = 0:1
+
+                                        pwd0 = pushd(this.source_pet_path);
+                                        tag = sprintf("_res%i_psf%i_tof%i_iter%i_nac%i_abs%i", ...
+                                            res, psf, tof, iter, nac_flag, abs_flag);
+                                        bmcp = mlsiemens.BrainMoCoParams( ...
+                                            Skip=0, ...
+                                            LMFrames="", ...
+                                            tracer=opts.tracer, ...
+                                            filepath=this.source_pet_path, ...
+                                            is_dyn=false, ...
+                                            model="Vision", ...
+                                            tag=tag);
+                                        bmcp.Resolution = res;
+                                        bmcp.PSF = psf;
+                                        bmcp.TOF = tof;
+                                        bmcp.Iterations = iter;
+                                        bmcp.NACFlag = nac_flag;
+                                        bmcp.AbsFlag = abs_flag;
+                                        bmcp.writelines();
+                                        [~,r] = mlsiemens.JSRecon12.cscript_jsrecon12( ...
+                                            this.source_lm_path, bmcp.fqfilename);
+                                        disp(r)
+                                        popd(pwd0);
+
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                return
+            end
+
             pwd0 = pushd(this.source_pet_path);
             [~,r] = mlsiemens.JSRecon12.cscript_staticrecon(this.source_lm_path);
             disp(r)

@@ -35,6 +35,96 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             mlsiemens.BrainMoCoBuilder.construct_bmcbuilder_more_t1w(info.subs_pet', info)
         end
 
+        function test_BMCBuilder_build_all_phantoms(this)
+
+            % specify subjects and their info
+            sub_nums = [ ...
+                109001; 109002; 109003; 109004; 109005];
+            sub_nums = string(sub_nums);
+            sub_nums = sort(sub_nums);
+            PET_ID_0 = { ...
+                'FDG_Phantom_20260202'; ...
+                'PIB_Phantom_02122026'; ...
+                '015_water_phantom_20160226'; ...
+                'FDG_tap_water_phantom_20260302'; ...
+                'O15_water_phantom2_20260323'};
+            PET_ID_1 = { ...
+                'FDG_Phantom_1_FDG_Phantom_20260202'; ...
+                'PIB_Phantom_02122026_PIB_Phantom_02122026'; ...
+                'Phantom3_015_water_phantom_20160226'; ...
+                'FDGphantom+tap_water_FDGphantom+tap_water'; ...
+                'Phantom5_O15_water_phantom2_20260323'};
+            MRI_ID = {''; ''; ''; ''; ''};
+            T1_PATH = {''; ''; ''; ''; ''};
+            PARCEL_PATH = {''; ''; ''; ''; ''};
+            T = table(sub_nums, PET_ID_0, PET_ID_1, MRI_ID, T1_PATH, PARCEL_PATH);
+            T = sortrows(T, "sub_nums");
+
+            % prefer working in vglab2:/vgpool02/data2/jjlee/bmcbuilder
+            visionlmdir = "/vgpool02/data2/listmode/phantoms";
+            petdcmdir = "/data/nil-bluearc/vlassenko/RAW_IMAGES/PET/phantoms";
+            mridcmdir = "/data/nil-bluearc/vlassenko/RAW_IMAGES/MRI/phantoms";
+            workdir = "/vgpool02/data2/jjlee/bmcbuilder";
+            ensuredir(workdir);
+            cd(workdir)
+
+            for sidx = 2:2 % 1:length(sub_nums)
+                
+                % init identifiers
+                sub_num = sub_nums(sidx);
+                sub = "sub-" + sub_num;
+                pet_id_0 = PET_ID_0(sidx);                
+                pet_id_1 = PET_ID_1(sidx);                
+                bmcblmdir = fullfile(workdir, sub, "lm");
+                bmcbdcmdir = fullfile(workdir, sub, "dcm");
+
+                % populate lm/
+                ensuredir(bmcblmdir);
+                pwd0 = pushd(bmcblmdir);
+                listmode_folders = mglob(fullfile(visionlmdir, pet_id_1));
+                for lmf = listmode_folders
+                    listmode_fold = sub_num + "_" + mybasename(lmf);
+                    if ~isfolder(mybasename(lmf))
+                        mysystem(sprintf("ln -s %s %s", lmf, listmode_fold));
+                    end
+                end
+                popd(pwd0);
+
+                % populate dcm/pet/
+                ensuredir(fullfile(bmcbdcmdir, "pet"))
+                pwd0 = pushd(fullfile(bmcbdcmdir, "pet"));
+                pet_folders = mglob(fullfile(petdcmdir, pet_id_0));
+                pet_folders = pet_folders(~endsWith(pet_folders, ".zip"));
+                for pf = pet_folders
+                    raw_images_fold = sub_num + "_" + mybasename(pf);
+                    if ~isfolder(raw_images_fold)
+                        mysystem(sprintf("ln -s %s %s", pf, raw_images_fold));
+                    end
+                end
+                popd(pwd0);
+
+                bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=bmcblmdir);  % assumes swappable ["lm/", "dcm/"]
+                bmcb.build_rawdata(do_pet=true, do_mri=false);
+            end
+        end
+
+        function test_build_gridsearch_of_phantom(this)
+            pwd0 = pushd("D:\CCIR_01211\rawdata\sub-109002\ses-20260212\lm");
+
+            bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd);
+            map = bmcb.build_map_of_lm();
+            keys = map.keys;
+            for k = asrow(keys) 
+                bmcb.build_input_folders(map(k{1}));
+                bmc = mlsiemens.BrainMoCo(source_lm_path=bmcb.source_lm_path);
+                bmc.build_static(grid_search=true, tracer="pib");
+                %bmcb.build_niftis(map(k{1}), tracer="unknown", is_dyn=false);
+                %bmcb.build_output_folders(map(k{1}));
+            end
+
+            popd(pwd0);
+        end
+
         function test_BMCBuilder_build_all_jeremydti(this)
 
             % specify subjects and their info
@@ -115,7 +205,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
                 popd(pwd0);
 
                 bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=bmcblmdir);  % assumes swappable ["lm/", "dcm/"]
-                bmcb.build_all();
+                bmcb.build_rawdata();
             end
         end
 

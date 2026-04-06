@@ -84,12 +84,18 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         end
         
         
-        function build_rawdata(this)
+        function build_rawdata(this, opts)
             %% in rawdata, build dcm and lm folders containing first iteration of organization of files
             %  move files needed for e7 to this.sourcedata
             %  copy this.sourcedata/sub-* to Windows machine with e7
 
-            this.build_raw_dcm()
+            arguments
+                this mlsiemens.BrainMoCoBuilder
+                opts.do_pet logical = true
+                opts.do_mri logical = true
+            end
+
+            this.build_raw_dcm(do_pet=opts.do_pet, do_mri=opts.do_mri)
             this.build_raw_lm()
             
             map = this.build_map_of_lm();
@@ -396,7 +402,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     "sub-*_"+ses+"*Topogram*.*", ...                      
                     "sub-*_"+ses+"*Water*.*", ...       
                     "sub-*_"+ses+"*yn*.*", ...             
-                    "sub-*_"+ses+"*Phantom*.*"]);
+                    "sub-*_"+ses+"*Phantom*.*", ...                    
+                    "sub-*_"+ses+"*AC*.*", ...   
+                    "sub-*_"+ses+"*NAC*.*"]);
                 if ~isemptytext(g)
                     ensuredir(sourcedata_pet_pth);
                     for g1 = asrow(g)
