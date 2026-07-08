@@ -179,6 +179,14 @@ classdef BrainMoCoParams
             end
         end
         function fn = fqfilename(this)
+            if isemptytext(this.LMFrames_)
+                fn = fullfile( ...
+                    this.filepath_, ...
+                    sprintf("params_%s_%s%s.txt", ...
+                    lower(this.model_), lower(this.tracer_), this.tag_));
+                return
+            end
+
             ss = strsplit(this.LMFrames_, ":");
             start_time_ = str2double(ss(1));
             frame_lengths_ = str2num(ss(2)); %#ok<ST2NM>

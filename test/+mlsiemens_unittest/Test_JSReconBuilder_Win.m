@@ -108,21 +108,17 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             end
         end
 
-        function test_build_gridsearch_of_phantom(this)
-            pwd0 = pushd("D:\CCIR_01211\rawdata\sub-109002\ses-20260212\lm");
+        function test_build_grid_search_of_phantom(this)
+            setenv("PROJECT_FOLDER", "CCIR_01211")
 
-            bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd);
-            map = bmcb.build_map_of_lm();
-            keys = map.keys;
-            for k = asrow(keys) 
-                bmcb.build_input_folders(map(k{1}));
-                bmc = mlsiemens.BrainMoCo(source_lm_path=bmcb.source_lm_path);
-                bmc.build_static(grid_search=true, tracer="pib");
-                %bmcb.build_niftis(map(k{1}), tracer="unknown", is_dyn=false);
-                %bmcb.build_output_folders(map(k{1}));
-            end
-
-            popd(pwd0);
+            path = fullfile("D:", "CCIR_01211", "sourcedata", "sub-109002", "ses-20260212143457", "lm");
+            tracer = "pib";
+            taus = [4 8 16 32 64 128 256 512 768 17];  % 1805 sec available
+            tic
+            mlsiemens.BrainMoCo2.create_simple_grid_search( ...
+                path, tracer=tracer, starts=0, taus=taus, expand_starts=false);
+            toc
+            % Elapsed time is ____ seconds.
         end
 
         function test_BMCBuilder_build_all_jeremydti(this)

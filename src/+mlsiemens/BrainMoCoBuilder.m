@@ -57,6 +57,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         function g = get.sourcedata(~)
             g = fullfile( ...
                 getenv("HOME"), "mnt", "CHPC_scratch", "Singularity", "CCIR_01211", "sourcedata");
+            % g = "/vgpool02/data2/jjlee/Singularity/CCIR_01211/sourcedata";
             assert(isfolder(g))
         end
         function g = get.sub(this)
@@ -418,6 +419,10 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
             popd(pwd0)
 
+            if ~isfolder(this.raw_dcm_mri_path)
+                return
+            end
+
             pwd0 = pushd(this.raw_dcm_mri_path);
 
             % ensure sourcedata/sub-*/ses-* folders
@@ -677,7 +682,11 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             nii_fqfn = T.fqfn{1};
             j_fqfn = strrep(nii_fqfn, ".nii.gz", ".json");
             j = readstruct(j_fqfn);
-            folder = j.dicom_folder;
+            if isfield(j, "dicom_folder")
+                folder = j.dicom_folder;
+            else
+                folder = fileparts(j_fqfn);
+            end
 
             popd(pwd0);
         end
