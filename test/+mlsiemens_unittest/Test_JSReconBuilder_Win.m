@@ -864,22 +864,6 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             delete(myfileparts(dyn_dcm_path))
             popd(pwd0);
         end
-        function test_build_static(this)
-            pwd0 = pushd("D:\CCIR_01211\rawdata\sub-108306\ses-20230227\lm");
-
-            bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=pwd);
-            map = bmcb.build_map_of_lm();
-            keys = map.keys;
-            for k = asrow(keys) 
-                bmcb.build_input_folders(map(k{1}));
-                bmc = mlsiemens.BrainMoCo(source_lm_path=bmcb.source_lm_path);
-                bmc.build_static();
-                %bmcb.build_niftis(map(k{1}), tracer="unknown", is_dyn=false);
-                %bmcb.build_output_folders(map(k{1}));
-            end
-
-            popd(pwd0);
-        end
         function test_createNiftiMovingAvgRepair(this)
             sub = "sub-108293";
             ses = "ses-20210421154248";

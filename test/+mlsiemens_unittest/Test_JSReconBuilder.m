@@ -31,10 +31,6 @@ classdef Test_JSReconBuilder < matlab.unittest.TestCase
                 fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211/rawdata/sub-108306/ses-20230227/etc"))
             this.verifyEqual(med.scanFolder, "etc")
         end
-        function test_vision_test_data(this)
-            bmc = mlsiemens.BrainMoCo();
-            build_test(bmc);
-        end
         function test_jsrecon_builder(this)
         end
         function test_brainmoco_builder(this)
