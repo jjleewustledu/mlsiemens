@@ -1,4 +1,4 @@
-classdef BrainMoCoParams2
+classdef BrainMoCoParams2 < mlsiemens.IReconParams
     %% line1
     %  line2
     %  
@@ -35,6 +35,7 @@ classdef BrainMoCoParams2
         Gaussian              =     0          %FWHM in mm for Gaussian postfilter. If both Gaussian
                                                %and Hanning are non-zero, Gaussian is used
         Hanning               =     0          %FWHM in mm for Hanning postfilter
+        FBP                   =     0
         PSF                   =     1
         TOF                   =     1          %automatically set to 0 for mMR & Horizon
         Iterations            =     4
@@ -113,11 +114,16 @@ classdef BrainMoCoParams2
         doCollect             =     1
     end
 
-    methods %% GET
+    methods %% GET, SET
         function g = get.LMFrames(this)
             g = this.LMFrames_;
         end
         function g = get.Resolution(this)
+            if ~isempty(this.resolution_)
+                g = this.resolution_;
+                return
+            end
+
             if startsWith(this.tracer_, "oo", IgnoreCase=true)
                 switch convertCharsToStrings(lower(this.model_))
                     case "mct"
@@ -146,6 +152,10 @@ classdef BrainMoCoParams2
                     error("mlsiemens:ValueError", "%s: this.model->%s", stackstr(), this.model_)
             end
         end
+        function this = set.Resolution(this, s)
+            assert(isnumeric(s))
+            this.resolution_ = s;
+        end
     end
 
     methods
@@ -170,6 +180,13 @@ classdef BrainMoCoParams2
                 opts.clean_up logical = false
                 opts.do_jsr logical = false
                 opts.do_bmc logical = true
+                opts.res {mustBeInteger} = 440
+                opts.fbp {mustBeInteger} = 0
+                opts.psf {mustBeInteger} = 1
+                opts.tof {mustBeInteger} = 1
+                opts.iter {mustBeInteger} = 4
+                opts.nac_flag {mustBeInteger} = 0
+                opts.abs_flag {mustBeInteger} = 1
             end
             this.Skip = opts.Skip;
             this.LMFrames_ = convertCharsToStrings(opts.LMFrames);
@@ -178,9 +195,14 @@ classdef BrainMoCoParams2
             this.filepath_ = convertCharsToStrings(opts.filepath);
 
             this.doBMCDynamic = double(opts.is_dyn); % dynamic BMC recon
-
-            if startsWith(opts.tracer, "oo", IgnoreCase=true)
-            end
+            
+            this.Resolution = opts.res;
+            this.FBP = opts.fbp;
+            this.PSF = opts.psf;
+            this.TOF = opts.tof;
+            this.Iterations = opts.iter;
+            this.NACFlag = opts.nac_flag;
+            this.AbsFlag = opts.abs_flag;
         end
         function fn = fqfilename(this)
             ss = strsplit(this.LMFrames_, ":");
@@ -188,13 +210,33 @@ classdef BrainMoCoParams2
             frame_lengths_ = str2num(ss(2)); %#ok<ST2NM>
             fn = fullfile( ...
                 this.filepath_, ...
-                sprintf("params_%s_%s_start%is_tau%is_nframes%i.txt", ...
-                    lower(this.model_), lower(this.tracer_), ...
-                    start_time_, frame_lengths_(1), length(frame_lengths_)));
+                sprintf("params_%s_%s_start%is_tau%is_nframes%i_%s.txt", ...
+                lower(this.model_), ...
+                lower(this.tracer_), ...
+                start_time_, ...
+                frame_lengths_(1), ...
+                length(frame_lengths_), ...
+                this.grid_tags));
+        end
+        function g = grid_tags(this)
+            g = sprintf("r%i-f%i-p%i-t%i-i%i-n%i-a%i", ...
+                this.Resolution, ...
+                this.FBP, ...
+                this.PSF, ...
+                this.TOF, ...
+                this.Iterations, ...
+                this.NACFlag, ...
+                this.AbsFlag);
         end
         function s = LMFramesStart(this)
             ss = strip(this.LMFrames, ":");
             s = str2double(ss(1));
+        end
+        function s = shape(this)
+            %% Returns [220,220,159] | [440,440,159]
+            
+            res = this.Resolution;
+            s = [res, res, 159];
         end
         function writelines(this, fqfn)
             arguments
@@ -227,6 +269,7 @@ classdef BrainMoCoParams2
         filepath_
         LMFrames_
         model_
+        resolution_
         tracer_
     end
     

@@ -1,4 +1,4 @@
-classdef JSReconParams
+classdef JSReconParams < mlsiemens.IReconParams
     %% line1
     %  line2
     %  
