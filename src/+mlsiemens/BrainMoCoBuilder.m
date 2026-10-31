@@ -531,10 +531,12 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %  build_sourcedata_dcm_2(), separate scans on one day (e.g., a subject's scans followed by
             %  a calibration phantom) never share, nor overwrite, a ses-<yyyyMMdd> folder.
             %
-            %  A nifti belongs to the earliest listmode acquired no earlier than the nifti's
-            %  AcquisitionTime less opts.slack:  a CT joins the listmode that follows it, and a vendor
-            %  reconstruction joins the listmode it reconstructs.  Niftis lacking AcquisitionTime, or
-            %  acquired after every listmode, are reported and skipped.
+            %  Assignment by json Modality and AcquisitionTime, within opts.slack:
+            %      CT:  the earliest listmode starting at or after the CT, i.e., the scan it attenuates;
+            %      PT:  the latest listmode starting at or before the reconstruction, whose frames may
+            %           begin minutes into the listmode (e.g., 17:13:25 static of a 17:08:22 listmode).
+            %  Niftis lacking Modality or AcquisitionTime, or without a qualifying listmode, are
+            %  reported and skipped.
 
             arguments
                 this mlsiemens.BrainMoCoBuilder
@@ -559,14 +561,23 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             niis = mglob(fullfile(this.raw_dcm_pet_path, "*.nii.gz"));
             for nii = asrow(niis)
                 fp = extractBefore(nii, ".nii.gz");
-                acq_dt = this.nifti_acquisition_datetime(fp, lm_dt(1).TimeZone);
-                if isnat(acq_dt)
-                    fprintf(2, "%s: skipping %s, which lacks AcquisitionTime\n", stackstr(), mybasename(fp));
+                [acq_dt, modality] = this.nifti_acquisition_datetime(fp, lm_dt(1).TimeZone);
+                if isnat(acq_dt) || isemptytext(modality)
+                    fprintf(2, "%s: skipping %s, which lacks AcquisitionTime or Modality\n", ...
+                        stackstr(), mybasename(fp));
                     continue
                 end
-                idx = find(lm_dt >= acq_dt - opts.slack, 1, "first");
+                switch upper(modality)
+                    case "CT"
+                        idx = find(lm_dt >= acq_dt - opts.slack, 1, "first");
+                    case "PT"
+                        idx = find(lm_dt <= acq_dt + opts.slack, 1, "last");
+                    otherwise
+                        idx = [];
+                end
                 if isempty(idx)
-                    fprintf(2, "%s: skipping %s, acquired after every listmode\n", stackstr(), mybasename(fp));
+                    fprintf(2, "%s: skipping %s (%s at %s), which matches no listmode\n", ...
+                        stackstr(), mybasename(fp), modality, string(acq_dt));
                     continue
                 end
                 dest = fullfile(this.sourcedata, this.sub, lm_ses(idx), "pet");
@@ -1079,21 +1090,25 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             end
         end
 
-        function dt = nifti_acquisition_datetime(fp, time_zone)
+        function [dt, modality] = nifti_acquisition_datetime(fp, time_zone)
             %% datetime of a dcm2niix nifti from its json AcquisitionTime and the date of its ses-<14>
-            %  filename tag; NaT if either is missing.  dcm2niix names files by study time, so the
-            %  filename alone cannot tell apart series acquired hours apart in one study.
+            %  filename tag, and its json Modality; NaT and "" if missing.  dcm2niix names files by
+            %  study time, so the filename alone cannot tell apart series acquired hours apart.
 
             arguments
                 fp {mustBeTextScalar}  % fileprefix, e.g., sub-108293_ses-20210421134537_CT_Brain-16
                 time_zone {mustBeTextScalar} = "local"
             end
             dt = NaT(TimeZone=time_zone);
+            modality = "";
             re = regexp(mybasename(fp), "_ses-(?<date>\d{8})\d*_", "names", "once");
             if isempty(re) || ~isfile(fp + ".json")
                 return
             end
             j = jsondecode(fileread(fp + ".json"));
+            if isfield(j, "Modality")
+                modality = string(j.Modality);
+            end
             if ~isfield(j, "AcquisitionTime")
                 return
             end

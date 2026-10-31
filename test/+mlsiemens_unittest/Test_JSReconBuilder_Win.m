@@ -110,18 +110,21 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
 
         function test_BMCBuilder_build_crosscal(this)
             %% stages sub-108293's cross-calibration bottle phantom ([18F]FDG in tap water, 5 min),
-            %  the last listmode of 2021-04-21, into sourcedata/sub-108293/ses-20210421171325
+            %  the last listmode of 2021-04-21, into sourcedata/sub-108293/ses-20210421170822
             %  without restaging or overwriting the subject's own sessions of that day.
             %  Run on vglab2; then rsync -aL the session to the e7 box.
             %
+            %  ses-20210421170822 is the listmode's own start, as for every BMC session; the vendor
+            %  static recon (series 18) starts 5 min later, at 17:13:25.
+            %
             %  CT:  this study holds two CT pairs, each AC (H30f) + H.U. (J30f):
             %      series 2, 3  at 14:12:46, before the subject's CO/OO/HO/FDG scans
-            %      series 15, 16 at 17:07:31, before the phantom PET (series 17, 18 at 17:13:25)
+            %      series 15, 16 at 17:07:31, before the phantom listmode at 17:08:22
             %  so the phantom's CT in H.U. is series 16.
 
             setenv("SINGULARITY_HOME", "/vgpool02/data2/jjlee/stage")  % CHPC retired; cf. bmcbuilder/stage_sourcedata_vglab2.m
             sub_num = "108293";
-            ses = "ses-20210421171325";
+            ses = "ses-20210421170822";
             ct_series = 16;
 
             bmcb = mlsiemens.BrainMoCoBuilder.construct_bmcbuilder_phantom( ...
@@ -134,7 +137,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
 
             % exactly the phantom's listmode, with the phantom's CT
             ld = load(fullfile(bmcb.raw_lm_path, "map.mat"));
-            this.verifyEqual(ld.map.Count, 1)
+            this.verifyEqual(double(ld.map.Count), 1)
             s = ld.map.values;
             s = s{1};
             this.verifyEqual("ses-" + string(s.datetimestr), ses)
@@ -146,6 +149,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyNumElements(mglob(fullfile(ses_path, "lm", "*LISTMODE*.ptd")), 1)
             this.verifyNumElements(mglob(fullfile(ses_path, "lm", "*CALIBRATION*.ptd")), 1)
             this.verifyNotEmpty(mglob(fullfile(ses_path, "pet", "*-" + ct_series + ".nii.gz")))
+            this.verifyNotEmpty(mglob(fullfile(ses_path, "pet", "*FDG_Static-18.nii.gz")))
 
             % and nothing under the date-only session shared with the subject's scans
             this.verifyFalse(isfolder(fullfile(bmcb.sourcedata, "sub-" + sub_num, "ses-20210421")))
