@@ -9,6 +9,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
     
     properties
+        ct_series double = []  % if nonempty, find_ct() accepts only these CT series numbers
+        lm_pattern {mustBeTextScalar} = "*LISTMODE*.ptd"  % build_map_of_lm() glob, relative to raw_lm_path
+        lm_select {mustBeMember(lm_select, ["all", "last"])} = "all"  % "last" keeps only the latest listmode
         sessions
     end
 
@@ -55,10 +58,14 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             g = strrep(this.raw_sub_path, "rawdata", "sourcedata");
         end
         function g = get.sourcedata(~)
-            g = fullfile( ...
-                getenv("HOME"), "mnt", "CHPC_scratch", "Singularity", "CCIR_01211", "sourcedata");
-            % g = "/vgpool02/data2/jjlee/Singularity/CCIR_01211/sourcedata";
-            assert(isfolder(g))
+            % target for staged sourcedata; consistent with mlsiemens.BrainMoCo2 usage.
+            % CHPC retired 2026; set SINGULARITY_HOME (e.g. /vgpool02/data2/jjlee/Singularity)
+            % and PROJECT_FOLDER (e.g. CCIR_01211) in the launching environment.
+            g = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata");
+            assert(~isemptytext(getenv("SINGULARITY_HOME")) && ~isemptytext(getenv("PROJECT_FOLDER")), ...
+                "mlsiemens:ConfigurationError", ...
+                "BrainMoCoBuilder.sourcedata requires SINGULARITY_HOME and PROJECT_FOLDER")
+            if ~isfolder(g); ensuredir(g); end
         end
         function g = get.sub(this)
             g = mybasename(fileparts(this.raw_lm_path));
@@ -71,8 +78,14 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
 
             arguments
                 opts.raw_lm_path {mustBeTextScalar} = ""
+                opts.ct_series double = []
+                opts.lm_pattern {mustBeTextScalar} = "*LISTMODE*.ptd"
+                opts.lm_select {mustBeTextScalar} = "all"
             end
 
+            this.ct_series = opts.ct_series;
+            this.lm_pattern = opts.lm_pattern;
+            this.lm_select = opts.lm_select;
             if ~isemptytext(opts.raw_lm_path)
                 this.raw_lm_path_ = this.ensureEndsWithLm(opts.raw_lm_path);
                 ensuredir(this.raw_lm_path);
@@ -90,22 +103,38 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %  move files needed for e7 to this.sourcedata
             %  copy this.sourcedata/sub-* to Windows machine with e7
 
+            %
+            %  opts.series_pet:  DICOM series to convert; "" converts all.
+            %  opts.dcm_sessions:  "date" files niftis under ses-yyyyMMdd (build_sourcedata_dcm_2);
+            %      "listmode" files them under the ses-yyyyMMddHHmmss of their listmode
+            %      (build_sourcedata_dcm_by_lm), so separate scans on one day never share a folder.
+            %  opts.do_symlink:  stage listmode, norm and CT in sourcedata as symlinks, not copies;
+            %      transfer to e7 with rsync -aL.
+
             arguments
                 this mlsiemens.BrainMoCoBuilder
                 opts.do_pet logical = true
                 opts.do_mri logical = true
+                opts.series_pet {mustBeText} = ""
+                opts.dcm_sessions {mustBeMember(opts.dcm_sessions, ["date", "listmode"])} = "date"
+                opts.do_symlink logical = false
             end
 
-            this.build_raw_dcm(do_pet=opts.do_pet, do_mri=opts.do_mri)
+            this.build_raw_dcm(do_pet=opts.do_pet, do_mri=opts.do_mri, series_pet=opts.series_pet)
             this.build_raw_lm()
-            
+
             map = this.build_map_of_lm();
             keys = map.keys;
             save(fullfile(this.raw_lm_path, "map.mat"), "map");
 
-            this.build_sourcedata_dcm_2();    
-            for k = asrow(keys) % *LISTMODE* 
-                this.build_sourcedata_lm(map(k{1}));
+            switch opts.dcm_sessions
+                case "date"
+                    this.build_sourcedata_dcm_2();
+                case "listmode"
+                    this.build_sourcedata_dcm_by_lm(map);
+            end
+            for k = asrow(keys) % *LISTMODE*
+                this.build_sourcedata_lm(map(k{1}), do_symlink=opts.do_symlink);
             end
         end
 
@@ -496,11 +525,80 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             popd(pwd0)
         end
 
-        function build_sourcedata_lm(this, s)
+        function build_sourcedata_dcm_by_lm(this, map, opts)
+            %% copies niftis in raw_dcm_pet_path into sourcedata/sub-*/ses-<yyyyMMddHHmmss>/pet,
+            %  where ses-<yyyyMMddHHmmss> names the listmode each nifti belongs to.  Unlike
+            %  build_sourcedata_dcm_2(), separate scans on one day (e.g., a subject's scans followed by
+            %  a calibration phantom) never share, nor overwrite, a ses-<yyyyMMdd> folder.
+            %
+            %  A nifti belongs to the earliest listmode acquired no earlier than the nifti's
+            %  AcquisitionTime less opts.slack:  a CT joins the listmode that follows it, and a vendor
+            %  reconstruction joins the listmode it reconstructs.  Niftis lacking AcquisitionTime, or
+            %  acquired after every listmode, are reported and skipped.
+
+            arguments
+                this mlsiemens.BrainMoCoBuilder
+                map containers.Map
+                opts.slack duration = seconds(60)
+            end
+            if map.Count == 0
+                error("mlsiemens:ValueError", "%s: map of listmode is empty", stackstr())
+            end
+
+            % listmode datetimes, ascending
+            vals = map.values;
+            lm_dt = NaT(1, numel(vals), TimeZone=vals{1}.datetime.TimeZone);
+            lm_ses = strings(1, numel(vals));
+            for vi = 1:numel(vals)
+                lm_dt(vi) = vals{vi}.datetime;
+                lm_ses(vi) = "ses-" + string(vals{vi}.datetimestr);
+            end
+            [lm_dt, order] = sort(lm_dt);
+            lm_ses = lm_ses(order);
+
+            niis = mglob(fullfile(this.raw_dcm_pet_path, "*.nii.gz"));
+            for nii = asrow(niis)
+                fp = extractBefore(nii, ".nii.gz");
+                acq_dt = this.nifti_acquisition_datetime(fp, lm_dt(1).TimeZone);
+                if isnat(acq_dt)
+                    fprintf(2, "%s: skipping %s, which lacks AcquisitionTime\n", stackstr(), mybasename(fp));
+                    continue
+                end
+                idx = find(lm_dt >= acq_dt - opts.slack, 1, "first");
+                if isempty(idx)
+                    fprintf(2, "%s: skipping %s, acquired after every listmode\n", stackstr(), mybasename(fp));
+                    continue
+                end
+                dest = fullfile(this.sourcedata, this.sub, lm_ses(idx), "pet");
+                ensuredir(dest);
+                copyfile(fp + ".*", dest);
+                fprintf("%s: %s -> %s\n", stackstr(), mybasename(fp), dest);
+            end
+        end
+
+        function build_sourcedata_lm(this, s, opts)
             %% migrates to sourcedata; use rsync -aL to rsync listmode to Windows/e7
-            
-            pwd0 = pushd(this.raw_lm_path);
+            %  opts.do_symlink:  symlink CT folder, norm and listmode rather than copying them.
+
+            arguments
+                this mlsiemens.BrainMoCoBuilder
+                s struct
+                opts.do_symlink logical = false
+            end
+
             lm_path = fullfile(this.sourcedata, this.sub, "ses-"+string(s.datetimestr), "lm");
+            if opts.do_symlink
+                % one shell call; single quotes because export paths contain spaces and parens
+                [st, r] = mysystem(sprintf( ...
+                    "mkdir -p '%s' && ln -sfn '%s' '%s/CT' && ln -sf '%s' '%s/' && ln -sf '%s' '%s/'", ...
+                    lm_path, s.ct, lm_path, s.norm, lm_path, s.ptd, lm_path));
+                if st ~= 0
+                    error("mlsiemens:StagingError", "%s: ln staging rc=%d: %s", stackstr(), st, r);
+                end
+                return
+            end
+
+            pwd0 = pushd(this.raw_lm_path);
             ensuredir(lm_path);
             copyfile(s.ct, fullfile(lm_path, "CT"));
             copyfile(s.norm, lm_path);
@@ -521,10 +619,18 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %  ct from this.find_ct ~ folder
             %  norm from this.find_norm ~ file.ptd
 
+            %  this.lm_pattern selects listmode by filename; this.lm_select == "last" then keeps only
+            %  the latest acquisition, e.g., a phantom scanned after a subject on the same day.
+
             pwd0 = pushd(this.raw_lm_path);
             m = containers.Map;
 
-            g = mglob(fullfile(this.raw_lm_path, "*LISTMODE*.ptd"));
+            g = mglob(fullfile(this.raw_lm_path, this.lm_pattern));
+            if isempty(g)
+                popd(pwd0);
+                error("mlsiemens:FileNotFoundError", "%s: no listmode matches %s", ...
+                    stackstr(), fullfile(this.raw_lm_path, this.lm_pattern))
+            end
             for gidx = 1:length(g)
                 fp = mybasename(g(gidx));
                 s = this.siemens_get_meta(g(gidx));
@@ -539,6 +645,13 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 m(char(fp)) = s;
             end
             popd(pwd0);
+
+            if this.lm_select == "last" && m.Count > 1
+                ks = m.keys;
+                dts = cellfun(@(k) posixtime(m(k).datetime), ks);
+                [~, ilast] = max(dts);
+                m = containers.Map(ks(ilast), {m(ks{ilast})});
+            end
         end
         
         function build_niftis(this, s, opts)
@@ -655,11 +768,14 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         
         function folder = find_ct(this, opts)
             %% returns folder with ct dicoms.
+            %  opts.ct_series:  if nonempty, accept only these series numbers.  Recommended whenever
+            %      one day has several CTs:  dcm2niix names files by study time, not acquisition time,
+            %      so every CT of a study ties on datetime and the default choice is arbitrary.
 
             arguments
                 this mlsiemens.BrainMoCoBuilder
                 opts.dt datetime = NaT % datetimes of listmode to match
-                opts.ct_series double = 3
+                opts.ct_series double = this.ct_series
             end
 
             pwd0 = pushd(this.raw_dcm_pet_path);
@@ -679,6 +795,15 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             T = table(ascol(g), minutes(ascol(opts.dt) - ascol(ct_dt)), ascol(series), variableNames={'fqfn', 'dur', 'series'});
             T = sortrows(T, 'dur');
             T = T(minutes(T.dur) >= 0, :);
+            if ~isempty(opts.ct_series)
+                T = T(ismember(T.series, opts.ct_series), :);
+            end
+            if isempty(T)
+                popd(pwd0);
+                error("mlsiemens:FileNotFoundError", ...
+                    "%s: no CT series %s precedes listmode at %s in %s", ...
+                    stackstr(), mat2str(opts.ct_series), string(opts.dt), this.raw_dcm_pet_path)
+            end
             nii_fqfn = T.fqfn{1};
             j_fqfn = strrep(nii_fqfn, ".nii.gz", ".json");
             j = readstruct(j_fqfn);
@@ -871,6 +996,113 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     handwarning(ME)
                 end
             end    
+        end
+
+        function bmcb = construct_bmcbuilder_phantom(sub_num, opts)
+            %% stages rawdata and sourcedata for a phantom, e.g., a cross-calibration bottle of
+            %  [18F]FDG in tap water scanned at the end of a subject's Vision session.  Listmode is
+            %  chosen by filename (and optionally by being the day's last), the CT by explicit series,
+            %  and sourcedata sessions are ses-yyyyMMddHHmmss, so the subject's own sessions of that
+            %  day are neither restaged nor overwritten.  Generalizes the loop formerly inline in
+            %  Test_JSReconBuilder_Win.test_BMCBuilder_build_all_phantoms.
+            %
+            %  Run on vglab2 with SINGULARITY_HOME and PROJECT_FOLDER set (see get.sourcedata).
+            %
+            %  Args:
+            %      sub_num (text):  e.g., "108293"
+            %      opts.lm_folder (text):  glob of listmode export folder(s), relative to opts.visionlmdir
+            %      opts.dcm_folder (text):  glob of DICOM folder(s), relative to opts.petdcmdir
+            %      opts.lm_pattern (text):  glob of listmode within the export, e.g., an exact .ptd name
+            %      opts.lm_select (text):  "all" | "last"; "last" keeps only the day's latest listmode
+            %      opts.ct_series (double):  CT series in H.U. for attenuation; strongly recommended
+            %      opts.series_pet (text):  DICOM series to convert; ct_series is always included
+            %      opts.link_prefix (text):  prefix for symlink names in rawdata lm/ and dcm/pet/
+            %      opts.do_symlink (logical):  stage sourcedata lm/ as symlinks (rsync -aL to e7)
+            %      opts.do_build_rawdata (logical):  false only populates symlinks
+            %  Returns:
+            %      bmcb:  mlsiemens.BrainMoCoBuilder; its raw_lm_path holds map.mat
+
+            arguments
+                sub_num {mustBeTextScalar}
+                opts.lm_folder {mustBeTextScalar}
+                opts.dcm_folder {mustBeTextScalar}
+                opts.lm_pattern {mustBeTextScalar} = "*LISTMODE*.ptd"
+                opts.lm_select {mustBeMember(opts.lm_select, ["all", "last"])} = "all"
+                opts.ct_series double = []
+                opts.series_pet {mustBeText} = ""
+                opts.visionlmdir {mustBeTextScalar} = "/vgpool02/data2/listmode/vision"
+                opts.petdcmdir {mustBeTextScalar} = "/data/nil-bluearc/vlassenko/RAW_IMAGES/PET"
+                opts.workdir {mustBeTextScalar} = "/vgpool02/data2/jjlee/bmcbuilder"
+                opts.link_prefix {mustBeTextScalar} = ""
+                opts.do_symlink logical = true
+                opts.do_build_rawdata logical = true
+            end
+            sub_num = string(sub_num);
+            series_pet = string(opts.series_pet);
+            if ~isempty(opts.ct_series) && any(strlength(series_pet) > 0)
+                series_pet = unique([series_pet, string(opts.ct_series)], "stable");
+            end
+            if isempty(opts.ct_series)
+                warning("mlsiemens:RuntimeWarning", ...
+                    "%s: ct_series is empty; find_ct() will guess among the day's CTs", stackstr())
+            end
+
+            bmcblmdir = fullfile(opts.workdir, "sub-" + sub_num, "lm");
+            bmcbdcmpetdir = fullfile(opts.workdir, "sub-" + sub_num, "dcm", "pet");
+            link_into(bmcblmdir, fullfile(opts.visionlmdir, opts.lm_folder));
+            link_into(bmcbdcmpetdir, fullfile(opts.petdcmdir, opts.dcm_folder));
+
+            bmcb = mlsiemens.BrainMoCoBuilder( ...
+                raw_lm_path=bmcblmdir, ...
+                ct_series=opts.ct_series, ...
+                lm_pattern=opts.lm_pattern, ...
+                lm_select=opts.lm_select);
+            if opts.do_build_rawdata
+                bmcb.build_rawdata( ...
+                    do_pet=true, do_mri=false, series_pet=series_pet, ...
+                    dcm_sessions="listmode", do_symlink=opts.do_symlink);
+            end
+
+            function link_into(dest, source_glob)
+                ensuredir(dest);
+                sources = mglob(source_glob);
+                sources = sources(~endsWith(sources, ".zip"));
+                if isempty(sources)
+                    error("mlsiemens:FileNotFoundError", "%s: nothing matches %s", stackstr(), source_glob)
+                end
+                for src = asrow(sources)
+                    link = fullfile(dest, opts.link_prefix + mybasename(src));
+                    if ~isfolder(link) && ~isfile(link)
+                        mysystem(sprintf("ln -s '%s' '%s'", src, link));
+                    end
+                end
+            end
+        end
+
+        function dt = nifti_acquisition_datetime(fp, time_zone)
+            %% datetime of a dcm2niix nifti from its json AcquisitionTime and the date of its ses-<14>
+            %  filename tag; NaT if either is missing.  dcm2niix names files by study time, so the
+            %  filename alone cannot tell apart series acquired hours apart in one study.
+
+            arguments
+                fp {mustBeTextScalar}  % fileprefix, e.g., sub-108293_ses-20210421134537_CT_Brain-16
+                time_zone {mustBeTextScalar} = "local"
+            end
+            dt = NaT(TimeZone=time_zone);
+            re = regexp(mybasename(fp), "_ses-(?<date>\d{8})\d*_", "names", "once");
+            if isempty(re) || ~isfile(fp + ".json")
+                return
+            end
+            j = jsondecode(fileread(fp + ".json"));
+            if ~isfield(j, "AcquisitionTime")
+                return
+            end
+            tok = regexp(string(j.AcquisitionTime), "^(\d{2}):?(\d{2}):?(\d{2}(?:\.\d+)?)", "tokens", "once");
+            if isempty(tok)
+                return
+            end
+            dt = datetime(re.date, InputFormat="yyyyMMdd", TimeZone=time_zone) + ...
+                hours(str2double(tok(1))) + minutes(str2double(tok(2))) + seconds(str2double(tok(3)));
         end
 
         function T = construct_info_table()

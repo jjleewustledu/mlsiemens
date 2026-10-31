@@ -108,6 +108,49 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             end
         end
 
+        function test_BMCBuilder_build_crosscal(this)
+            %% stages sub-108293's cross-calibration bottle phantom ([18F]FDG in tap water, 5 min),
+            %  the last listmode of 2021-04-21, into sourcedata/sub-108293/ses-20210421171325
+            %  without restaging or overwriting the subject's own sessions of that day.
+            %  Run on vglab2; then rsync -aL the session to the e7 box.
+            %
+            %  CT:  this study holds two CT pairs, each AC (H30f) + H.U. (J30f):
+            %      series 2, 3  at 14:12:46, before the subject's CO/OO/HO/FDG scans
+            %      series 15, 16 at 17:07:31, before the phantom PET (series 17, 18 at 17:13:25)
+            %  so the phantom's CT in H.U. is series 16.
+
+            setenv("SINGULARITY_HOME", "/vgpool02/data2/jjlee/stage")  % CHPC retired; cf. bmcbuilder/stage_sourcedata_vglab2.m
+            sub_num = "108293";
+            ses = "ses-20210421171325";
+            ct_series = 16;
+
+            bmcb = mlsiemens.BrainMoCoBuilder.construct_bmcbuilder_phantom( ...
+                sub_num, ...
+                lm_folder="108293_108293_MAG_20210421", ...
+                dcm_folder=fullfile("108293", "MAG_20210421"), ...
+                lm_pattern="108293.PT.Head_CCIR_1211_TriplePack_(Adult).602.PET_LISTMODE.2021.04.23.11.59.28.878000.2.0.16459587.ptd", ...
+                ct_series=ct_series, ...
+                series_pet=["15", "16", "17", "18"]);
+
+            % exactly the phantom's listmode, with the phantom's CT
+            ld = load(fullfile(bmcb.raw_lm_path, "map.mat"));
+            this.verifyEqual(ld.map.Count, 1)
+            s = ld.map.values;
+            s = s{1};
+            this.verifyEqual("ses-" + string(s.datetimestr), ses)
+            this.verifyTrue(contains(s.ct, fullfile("DICOMS", string(ct_series), "DICOM")), s.ct)
+
+            % sourcedata holds the phantom session, staged for e7
+            ses_path = fullfile(bmcb.sourcedata, "sub-" + sub_num, ses);
+            this.verifyTrue(isfolder(fullfile(ses_path, "lm", "CT")))
+            this.verifyNumElements(mglob(fullfile(ses_path, "lm", "*LISTMODE*.ptd")), 1)
+            this.verifyNumElements(mglob(fullfile(ses_path, "lm", "*CALIBRATION*.ptd")), 1)
+            this.verifyNotEmpty(mglob(fullfile(ses_path, "pet", "*-" + ct_series + ".nii.gz")))
+
+            % and nothing under the date-only session shared with the subject's scans
+            this.verifyFalse(isfolder(fullfile(bmcb.sourcedata, "sub-" + sub_num, "ses-20210421")))
+        end
+
         function test_build_grid_search_of_phantom(this)
             setenv("PROJECT_FOLDER", "CCIR_01211")
 
