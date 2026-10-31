@@ -103,97 +103,70 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             assert(~isemptytext(getenv("PROJECT_FOLDER")))
         end
         
-        function build_clean(this, opts)
+        function report = build_clean(this, opts)
+            %% removes duplicate copies of listmode made for, or by, reconstructions:  *.ptd and
+            %  *.l under the session's lm-* folders, e.g., copies by create_tagged() and
+            %  build_sub_table(), and listmode converted by JSRecon12/BMC.js.  The session's own
+            %  lm/ is never touched, and no folder is removed, so text files and logs of recons
+            %  (*.txt, *.log, *.bat, *.hdr, *.mhdr, ...) are kept for provenance.
+            %
+            %  opts.deep additionally removes large binary intermediates (*.s, *.i, nac*.v, and
+            %  *.v already delivered as NIfTI), again keeping their headers.
+            %  opts.dry_run reports without deleting.
+            %  opts.tag, opts.tag0, opts.starts are unused; kept for callers.
+            %
+            %  Returns report, a table of fqfn and bytes for each file deleted (or, if dry_run,
+            %  to be deleted); an empty table means none was found.
+
             arguments
                 this mlsiemens.BrainMoCo2
                 opts.tag string {mustBeTextScalar} = "-start"
                 opts.tag0 string {mustBeTextScalar} = "-start0"
-                opts.starts double {mustBeScalarOrEmpty} = 0
+                opts.starts double = 0
                 opts.deep logical = false % deep clean to minimize storage
+                opts.dry_run logical = false
             end
 
-            ld = load(this.source_sub_table_fqfn);
-            lmpath = ld.T.lmpath + opts.tag;
-            lmpathn = lmpath + opts.starts;
-            lmfoldn = mybasename(lmpathn);
-
-            try
-                mg = mglob(lmpath+"*");
-                mg = mg(~contains(mg, opts.tag0+"-") | ...
-                    endsWith(mg, "-BMC") | ...
-                    endsWith(mg, "-DynamicBMC") | ...
-                    endsWith(mg, "-StaticBMC"));
-                for m = mg
-                    try
-                        fileattrib(m(1), '+w -h');
-                        rmdir(m(1), "s");
-                    catch ME
-                        handwarning(ME)
-                        fprintf("%s: rmdir %s had errors.\n", stackstr(), m(1))
-                    end
-                end
-            catch ME
-                handwarning(ME)
-            end  
-
-            try
-                ses_paths = fileparts(lmpath);
-                mg = mglob(fullfile(ses_paths, "lm*"));
-                for m = mg
-                    try
-                        fileattrib(m(1), '+w -h');
-                        rmdir(m(1), "s");
-                    catch ME
-                        handwarning(ME)
-                        fprintf("%s: rmdir %s had errors.\n", stackstr(), m(1))
-                    end
-                end
-            catch ME
-                handwarning(ME)
-            end  
-
+            patterns = ["*.ptd", "*.l"];
             if opts.deep
-                for idx = 1:length(lmpathn)
-                    try
-                        if isfolder(lmpathn(idx))
-                            rmdir(fullfile(lmpathn(idx)), "s");
-                        end
-                    catch ME
-                        handwarning(ME)
+                patterns = [patterns, "*.s", "*.i", "nac*.v", "*-ac_mc_*_*.v", "*-dynamic_mc*_*_*.v"];
+            end
+
+            folders = dir(fullfile(this.source_ses_path, "lm-*"));
+            folders = folders([folders.isdir]);
+            fqfns = strings(0, 1);
+            for f = asrow(folders)
+                for p = patterns
+                    found = dir(fullfile(f.folder, f.name, "**", p));
+                    found = found(~[found.isdir]);
+                    for fd = asrow(found)
+                        fqfns = [fqfns; string(fullfile(fd.folder, fd.name))]; %#ok<AGROW>
                     end
-                    try
-                        if isfolder(lmpathn(idx)+"-BMC")
-                            rmdir(fullfile(lmpathn(idx)+"-BMC"), "s");
-                        end
-                    catch ME
-                        handwarning(ME)
-                    end
-                    try
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.i"));
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.l"));
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.s"));
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*.s.hdr"));
-                    catch ME
-                        handwarning(ME)
-                    end
-                    try
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "nac*.v"));
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "nac*.v.hdr"));
-                    catch ME
-                        handwarning(ME)
-                    end
-                    try
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-ac_mc_*_*.v"));
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-ac_mc_*_*.v.hdr"));
-                    catch ME
-                        handwarning(ME)
-                    end
-                    try
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-dynamic_mc*_*_*.v"));
-                        deleteExisting(fullfile(lmpathn(idx)+"-BMC-Converted", lmfoldn(idx)+"-BMC-LM-00", "*-dynamic_mc*_*_*.v.hdr"));
-                    catch ME
-                        handwarning(ME)
-                    end
+                end
+            end
+            fqfns = unique(fqfns);
+            bytes = zeros(size(fqfns));
+            for fi = 1:numel(fqfns)
+                d = dir(fqfns(fi));
+                bytes(fi) = d.bytes;
+            end
+            report = table(fqfns, bytes, VariableNames=["fqfn", "bytes"]);
+
+            verb = "deleting";
+            if opts.dry_run
+                verb = "would delete";
+            end
+            fprintf("%s: %s %i duplicate listmode or intermediate files, %.3g GB, under %s\n", ...
+                stackstr(), verb, numel(fqfns), sum(bytes)/2^30, fullfile(this.source_ses_path, "lm-*"));
+            if opts.dry_run
+                return
+            end
+            for fi = 1:numel(fqfns)
+                try
+                    fileattrib(fqfns(fi), '+w');
+                    delete(fqfns(fi));
+                catch ME
+                    handwarning(ME)
                 end
             end
         end
@@ -720,7 +693,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
             % aufbau ifc with cumulative time-integrals of activity
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-"+stackstr(use_dashes=true);
-            proto = mlsiemens.BrainMoCo2.ic_prototype(recon_params=opts.recon_params);
+            proto = mlsiemens.BrainMoCo2.ic_prototype( ...
+                v_fqfn=mlsiemens.BrainMoCo2.find_v_prototype( ...
+                    ses_path, lm_prefix="lm*", tag=opts.tag, folder_tag=opts.folder_tag), ...
+                recon_params=opts.recon_params);
             ifc = proto.imagingFormat;
             ifc.img = img;
             ifc.filepath = ses_path;
@@ -773,7 +749,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
             % aufbau ifc with cumulative time-integrals of activity
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-"+stackstr(use_dashes=true);
-            proto = mlsiemens.BrainMoCo2.ic_prototype(recon_params=opts.recon_params);
+            proto = mlsiemens.BrainMoCo2.ic_prototype( ...
+                v_fqfn=mlsiemens.BrainMoCo2.find_v_prototype( ...
+                    ses_path, lm_prefix="lm*", tag=opts.tag, folder_tag=opts.folder_tag), ...
+                recon_params=opts.recon_params);
             ifc = proto.imagingFormat;
             ifc.img = img;
             ifc.filepath = ses_path;
@@ -882,7 +861,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
             % activity 
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-delay"+opts.time_delay+"-"+stackstr(use_dashes=true);  
-            proto = mlsiemens.BrainMoCo2.ic_prototype(recon_params=opts.recon_params);
+            proto = mlsiemens.BrainMoCo2.ic_prototype( ...
+                v_fqfn=mlsiemens.BrainMoCo2.find_v_prototype( ...
+                    ses_path, lm_prefix=opts.lm_prefix, tag=opts.tag, folder_tag=opts.folder_tag), ...
+                recon_params=opts.recon_params);
             ifc = proto.imagingFormat;
             img = mlsiemens.BrainMoCo2.zeros(opts.recon_params, dim4=M*N);
             timesMidN = cumsum(taus) - taus/2;
@@ -955,7 +937,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             N1 = ceil(N/2);
             N2 = N - N1;
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-delay"+opts.time_delay+"-"+stackstr(use_dashes=true);
-            proto = mlsiemens.BrainMoCo2.ic_prototype(recon_params=opts.recon_params);
+            proto = mlsiemens.BrainMoCo2.ic_prototype( ...
+                v_fqfn=mlsiemens.BrainMoCo2.find_v_prototype( ...
+                    ses_path, lm_prefix=opts.lm_prefix, tag=opts.tag, folder_tag=opts.folder_tag), ...
+                recon_params=opts.recon_params);
 
             % activity part 1
             ifc = proto.imagingFormat;
@@ -1079,7 +1064,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             N1 = mlsiemens.BrainMoCo2.coarsening_index(taus, coarsening_time=opts.coarsening_time) - 1;
             N2 = N - N1;
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-delay"+opts.time_delay+"-"+stackstr(use_dashes=true);             
-            proto = mlsiemens.BrainMoCo2.ic_prototype(recon_params=opts.recon_params);
+            proto = mlsiemens.BrainMoCo2.ic_prototype( ...
+                v_fqfn=mlsiemens.BrainMoCo2.find_v_prototype( ...
+                    ses_path, lm_prefix=opts.lm_prefix, tag=opts.tag, folder_tag=opts.folder_tag), ...
+                recon_params=opts.recon_params);
 
             % activity part 1
             ifc = proto.imagingFormat;
@@ -1201,19 +1189,20 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata", sub, ses);  
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-delay"+opts.time_delay+"-"+stackstr(use_dashes=true)+"-"+opts.tag; 
 
-            % activity 
-            proto = mlsiemens.BrainMoCo2.ic_prototype(recon_params=opts.recon_params);
-            ifc = proto.imagingFormat;
-            try
-                lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
-                    getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+tagged+opts.folder_tag);
-                v_fqfn = mglob( ...
-                    fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-ac_mc_*_*.v", opts.lm_prefix, tagged)));
-                v_fqfn = v_fqfn(1);
-                ifc.img = single(mlsiemens.BrainMoCo2.vread(v_fqfn)); 
-            catch ME
-                fprintf("%s: %s\n", stackstr(), ME.message);
+            % activity; a single e7 image, so its header describes the frame too.
+            % No image is an error:  saving zeros would pass for a recon.
+            lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
+                getenv("PROJECT_FOLDER"), "sourcedata", sub, ses, opts.lm_prefix+tagged+opts.folder_tag);
+            v_fqfn = mglob( ...
+                fullfile(lmtagpath, sprintf("%s%s-BMC-LM-00-ac_mc_*_*.v", opts.lm_prefix, tagged)));
+            if isempty(v_fqfn)
+                error("mlsiemens:FileNotFoundError", "%s: no ac_mc image in %s", stackstr(), lmtagpath)
             end
+            v_fqfn = v_fqfn(1);
+            proto = mlsiemens.BrainMoCo2.ic_prototype( ...
+                v_fqfn=v_fqfn, recon_params=opts.recon_params, include_frame=true);
+            ifc = proto.imagingFormat;
+            ifc.img = single(mlsiemens.BrainMoCo2.vread(v_fqfn));
 
             % aufbau ifc with cumulative time-integrals of activity
             ifc.filepath = ses_path;
@@ -1245,7 +1234,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
             % activity 
             fileprefix = sub+"_"+ses+"_trc-"+opts.tracer+"_proc-"+stackstr(use_dashes=true)+"-"+opts.tag;
-            proto = mlsiemens.BrainMoCo2.ic_prototype(recon_params=opts.recon_params);
+            proto = mlsiemens.BrainMoCo2.ic_prototype( ...
+                v_fqfn=mlsiemens.BrainMoCo2.find_v_prototype( ...
+                    ses_path, lm_prefix=opts.lm_prefix, tag=opts.tag, folder_tag=opts.folder_tag), ...
+                recon_params=opts.recon_params);
             ifc = proto.imagingFormat;
             img = mlsiemens.BrainMoCo2.zeros(opts.recon_params, dim4=N);
             timesMid = cumsum(taus) - taus/2;
@@ -1895,32 +1887,49 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
         end
 
         function proto = ic_prototype(opts)
-            %% read prototype from filesystem
-            %  opts.fqfn {mustBeFile} = ...
-            %      fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "vision_zeros_440x440x159.nii.gz")
-            %  opts.recon_params mlsiemens.IReconParams = mlsiemens.BrainMoCoParams2()
+            %% prototype of zeros whose NIfTI header and json sidecar come from the e7 recon itself,
+            %  via mlsiemens.E7Interfile of opts.v_fqfn and its .v.hdr and .mhdr.  Replaces the
+            %  former vision_zeros_{220x220,440x440}x159.{nii.gz,json}, which carried one [15O]O2
+            %  recon's metadata into every product.
+            %
+            %  opts.v_fqfn:  an e7 image, e.g., from find_v_prototype(); required
+            %  opts.recon_params:  unused; kept for callers
+            %  opts.include_frame:  describe the one frame of opts.v_fqfn; false for products
+            %      assembled from many frames, whose timing is added by the caller
 
             arguments
-                opts.fqfn {mustBeText} = ""
+                opts.v_fqfn {mustBeTextScalar} = ""
                 opts.recon_params mlsiemens.IReconParams = mlsiemens.BrainMoCoParams2()
+                opts.include_frame logical = false
+            end
+            if ~isfile(opts.v_fqfn)
+                error("mlsiemens:FileNotFoundError", ...
+                    "%s: requires an e7 image for its headers; received ""%s""", stackstr(), opts.v_fqfn)
             end
 
-            if ~isfile(opts.fqfn)
-                switch opts.recon_params.Resolution(1)
-                    case 220
-                        opts.fqfn = ...
-                            fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), ...
-                            "vision_zeros_220x220x159.nii.gz");
-                    case 440
-                        opts.fqfn = ...
-                            fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), ...
-                            "vision_zeros_440x440x159.nii.gz");
-                    otherwise
-                        error("mlsiemens:ValueError", stackstr())
-                end
+            e7 = mlsiemens.E7Interfile(opts.v_fqfn);
+            ifc = mlfourd.ImagingFormatContext2(zeros(e7.matrix_size, "single"));
+            ifc.filesuffix = ".nii.gz";
+            ifc.hdr = e7.nifti_hdr(ifc.hdr);
+            ifc.json_metadata = e7.json_metadata(include_frame=opts.include_frame);
+            proto = mlfourd.ImagingContext2(ifc);
+        end
+
+        function v_fqfn = find_v_prototype(ses_path, opts)
+            %% first e7 image in ses_path/<lm_prefix><tag>*<folder_tag>/, for ic_prototype()
+
+            arguments
+                ses_path {mustBeTextScalar}
+                opts.lm_prefix {mustBeTextScalar} = "lm"
+                opts.tag {mustBeTextScalar} = "-start"
+                opts.folder_tag {mustBeTextScalar} = "-DynamicBMC"
             end
-            proto = mlfourd.ImagingContext2(opts.fqfn);
-            proto.selectImagingTool();
+            g = mglob(fullfile(ses_path, opts.lm_prefix + opts.tag + "*" + opts.folder_tag, "*_000_000.v"));
+            if isempty(g)
+                error("mlsiemens:FileNotFoundError", "%s: no e7 image in %s", stackstr(), ...
+                    fullfile(ses_path, opts.lm_prefix + opts.tag + "*" + opts.folder_tag))
+            end
+            v_fqfn = g(1);
         end
 
         function ic = interp1_missing(ic, opts)
@@ -2031,8 +2040,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
 
         function ic = v2ic(varargin)
             %% Args follow vread.
-            ifc = mlfourd.ImagingFormatContext2(fullfile( ...
-                getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "vision_zeros_440x440x159.nii.gz"));
+            proto = mlsiemens.BrainMoCo2.ic_prototype(v_fqfn=varargin{1}, include_frame=true);
+            ifc = proto.imagingFormat;
             ifc.img = mlsiemens.BrainMoCo2.vread(varargin{:});
             ifc.fileprefix = mybasename(varargin{1});
             ifc.filepath = fullfile(pwd, myfileparts(varargin{1}));
