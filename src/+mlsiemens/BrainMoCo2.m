@@ -1312,6 +1312,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             %  Static (opts.static_tau > 0):  one frame [time_delay, time_delay + static_tau] s,
             %      for cross-calibration against well-counter assays; tag "-static".
             %  opts.clean:  afterwards, build_clean() removes the listmode copies made per tag.
+            %  opts.nifti_only:  skip e7; rebuild NIfTI products from existing e7 images.
             %  The listmode must span max(starts) + sum(taus) and static_tau, e.g., 305 s for
             %  sub-108293's bottle of 2021-04-21.  Defaults reproduce the former moving averages only.
 
@@ -1323,6 +1324,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 opts.do_moving_average logical = true
                 opts.static_tau double {mustBeInteger, mustBeNonnegative} = 0
                 opts.clean logical = false
+                opts.nifti_only logical = false
             end
             import mlsiemens.BrainMoCo2
 
@@ -1334,7 +1336,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                         taus=opts.taus, ...
                         tracer="fdg", ...
                         starts=opts.starts, ...
-                        time_delay=opts.time_delay);
+                        time_delay=opts.time_delay, ...
+                        nifti_only=opts.nifti_only);
                 catch ME
                     handwarning(ME)
                 end
@@ -1347,7 +1350,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                         taus=opts.static_tau, ...
                         starts=opts.time_delay, ...
                         expand_starts=false, ...
-                        tracer="fdg");
+                        tracer="fdg", ...
+                        nifti_only=opts.nifti_only);
                     ss = split(source_lm_path, filesep);
                     pet_path = fullfile(myfileparts(source_lm_path), "pet");
                     ensuredir(pet_path);
@@ -1409,6 +1413,9 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     do_jsr=opts.do_jsr, ...
                     do_bmc=opts.do_bmc);
                 opts.recon_params = this.recon_params;
+            else
+                this = BrainMoCo2(source_lm_path=source_lm_path);
+                this.recon_params = opts.recon_params;
             end
 
             try
@@ -1490,6 +1497,9 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     nac_flag=opts.nac_flag, ...
                     abs_flag=opts.abs_flag);
                 opts.recon_params = this.recon_params;
+            else
+                this = BrainMoCo2(source_lm_path=source_lm_path);
+                this.recon_params = opts.recon_params;
             end
             ss = split(source_lm_path, filesep);
             sub = ss(contains(ss, "sub-"));
@@ -1693,9 +1703,9 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             if BrainMoCo2.N_PROC > 1
                 parfor (si = 1:M, BrainMoCo2.N_PROC)
                     try
-                        this = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=starts(si)); %#ok<PFTUSW>
+                        obj = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=starts(si));
                         [lmframes,skip] = BrainMoCo2.mat2lmframes(taus, start=starts(si));
-                        this.build_scan( ...
+                        obj.build_scan( ...
                             LMFrames=lmframes, Skip=skip, tracer=tracer, tag=tag, tag0=tag0, starts=starts(si), ...
                             do_jsr=opts.do_jsr, do_bmc=opts.do_bmc); %#ok<PFBNS>
                     catch ME
@@ -1705,9 +1715,9 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             else
                 for si = 1:M
                     try
-                        this = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=starts(si));
+                        obj = BrainMoCo2.create_tagged(source_lm_path, tag=tag, starts=starts(si));
                         [lmframes,skip] = BrainMoCo2.mat2lmframes(taus, start=starts(si));
-                        this.build_scan( ...
+                        obj.build_scan( ...
                             LMFrames=lmframes, Skip=skip, tracer=tracer, tag=tag, tag0=tag0, starts=starts(si), ...
                             do_jsr=opts.do_jsr, do_bmc=opts.do_bmc);
                     catch ME
@@ -1715,6 +1725,10 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     end
                 end
             end
+
+            % objects made inside parfor don't survive it; callers need this.recon_params
+            this = BrainMoCo2(source_lm_path=source_lm_path);
+            this.recon_params = mlsiemens.BrainMoCoParams2();
 
             if ~isempty(taus1) % use data reductions
                 try

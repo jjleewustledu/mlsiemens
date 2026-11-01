@@ -68,8 +68,15 @@ classdef E7Interfile
         end
 
         function s = json_metadata(this, opts)
-            %% json sidecar from the recon's own headers.  BIDS-PET names where one fits; times
-            %  are ISO 8601 in GMT, as e7 records them.  Raw headers are kept under E7Interfile.
+            %% json sidecar from the recon's own headers.  BIDS-PET names where one fits.  Raw
+            %  headers are kept under E7Interfile.
+            %
+            %  Clock:  *DateTime values are the console's "GMT+00:00" times, without a "Z", because
+            %  they are not true UTC during daylight saving time:  the Vision 600 console adds a
+            %  fixed 6 h to Central time (sub-108293 listmode, 2021-04-21:  DecayRefTime 17:08:22.74
+            %  CDT, header 23:08:23 "GMT"; true UTC 22:08:22).  Intervals between them are exact, so
+            %  InjectionStartRelativeToStudy and DecayCorrectionReferenceRelativeToStudy (s) are the
+            %  clock-independent quantities for decay arithmetic.
             %  opts.include_frame:  include FrameTimesStart, FrameDuration and counts, which
             %      describe this one image; omit for products assembled from many images.
 
@@ -98,7 +105,14 @@ classdef E7Interfile
             s.DecayCorrectionReferenceDateTime = this.datetime_gmt( ...
                 "decay correction reference date (yyyy:mm:dd)", ...
                 "decay correction reference time (hh:mm:ss GMT+00:00)");
-            s.ScannerQuantificationFactor = this.num("scanner quantification factor (Bq*s/ECAT counts)");
+            s.InjectionStartRelativeToStudy = this.seconds_between( ...
+                "tracer injection date (yyyy:mm:dd)", "tracer injection time (hh:mm:ss GMT+00:00)");
+            s.DecayCorrectionReferenceRelativeToStudy = this.seconds_between( ...
+                "decay correction reference date (yyyy:mm:dd)", ...
+                "decay correction reference time (hh:mm:ss GMT+00:00)");
+            s.ClockNote = "DateTimes are the console's GMT+00:00 = Central time + 6 h without DST; " + ...
+                "use the *RelativeToStudy seconds (negative = before study start) for decay.";
+            s.ScannerQuantificationFactor =this.num("scanner quantification factor (Bq*s/ECAT counts)");
             s.ReconMethodName = this.str("method of reconstruction");
             s.ReconMethodParameterLabels = ["iterations", "subsets"];
             s.ReconMethodParameterValues = [this.num("number of iterations"), this.num("number of subsets")];
@@ -172,14 +186,27 @@ classdef E7Interfile
         end
 
         function v = datetime_gmt(this, date_key, time_key)
-            %% ISO 8601 text in GMT, e.g., "2021-04-21T23:08:23Z"; "" if absent
+            %% ISO 8601 text of the console's "GMT" clock, e.g., "2021-04-21T23:08:23", with no "Z"
+            %  because it is not true UTC during DST (see json_metadata); "" if absent
             d = this.str(date_key);
             t = this.str(time_key);
             if isemptytext(d) || isemptytext(t)
                 v = "";
                 return
             end
-            v = replace(d, ":", "-") + "T" + t + "Z";
+            v = replace(d, ":", "-") + "T" + t;
+        end
+
+        function dt = seconds_between(this, date_key, time_key)
+            %% seconds from study start to the time at date_key/time_key on the same header clock;
+            %  negative if earlier; NaN if either is absent
+            t0 = this.datetime_gmt("study date (yyyy:mm:dd)", "study time (hh:mm:ss GMT+00:00)");
+            t1 = this.datetime_gmt(date_key, time_key);
+            if isemptytext(t0) || isemptytext(t1)
+                dt = NaN;
+                return
+            end
+            dt = seconds(mlsiemens.E7Interfile.iso2datetime(t1) - mlsiemens.E7Interfile.iso2datetime(t0));
         end
     end
 
@@ -203,6 +230,16 @@ classdef E7Interfile
                 end
                 m(k) = strtrim(ln(idx(1)+2:end));
             end
+        end
+
+        function dt = iso2datetime(s)
+            %% "2021-04-21T23:08:23" or with fractional seconds -> datetime, no time zone
+            tok = regexp(string(s), "^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)$", "tokens", "once");
+            if isempty(tok)
+                error("mlsiemens:ValueError", "E7Interfile.iso2datetime: cannot parse %s", s)
+            end
+            n = str2double(tok);
+            dt = datetime(n(1), n(2), n(3), n(4), n(5), n(6));
         end
 
         function k = normalize_key(k)

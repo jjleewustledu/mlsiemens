@@ -44,8 +44,10 @@ classdef Test_E7Interfile < matlab.unittest.TestCase
             this.verifyEqual(j.Radiopharmaceutical, "Solution")
             this.verifyEqual(j.RadionuclideHalfLife, 6586.2)
             this.verifyEqual(j.InjectedRadioactivity, 7.03e7)
-            this.verifyEqual(j.InjectionStartDateTime, "2021-04-21T22:45:00Z")
-            this.verifyEqual(j.DecayCorrectionReferenceDateTime, "2021-04-21T23:08:22Z")
+            this.verifyEqual(j.InjectionStartDateTime, "2021-04-21T22:45:00")  % console clock, no "Z"
+            this.verifyEqual(j.DecayCorrectionReferenceDateTime, "2021-04-21T23:08:22")
+            this.verifyEqual(j.InjectionStartRelativeToStudy, -1402)
+            this.verifyEqual(j.DecayCorrectionReferenceRelativeToStudy, 0)
             this.verifyTrue(j.ImageDecayCorrected)
             this.verifyEqual(j.Units, "Bq/ml")
             this.verifyEqual(j.ReconMethodParameterValues, [4 5])
@@ -95,6 +97,28 @@ classdef Test_E7Interfile < matlab.unittest.TestCase
             j = jsondecode(fileread(fullfile(this.tmp, "proto.json")));
             this.verifyEqual(j.TracerRadionuclide, 'F-18')
             this.verifyNotEqual(j.Radiopharmaceutical, 'Oxygen')
+        end
+
+        function test_sidecar_keeps_backslashes_and_percent(this)
+            % Windows paths and "%" must survive mlfourd's json writer as valid JSON
+            proto = mlsiemens.BrainMoCo2.ic_prototype(v_fqfn=this.v_fqfn);
+            ifc = proto.imagingFormat;
+            ifc.json_metadata.E7Interfile.v = "D:\CCIR_01211\sourcedata\sub-108293\x_000_000.v";
+            ifc.json_metadata.Note = "100% of counts \n literal";
+            ifc.filepath = this.tmp;
+            ifc.fileprefix = "winpath";
+            ifc.save();
+            j = jsondecode(fileread(fullfile(this.tmp, "winpath.json")));
+            this.verifyEqual(j.E7Interfile.v, 'D:\CCIR_01211\sourcedata\sub-108293\x_000_000.v')
+            this.verifyEqual(j.Note, '100% of counts \n literal')
+        end
+
+        function test_logger_keeps_backslashes(this)
+            lg = mlpipeline.Logger2(fullfile(this.tmp, "lg"));
+            lg.add("D:\CCIR_01211\sourcedata");
+            this.verifyTrue(contains(string(lg.char), "D:\CCIR_01211\sourcedata"))
+            lg.add("%s=%g", "x", 2);
+            this.verifyTrue(contains(string(lg.char), "x=2"))
         end
 
         function test_find_v_prototype(this)
