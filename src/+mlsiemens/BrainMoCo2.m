@@ -1290,16 +1290,61 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 taus=10*ones(1,359), ...
                 tracer="fdg");
         end
-        function this = create_fdg_phantom(source_lm_path)
-            try
-                this = mlsiemens.BrainMoCo2.create_moving_average( ...
-                    source_lm_path, ...
-                    taus=10*ones(1,29), ...
-                    tracer="fdg", ...
-                    starts=0:9, ...
-                    time_delay=0);
-            catch ME
-                disp(ME)
+        function this = create_fdg_phantom(source_lm_path, opts)
+            %% [18F]FDG phantom, e.g., a cross-calibration bottle.
+            %  Moving averages:  frames opts.taus from each of opts.starts, for stability and
+            %      count-rate checks; tags "-start<n>".
+            %  Static (opts.static_tau > 0):  one frame [time_delay, time_delay + static_tau] s,
+            %      for cross-calibration against well-counter assays; tag "-static".
+            %  opts.clean:  afterwards, build_clean() removes the listmode copies made per tag.
+            %  The listmode must span max(starts) + sum(taus) and static_tau, e.g., 305 s for
+            %  sub-108293's bottle of 2021-04-21.  Defaults reproduce the former moving averages only.
+
+            arguments
+                source_lm_path {mustBeFolder}
+                opts.taus double = 10*ones(1,29)
+                opts.starts double = 0:9
+                opts.time_delay double {mustBeInteger} = 0
+                opts.do_moving_average logical = true
+                opts.static_tau double {mustBeInteger, mustBeNonnegative} = 0
+                opts.clean logical = false
+            end
+            import mlsiemens.BrainMoCo2
+
+            this = [];
+            if opts.do_moving_average
+                try
+                    this = BrainMoCo2.create_moving_average( ...
+                        source_lm_path, ...
+                        taus=opts.taus, ...
+                        tracer="fdg", ...
+                        starts=opts.starts, ...
+                        time_delay=opts.time_delay);
+                catch ME
+                    handwarning(ME)
+                end
+            end
+            if opts.static_tau > 0
+                try
+                    this = BrainMoCo2.create_simple( ...
+                        source_lm_path, ...
+                        tag="-static", ...
+                        taus=opts.static_tau, ...
+                        starts=opts.time_delay, ...
+                        expand_starts=false, ...
+                        tracer="fdg");
+                    ss = split(source_lm_path, filesep);
+                    pet_path = fullfile(myfileparts(source_lm_path), "pet");
+                    ensuredir(pet_path);
+                    BrainMoCo2.deliver_products( ...
+                        ss(contains(ss, "sub-")), ss(contains(ss, "ses-")), source_pet_path=pet_path);
+                catch ME
+                    handwarning(ME)
+                end
+            end
+            if opts.clean
+                bmc = BrainMoCo2(source_lm_path=source_lm_path);
+                bmc.build_clean();
             end
         end
         function this = create_ho(source_lm_path)

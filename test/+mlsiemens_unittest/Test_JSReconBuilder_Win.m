@@ -614,6 +614,38 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
                 end
             end
         end
+        function test_BMC_create_crosscal_108293(this)
+            %% recon of sub-108293's cross-calibration bottle ([18F]FDG in tap water), staged by
+            %  test_BMCBuilder_build_crosscal and copied to MATTA with scp -O -r -p.
+            %  Listmode:  305 s from 2021-04-21 17:08:22.74 (CDT); e7 decay-corrects to that start.
+            %  Moving averages 10 x 29 x 10 s cover 0-299 s; the static frame covers 0-300 s.
+            %  Run on MATTA; ~1 h with parpool(5).
+
+            setenv("SINGULARITY_HOME", "D:")
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+            lm_path = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421170822", "lm");
+            this.assumeTrue(isfolder(lm_path), lm_path)
+            if isempty(gcp('nocreate'))
+                parpool(5)
+            end
+
+            tic
+            mlsiemens.BrainMoCo2.create_fdg_phantom(lm_path, static_tau=300, clean=true);
+            toc
+
+            pet_path = fullfile(myfileparts(lm_path), "pet");
+            static = mglob(fullfile(pet_path, "*createNiftiStatic*-static.nii.gz"));
+            moving = mglob(fullfile(pet_path, "*createNiftiMovingAvgFrames.nii.gz"));
+            this.verifyNotEmpty(static)
+            this.verifyNotEmpty(moving)
+            for f = [static, moving]
+                j = jsondecode(fileread(strrep(f, ".nii.gz", ".json")));
+                this.verifyEqual(j.TracerRadionuclide, 'F-18', f)
+                this.verifyNotEqual(j.Radiopharmaceutical, 'Oxygen', f)
+            end
+            this.verifyEmpty(mglob(fullfile(myfileparts(lm_path), "lm-*", "*.ptd")))  % duplicates cleaned
+            this.verifyNotEmpty(mglob(fullfile(lm_path, "*LISTMODE*.ptd")))           % source kept
+        end
         function test_BMC_create_fdg_phantom(this)
 
             setenv("PROJECT_FOLDER", "CCIR_01211")
