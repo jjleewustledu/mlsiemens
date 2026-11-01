@@ -1256,6 +1256,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ifc = proto.imagingFormat;
             img = mlsiemens.BrainMoCo2.zeros(opts.recon_params, dim4=N);
             timesMid = cumsum(taus) - taus/2;
+            frames_read = false(1, N);  % a frame without its e7 image stays zeros; record which
             for n = N:-1:1
                 try
                     lmtagpath = fullfile(getenv("SINGULARITY_HOME"), ...
@@ -1273,7 +1274,8 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                         continue
                     end
 
-                    img(:,:,:,n) = single(mlsiemens.BrainMoCo2.vread(v_fqfn)); 
+                    img(:,:,:,n) = single(mlsiemens.BrainMoCo2.vread(v_fqfn));
+                    frames_read(n) = true;
                 catch ME
                     fprintf("%s: %s n->%g\n", stackstr(), ME.message, n);
                 end
@@ -1282,12 +1284,16 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ifc.img = img;
             clear img;
 
-            % aufbau ifc with cumulative time-integrals of activity
+            % aufbau ifc with cumulative time-integrals of activity;
+            % BIDS-PET frame timing, seconds from listmode start (frames begin at opts.starts)
             ifc.filepath = ses_path;
             ifc.fileprefix = fileprefix;
             js = struct( ...
                 "taus", asrow(taus), ...
-                "timesMid", asrow(timesMid));
+                "timesMid", asrow(timesMid), ...
+                "FrameTimesStart", asrow(opts.starts + cumsum(taus) - taus), ...
+                "FrameDuration", asrow(taus), ...
+                "FramesRead", asrow(frames_read));
             ifc.addJsonMetadata(js)
             ifc.save();
             ic = mlfourd.ImagingContext2(ifc);
