@@ -1022,7 +1022,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %  Args:
             %      sub_num (text):  e.g., "108293"
             %      opts.lm_folder (text):  glob of listmode export folder(s), relative to opts.visionlmdir
-            %      opts.dcm_folder (text):  glob of DICOM folder(s), relative to opts.petdcmdir
+            %      opts.dcm_folder (text):  glob of DICOM folder(s), relative to opts.petdcmdir, or an
+            %          absolute path, e.g., CT fetched from CNDA by bin/cnda_fetch_ct.py
             %      opts.lm_pattern (text):  glob of listmode within the export, e.g., an exact .ptd name
             %      opts.lm_select (text):  "all" | "last"; "last" keeps only the day's latest listmode
             %      opts.ct_series (double):  CT series in H.U. for attenuation; strongly recommended
@@ -1061,7 +1062,11 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             bmcblmdir = fullfile(opts.workdir, "sub-" + sub_num, "lm");
             bmcbdcmpetdir = fullfile(opts.workdir, "sub-" + sub_num, "dcm", "pet");
             link_into(bmcblmdir, fullfile(opts.visionlmdir, opts.lm_folder));
-            link_into(bmcbdcmpetdir, fullfile(opts.petdcmdir, opts.dcm_folder));
+            dcm_src = opts.dcm_folder;
+            if ~startsWith(dcm_src, "/")
+                dcm_src = fullfile(opts.petdcmdir, dcm_src);
+            end
+            link_into(bmcbdcmpetdir, dcm_src);
 
             bmcb = mlsiemens.BrainMoCoBuilder( ...
                 raw_lm_path=bmcblmdir, ...
