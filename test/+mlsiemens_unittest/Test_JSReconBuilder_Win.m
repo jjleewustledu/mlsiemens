@@ -626,7 +626,7 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             lm_path = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421170822", "lm");
             this.assumeTrue(isfolder(lm_path), lm_path)
             if isempty(gcp('nocreate'))
-                parpool(5)
+                parpool("Processes", 5)  % explicit: MATTA's default profile is the retired CHPC cluster
             end
 
             tic
