@@ -108,6 +108,30 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             end
         end
 
+        function test_BMCBuilder_build_crosscal_manifest(this)
+            %% stages "ready" phantoms of data/crosscal_phantoms.csv on vglab2; set env SUBS
+            %  (space-separated) to restrict.  Each staged session gets lm/{listmode, norm, CT}.
+            %  Run via bin/vglab2_matlab_batch.sh; then MATTA pulls with scp -O -r -p.
+
+            this.assumeTrue(isfolder("/vgpool02/data2/listmode/vision"), "requires vglab2")
+            setenv("SINGULARITY_HOME", "/vgpool02/data2/jjlee/stage")
+            subs = string.empty;
+            if ~isemptytext(getenv("SUBS"))
+                subs = split(string(getenv("SUBS")))';
+            end
+            report = mlsiemens.BrainMoCoBuilder.stage_crosscal_phantoms(subs=subs);
+
+            this.verifyEmpty(report.sub(report.outcome == "failed"), join(report.detail, newline))
+            staged = report(report.outcome == "staged", :);
+            this.verifyNotEmpty(staged)
+            for si = 1:height(staged)
+                lm = fullfile(staged.detail(si), "lm");
+                this.verifyNumElements(mglob(fullfile(lm, "*LISTMODE*.ptd")), 1, lm)
+                this.verifyNumElements(mglob(fullfile(lm, "*CALIBRATION*.ptd")), 1, lm)
+                this.verifyTrue(isfolder(fullfile(lm, "CT")), lm)
+            end
+        end
+
         function test_BMCBuilder_build_crosscal(this)
             %% stages sub-108293's cross-calibration bottle phantom ([18F]FDG in tap water, 5 min),
             %  the last listmode of 2021-04-21, into sourcedata/sub-108293/ses-20210421170822

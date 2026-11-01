@@ -1090,6 +1090,82 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             end
         end
 
+        function T = read_crosscal_manifest(fqfn)
+            %% table of cross-calibration phantoms from data/crosscal_phantoms.csv, the single
+            %  source of truth for each phantom's listmode, CT series, session and status:
+            %  ready | staged | blocked_no_ct | blocked_no_lm.  Text columns are strings;
+            %  series_pet is split on ";".
+
+            arguments
+                fqfn {mustBeTextScalar} = fullfile( ...
+                    fileparts(fileparts(fileparts(mfilename("fullpath")))), "data", "crosscal_phantoms.csv")
+            end
+            opts = detectImportOptions(fqfn, Delimiter=",", TextType="string");
+            opts = setvartype(opts, opts.VariableNames, "string");
+            T = readtable(fqfn, opts);
+            T.series_pet = arrayfun(@(s) split(s, ";")', T.series_pet, UniformOutput=false);
+        end
+
+        function report = stage_crosscal_phantoms(opts)
+            %% stages, with construct_bmcbuilder_phantom(), every manifest row whose status is
+            %  opts.status (default "ready") and, if given, whose sub is in opts.subs.  Every
+            %  selected row gets an outcome: "staged", "failed" (with the error), or "skipped"
+            %  with its blocking status, so a skipped phantom never passes for a staged one.
+            %  Run on vglab2 with SINGULARITY_HOME and PROJECT_FOLDER set.
+
+            arguments
+                opts.manifest {mustBeTextScalar} = ""
+                opts.subs string = string.empty
+                opts.status string = "ready"
+                opts.workdir {mustBeTextScalar} = "/vgpool02/data2/jjlee/bmcbuilder"
+            end
+            if isemptytext(opts.manifest)
+                T = mlsiemens.BrainMoCoBuilder.read_crosscal_manifest();
+            else
+                T = mlsiemens.BrainMoCoBuilder.read_crosscal_manifest(opts.manifest);
+            end
+            if ~isempty(opts.subs)
+                T = T(ismember(T.sub, opts.subs), :);
+            end
+            if isempty(T)
+                error("mlsiemens:ValueError", "%s: no manifest rows for subs %s", stackstr(), join(opts.subs))
+            end
+
+            outcome = strings(height(T), 1);
+            detail = strings(height(T), 1);
+            for ti = 1:height(T)
+                r = T(ti, :);
+                if ~ismember(r.status, opts.status)
+                    outcome(ti) = "skipped";
+                    detail(ti) = r.status;
+                    continue
+                end
+                try
+                    mlsiemens.BrainMoCoBuilder.construct_bmcbuilder_phantom( ...
+                        r.sub, ...
+                        lm_folder=r.lm_folder, ...
+                        dcm_folder=r.dcm_folder, ...
+                        lm_pattern=r.lm_pattern, ...
+                        ct_series=str2double(r.ct_series), ...
+                        series_pet=r.series_pet{1}, ...
+                        workdir=opts.workdir);
+                    ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), ...
+                        "sourcedata", "sub-" + r.sub, "ses-" + r.ses);
+                    if ~isfolder(fullfile(ses_path, "lm"))
+                        error("mlsiemens:FileNotFoundError", "expected %s/lm after staging", ses_path)
+                    end
+                    outcome(ti) = "staged";
+                    detail(ti) = ses_path;
+                catch ME
+                    outcome(ti) = "failed";
+                    detail(ti) = string(ME.identifier) + ": " + string(ME.message);
+                end
+            end
+            report = table(T.sub, T.status, outcome, detail, ...
+                VariableNames=["sub", "status", "outcome", "detail"]);
+            disp(report)
+        end
+
         function [dt, modality] = nifti_acquisition_datetime(fp, time_zone)
             %% datetime of a dcm2niix nifti from its json AcquisitionTime and the date of its ses-<14>
             %  filename tag, and its json Modality; NaT and "" if missing.  dcm2niix names files by
