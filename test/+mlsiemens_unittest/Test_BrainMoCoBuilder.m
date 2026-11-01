@@ -11,7 +11,7 @@ classdef Test_BrainMoCoBuilder < matlab.unittest.TestCase
             this.verifyTrue(all(ismember(T.status, ["ready", "staged", "blocked_no_ct", "blocked_no_lm"])))
 
             r = T(T.sub == "108284", :);
-            this.verifyEqual(r.status, "ready")
+            this.verifyTrue(ismember(r.status, ["ready", "staged"]), r.status)
             this.verifyEqual(r.ct_series, "3")
             this.verifyEqual(r.series_pet{1}, ["2", "3"])
             this.verifyEqual(r.ses, "20230220122457")

@@ -645,30 +645,23 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             %  Moving averages 10 x 29 x 10 s cover 0-299 s; the static frame covers 0-300 s.
             %  Run on MATTA; ~1 h with parpool(5).
 
-            setenv("SINGULARITY_HOME", "D:")
-            setenv("PROJECT_FOLDER", "CCIR_01211")
-            lm_path = fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421170822", "lm");
-            this.assumeTrue(isfolder(lm_path), lm_path)
-            if isempty(gcp('nocreate'))
-                parpool("Processes", 5)  % explicit: MATTA's default profile is the retired CHPC cluster
-            end
+            this.crosscal_recon(fullfile("D:", "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421170822", "lm"));
+        end
+        function test_BMC_create_crosscal_manifest(this)
+            %% recon on MATTA of each phantom in env SUBS (space-separated), located through
+            %  data/crosscal_phantoms.csv, which must mark it staged; the session must already be
+            %  copied from vglab2 to D:\CCIR_01211\sourcedata.  ~1.5 h per phantom with parpool(5).
 
-            tic
-            mlsiemens.BrainMoCo2.create_fdg_phantom(lm_path, static_tau=300, clean=true);
-            toc
-
-            pet_path = fullfile(myfileparts(lm_path), "pet");
-            static = mglob(fullfile(pet_path, "*createNiftiStatic*-static.nii.gz"));
-            moving = mglob(fullfile(pet_path, "*createNiftiMovingAvgFrames.nii.gz"));
-            this.verifyNotEmpty(static)
-            this.verifyNotEmpty(moving)
-            for f = [static, moving]
-                j = jsondecode(fileread(strrep(f, ".nii.gz", ".json")));
-                this.verifyEqual(j.TracerRadionuclide, 'F-18', f)
-                this.verifyNotEqual(j.Radiopharmaceutical, 'Oxygen', f)
+            subs = split(string(getenv("SUBS")))';
+            subs = subs(strlength(subs) > 0);
+            this.assumeNotEmpty(subs, "set env SUBS, e.g. SUBS=108284")
+            T = mlsiemens.BrainMoCoBuilder.read_crosscal_manifest();
+            for s = subs
+                r = T(T.sub == s, :);
+                this.assertNotEmpty(r, "no manifest row for " + s)
+                this.assertEqual(r.status, "staged", s)
+                this.crosscal_recon(fullfile("D:", "CCIR_01211", "sourcedata", "sub-" + s, "ses-" + r.ses, "lm"));
             end
-            this.verifyEmpty(mglob(fullfile(myfileparts(lm_path), "lm-*", "*.ptd")))  % duplicates cleaned
-            this.verifyNotEmpty(mglob(fullfile(lm_path, "*LISTMODE*.ptd")))           % source kept
         end
         function test_BMC_create_fdg_phantom(this)
 
@@ -1147,6 +1140,43 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
     
     methods (Access = private)
         function cleanTestMethod(this)
+        end
+
+        function crosscal_recon(this, lm_path)
+            %% e7 recon of one [18F]FDG bottle phantom on MATTA:  moving averages 10 x 29 x 10 s,
+            %  a 0-300 s frame (createNiftiSimple) and BMC's whole-listmode static (createNiftiStatic),
+            %  then build_clean(); verifies products, sidecars, cleanup and the kept source.
+
+            setenv("SINGULARITY_HOME", "D:")
+            setenv("PROJECT_FOLDER", "CCIR_01211")
+            this.assumeTrue(isfolder(lm_path), lm_path)
+            if isempty(gcp('nocreate'))
+                parpool("Processes", 5)  % explicit: MATTA's default profile was the retired CHPC cluster
+            end
+
+            tic
+            mlsiemens.BrainMoCo2.create_fdg_phantom(lm_path, static_tau=300, clean=true);
+            toc
+
+            pet_path = fullfile(myfileparts(lm_path), "pet");
+            static = mglob(fullfile(pet_path, "*createNiftiStatic*-static.nii.gz"));
+            simple = mglob(fullfile(pet_path, "*createNiftiSimple*-static.nii.gz"));
+            moving = mglob(fullfile(pet_path, "*createNiftiMovingAvgFrames.nii.gz"));
+            this.verifyNotEmpty(static, pet_path)
+            this.verifyNotEmpty(simple, pet_path)
+            this.verifyNotEmpty(moving, pet_path)
+            for f = [static, simple, moving]
+                j = jsondecode(fileread(strrep(f, ".nii.gz", ".json")));
+                this.verifyEqual(j.TracerRadionuclide, 'F-18', f)
+                this.verifyNotEqual(j.Radiopharmaceutical, 'Oxygen', f)
+            end
+            if ~isempty(simple)
+                j = jsondecode(fileread(strrep(simple(1), ".nii.gz", ".json")));
+                this.verifyEqual(j.FrameDuration, 300, simple(1))
+                this.verifyTrue(all(j.FramesRead), simple(1))
+            end
+            this.verifyEmpty(mglob(fullfile(myfileparts(lm_path), "lm-*", "*.ptd")))  % duplicates cleaned
+            this.verifyNotEmpty(mglob(fullfile(lm_path, "*LISTMODE*.ptd")))           % source kept
         end
     end
     
