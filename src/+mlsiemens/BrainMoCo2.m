@@ -307,15 +307,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 this.recon_params = bmcp;
                 [~,r] = this.cscript_bmc(this.source_lm_path, bmcp.fqfilename);
                 disp(r)
-                % move output/* to source_ses_path
-                g = asrow(globFolders(fullfile(this.output_path, '*')));
-                for gidx = 1:length(g)
-                    try
-                        movefile(g{gidx}, this.source_ses_path)
-                    catch ME
-                        handwarning(ME)
-                    end
-                end
+                this.move_own_output();
             end
 
             % IF2Dicom & IF2MIP
@@ -365,15 +357,7 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             [~,r] = this.cscript_bmc(this.source_lm_path, bmcp.fqfilename);
             disp(r)
 
-            % move output/* to source_ses_path
-            g = asrow(globFolders(fullfile(this.output_path, '*')));
-            for gidx = 1:length(g)
-                try
-                    movefile(g{gidx}, this.source_ses_path)
-                catch ME
-                    handwarning(ME)
-                end
-            end
+            this.move_own_output();
 
             % IF2Dicom & IF2MIP
             if opts.doIF2Dicom 
@@ -580,6 +564,27 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             save(this.source_sub_table_fqfn, "T");
         end
         
+        function moved = move_own_output(this)
+            %% moves this recon's results, output_path/<lm_prefix>-*, e.g. +Output/lm-start8-DynamicBMC,
+            %  to source_ses_path.  Parallel recons (create_v_moving_average's parfor) share one
+            %  output_path, so moving all of +Output/* moved other workers' unfinished results
+            %  (MATLAB:MOVEFILE:OSError; BMC.js "Permission denied") and split their folders.
+            %  The "-" after lm_prefix keeps lm-start1 from matching lm-start10-*.
+            %  Returns the folders moved.
+
+            g = mglob(fullfile(this.output_path, this.lm_prefix + "-*"));
+            g = g(isfolder(g));
+            moved = strings(1, 0);
+            for gi = 1:numel(g)
+                try
+                    movefile(g(gi), this.source_ses_path);
+                    moved = [moved, g(gi)]; %#ok<AGROW>
+                catch ME
+                    handwarning(ME)
+                end
+            end
+        end
+
         function check_env(this)
             % e7 requirements
             assert(strcmpi('PCWIN64', computer), ...
