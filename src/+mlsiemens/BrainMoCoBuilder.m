@@ -1059,6 +1059,23 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     "%s: ct_series is empty; find_ct() will guess among the day's CTs", stackstr())
             end
 
+            % resolve the listmode within the phantom's own export:  exactly one file, so that links
+            % left in a shared workdir by other staging (e.g., the subject's own scans) never match
+            lm_src = mglob(fullfile(opts.visionlmdir, opts.lm_folder, "**", opts.lm_pattern));
+            if isempty(lm_src)
+                error("mlsiemens:FileNotFoundError", "%s: no %s in %s", stackstr(), ...
+                    opts.lm_pattern, fullfile(opts.visionlmdir, opts.lm_folder))
+            end
+            if numel(lm_src) > 1 && opts.lm_select ~= "last"
+                error("mlsiemens:ValueError", "%s: %s matches %i listmode files in %s; name one:\n%s", ...
+                    stackstr(), opts.lm_pattern, numel(lm_src), opts.lm_folder, join(lm_src, newline))
+            end
+            lm_pattern = opts.lm_pattern;
+            if isscalar(lm_src)
+                [~, f, x] = fileparts(lm_src);
+                lm_pattern = string(f) + string(x);
+            end
+
             bmcblmdir = fullfile(opts.workdir, "sub-" + sub_num, "lm");
             bmcbdcmpetdir = fullfile(opts.workdir, "sub-" + sub_num, "dcm", "pet");
             link_into(bmcblmdir, fullfile(opts.visionlmdir, opts.lm_folder));
@@ -1071,7 +1088,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             bmcb = mlsiemens.BrainMoCoBuilder( ...
                 raw_lm_path=bmcblmdir, ...
                 ct_series=opts.ct_series, ...
-                lm_pattern=opts.lm_pattern, ...
+                lm_pattern=lm_pattern, ...
                 lm_select=opts.lm_select);
             if opts.do_build_rawdata
                 bmcb.build_rawdata( ...
@@ -1122,7 +1139,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.manifest {mustBeTextScalar} = ""
                 opts.subs string = string.empty
                 opts.status string = "ready"
-                opts.workdir {mustBeTextScalar} = "/vgpool02/data2/jjlee/bmcbuilder"
+                opts.workdir {mustBeTextScalar} = "/vgpool02/data2/jjlee/bmcbuilder/crosscal"  % apart from subjects' own
             end
             if isemptytext(opts.manifest)
                 T = mlsiemens.BrainMoCoBuilder.read_crosscal_manifest();
