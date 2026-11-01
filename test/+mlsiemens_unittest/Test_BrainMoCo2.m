@@ -35,6 +35,28 @@ classdef Test_BrainMoCo2 < matlab.unittest.TestCase
             end
         end
 
+        function test_bmc_js_state(this)
+            % lines 1476-1480 of Siemens BMC.js as on MATTA, tab-indented, CRLF
+            t = char(9);
+            head = [ ...
+                string(repmat(t, 1, 4)) + "FName = BMCInput + ""-LM-00-dynamic_mc"" + ii + "".mhdr"";", ...
+                string(repmat(t, 1, 4)) + "if( fso.FileExists( FName ) ){", ...
+                string(repmat(t, 1, 5)) + "fso.CopyFile( BMCInput + ""-LM-00-dynamic_mc"" + ""*"", OutDYN + ""\\"" );"];
+            tail = string(repmat(t, 1, 4)) + "}";
+            brk = string(repmat(t, 1, 5)) + "break; // jjlee 2026-10-31: the wildcard copies every frame";
+
+            write = @(name, ls) writelines(join(ls, sprintf('\r\n')), fullfile(this.tmp, name));
+            write("orig.js", [head, tail]);
+            write("patched.js", [head, brk, tail]);
+            write("other.js", ["var x = 1;", "fso.CopyFile( a, b );"]);
+
+            B = @mlsiemens.BrainMoCo2.bmc_js_state;
+            this.verifyEqual(B(fullfile(this.tmp, "orig.js")), "unpatched")
+            this.verifyEqual(B(fullfile(this.tmp, "patched.js")), "patched")
+            this.verifyEqual(B(fullfile(this.tmp, "other.js")), "unrecognized")
+            this.verifyEqual(B(fullfile(this.tmp, "absent.js")), "absent")
+        end
+
         function test_move_own_output_none(this)
             ses = fullfile(this.tmp, "sub-1", "ses-1");
             mkdir(fullfile(ses, "lm-start2"));

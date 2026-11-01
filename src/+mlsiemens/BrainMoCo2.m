@@ -598,6 +598,16 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             assert(isfile(this.jsrecon_js))
             assert(isfile(fullfile(this.inki_home, 'coregister.exe')))
             assert(isfile(fullfile(getenv("JJL_HOME"), "MyBMCProject", "MyVisionParams.txt")))
+
+            % Siemens BMC.js copies all dynamic frames once per frame unless patched; see bmc_js_state()
+            bmc_js = fullfile(this.jsrecon_home, "BrainMotionCorrection", "BMC.js");
+            state = mlsiemens.BrainMoCo2.bmc_js_state(bmc_js);
+            if state ~= "patched"
+                warning("mlsiemens:RuntimeWarning", ...
+                    "%s: %s is %s; its Dynamic BMC collection copies every frame once per frame " + ...
+                    "(~97 GB per 29-frame start for sub-108293).  Add ""break;"" after the " + ...
+                    "dynamic_mc wildcard CopyFile, as on MATTA 2026-10-31.", stackstr(), bmc_js, state)
+            end
         end
     end
 
@@ -1980,6 +1990,40 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                     fullfile(ses_path, opts.lm_prefix + opts.tag + "*" + opts.folder_tag))
             end
             v_fqfn = g(1);
+        end
+
+        function state = bmc_js_state(fqfn)
+            %% "patched" | "unpatched" | "unrecognized" | "absent" for Siemens' BMC.js.
+            %  Its "Collecting results -> Dynamic BMC" loop runs, for each frame ii,
+            %      fso.CopyFile( BMCInput + "-LM-00-dynamic_mc" + "*", OutDYN + "\\" );
+            %  whose wildcard copies all frames, so NFrames iterations write NFrames^2 frames.
+            %  "patched":  that CopyFile is followed by break;  (MATTA, 2026-10-31; SHA-256
+            %      6a5e0af74370162791ad7c260ff327ff6312d9ba37527586ec4f26f96d9c21d4)
+            %  "unpatched":  that CopyFile is present without break;  (Siemens original SHA-256
+            %      baafb92b4cc66b3bf943467244cb4c8a996c3c23c643a55613ef1001f567ba2d)
+            %  "unrecognized":  no such CopyFile, e.g., a different BMC.js version; not judged
+            %  Judged by code, not hash, so comments or line endings don't matter.
+
+            arguments
+                fqfn {mustBeTextScalar}
+            end
+            if ~isfile(fqfn)
+                state = "absent";
+                return
+            end
+            lines = strip(readlines(fqfn));
+            idx = find(contains(lines, "CopyFile") & contains(lines, "dynamic_mc"" + ""*"""), 1);
+            if isempty(idx)
+                state = "unrecognized";
+                return
+            end
+            following = lines(idx+1:end);
+            following = following(strlength(following) > 0 & ~startsWith(following, "//"));
+            if ~isempty(following) && startsWith(following(1), "break;")
+                state = "patched";
+            else
+                state = "unpatched";
+            end
         end
 
         function ic = interp1_missing(ic, opts)
