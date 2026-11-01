@@ -27,12 +27,17 @@ classdef Test_BrainMoCoBuilder < matlab.unittest.TestCase
         end
 
         function test_stage_skips_blocked_rows(this)
-            % blocked rows are reported as skipped with their reason, and nothing is staged
-            report = mlsiemens.BrainMoCoBuilder.stage_crosscal_phantoms(subs=["108250", "108237"]);
-            this.verifyEqual(sort(report.sub), ["108237"; "108250"])
+            % blocked rows are reported as skipped with their reason, and nothing is staged;
+            % rows are chosen from the manifest's current statuses, which change as phantoms unblock
+            T = mlsiemens.BrainMoCoBuilder.read_crosscal_manifest();
+            blocked = T(startsWith(T.status, "blocked"), :);
+            this.assumeNotEmpty(blocked, "no blocked rows left in the manifest")
+            report = mlsiemens.BrainMoCoBuilder.stage_crosscal_phantoms(subs=blocked.sub');
+            this.verifyEqual(sort(report.sub), sort(blocked.sub))
             this.verifyTrue(all(report.outcome == "skipped"))
-            this.verifyEqual(report.detail(report.sub == "108237"), "blocked_no_lm")
-            this.verifyEqual(report.detail(report.sub == "108250"), "blocked_no_ct")
+            for si = 1:height(blocked)
+                this.verifyEqual(report.detail(report.sub == blocked.sub(si)), blocked.status(si))
+            end
         end
 
         function test_stage_unknown_sub_fails_loudly(this)
