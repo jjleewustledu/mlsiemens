@@ -1023,7 +1023,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %      sub_num (text):  e.g., "108293"
             %      opts.lm_folder (text):  glob of listmode export folder(s), relative to opts.visionlmdir
             %      opts.dcm_folder (text):  glob of DICOM folder(s), relative to opts.petdcmdir, or an
-            %          absolute path, e.g., CT fetched from CNDA by bin/cnda_fetch_ct.py
+            %          absolute path, e.g., CT fetched from CNDA with the global cnda skill
             %      opts.lm_pattern (text):  glob of listmode within the export, e.g., an exact .ptd name
             %      opts.lm_select (text):  "all" | "last"; "last" keeps only the day's latest listmode
             %      opts.ct_series (double):  CT series in H.U. for attenuation; strongly recommended
