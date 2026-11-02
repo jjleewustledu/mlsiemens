@@ -17,11 +17,14 @@ classdef Test_BrainMoCoBuilder < matlab.unittest.TestCase
             this.verifyEqual(r.ses, "20230220122457")
 
             r = T(T.sub == "108293", :);
-            this.verifyEqual(r.ct_series, "16")
+            this.verifyEqual(r.ct_series, "15")  % AC CT (500 mm) since the 2026-11-01 relaunch; 16 = display CT
             this.verifyEqual(r.series_pet{1}, ["15", "16", "17", "18"])
 
-            % rows that can be staged must name listmode, DICOM and CT
+            % rows that can be staged must name listmode, DICOM and CT, and convert the CT series
             ok = ismember(T.status, ["ready", "staged"]);
+            for ri = find(ok)'
+                this.verifyTrue(ismember(T.ct_series(ri), T.series_pet{ri}), T.sub(ri))
+            end
             this.verifyTrue(all(strlength(T.lm_folder(ok)) > 0 & strlength(T.dcm_folder(ok)) > 0 & ...
                 strlength(T.ct_series(ok)) > 0))
         end
