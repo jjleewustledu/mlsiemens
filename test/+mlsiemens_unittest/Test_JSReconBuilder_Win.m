@@ -115,6 +115,12 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
 
             this.assumeTrue(isfolder("/vgpool02/data2/listmode/vision"), "requires vglab2")
             setenv("SINGULARITY_HOME", "/vgpool02/data2/jjlee/stage")
+            % TestClassSetup forces PROJECT_FOLDER=CCIR_01211; a separate staging tree (e.g., the
+            % AC-CT test) must be requested with CROSSCAL_PROJECT_FOLDER, applied here, after it.
+            if ~isemptytext(getenv("CROSSCAL_PROJECT_FOLDER"))
+                setenv("PROJECT_FOLDER", getenv("CROSSCAL_PROJECT_FOLDER"))
+            end
+            expected_root = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), "sourcedata");
             subs = string.empty;
             if ~isemptytext(getenv("SUBS"))
                 subs = split(string(getenv("SUBS")))';
@@ -129,6 +135,8 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             this.verifyEmpty(report.sub(report.outcome == "failed"), join(report.detail, newline))
             staged = report(report.outcome == "staged", :);
             this.verifyNotEmpty(staged)
+            this.verifyTrue(all(startsWith(staged.detail, expected_root)), ...
+                "staged outside " + expected_root + ": " + join(staged.detail, ", "))
             for si = 1:height(staged)
                 lm = fullfile(staged.detail(si), "lm");
                 this.verifyNumElements(mglob(fullfile(lm, "*LISTMODE*.ptd")), 1, lm)
