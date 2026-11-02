@@ -1991,8 +1991,52 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ifc = mlfourd.ImagingFormatContext2(zeros(e7.matrix_size, "single"));
             ifc.filesuffix = ".nii.gz";
             ifc.hdr = e7.nifti_hdr(ifc.hdr);
-            ifc.json_metadata = e7.json_metadata(include_frame=opts.include_frame);
+            j = e7.json_metadata(include_frame=opts.include_frame);
+            j.umap_source = mlsiemens.BrainMoCo2.umap_source(fileparts(fileparts(opts.v_fqfn)));
+            ifc.json_metadata = j;
             proto = mlfourd.ImagingContext2(ifc);
+        end
+
+        function s = umap_source(ses_path)
+            %% the CT series whose DICOMs BMC turned into the mu-map:  ses_path/lm/CT, else the first
+            %  ses_path/lm-*/CT.  state "measured" with SeriesNumber, SeriesDescription,
+            %  ReconstructionDiameter (FOV, mm), ConvolutionKernel, AcquisitionTime, TableHeight;
+            %  else state "unmeasured" with the reason, never an empty pass.  Distinguishes the
+            %  500-mm "AC CT" from the 300-mm display CT, which crops the couch (SPEC-TRACE-108293).
+
+            arguments
+                ses_path {mustBeTextScalar}
+            end
+            s = struct("state", "unmeasured", "reason", "no lm/CT or lm-*/CT under " + string(ses_path));
+            cands = [string(fullfile(ses_path, "lm", "CT")), mglob(fullfile(ses_path, "lm-*", "CT"))];
+            for c = asrow(cands)
+                if ~isfolder(c)
+                    continue
+                end
+                d = dir(fullfile(c, "*.dcm"));
+                if isempty(d)
+                    d = dir(c);
+                    d = d(~[d.isdir]);
+                end
+                if isempty(d)
+                    s.reason = "no files in " + c;
+                    continue
+                end
+                try
+                    info = dicominfo(fullfile(d(1).folder, d(1).name));
+                    fields = ["SeriesNumber", "SeriesDescription", "ReconstructionDiameter", ...
+                        "ConvolutionKernel", "AcquisitionTime", "TableHeight"];
+                    s = struct("state", "measured", "path", c);
+                    for f = fields
+                        if isfield(info, f)
+                            s.(f) = info.(f);
+                        end
+                    end
+                    return
+                catch ME
+                    s.reason = "dicominfo failed on " + c + ": " + ME.message;
+                end
+            end
         end
 
         function v_fqfn = find_v_prototype(ses_path, opts)

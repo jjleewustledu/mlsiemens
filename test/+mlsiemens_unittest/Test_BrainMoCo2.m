@@ -57,6 +57,26 @@ classdef Test_BrainMoCo2 < matlab.unittest.TestCase
             this.verifyEqual(B(fullfile(this.tmp, "absent.js")), "absent")
         end
 
+        function test_umap_source(this)
+            % sidecars name the CT series that built the mu-map; absence is "unmeasured", not a pass
+            ses = fullfile(this.tmp, "sub-1", "ses-1");
+            mkdir(fullfile(ses, "lm"));
+            s = mlsiemens.BrainMoCo2.umap_source(ses);
+            this.verifyEqual(s.state, "unmeasured")
+
+            mkdir(fullfile(ses, "lm", "CT"));
+            ct_sop = '1.2.840.10008.5.1.4.1.1.2';  % CT Image Storage; dicomwrite wants char, not string
+            md = struct('SOPClassUID', ct_sop, 'MediaStorageSOPClassUID', ct_sop, ...
+                'Modality', 'CT', 'SeriesNumber', 2, 'SeriesDescription', 'AC   CT Brain  3.0  Hr38', ...
+                'ReconstructionDiameter', 500, 'ConvolutionKernel', 'Hr38f', 'TableHeight', 99);
+            dicomwrite(zeros(4, 4, "uint16"), fullfile(ses, "lm", "CT", "a.dcm"), md, CreateMode="Copy");
+            s = mlsiemens.BrainMoCo2.umap_source(ses);
+            this.verifyEqual(s.state, "measured")
+            this.verifyEqual(double(s.SeriesNumber), 2)
+            this.verifyEqual(double(s.ReconstructionDiameter), 500)
+            this.verifyTrue(contains(string(s.SeriesDescription), "AC"))
+        end
+
         function test_move_own_output_none(this)
             ses = fullfile(this.tmp, "sub-1", "ses-1");
             mkdir(fullfile(ses, "lm-start2"));
