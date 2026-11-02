@@ -61,6 +61,37 @@ classdef Test_BrainMoCoBuilder < matlab.unittest.TestCase
             this.verifyError(@() bmcb.find_ct(dt=dt, ct_series=7), "mlsiemens:FileNotFoundError")
         end
 
+        function test_symlink_staging_refuses_silent_relink(this)
+            % re-staging may not re-point lm/CT (the mu-map CT) or listmode links unless relink=true
+            tmp = string(tempname);
+            this.addTeardown(@() rmdir(tmp, "s"))
+            env0 = {getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER")};
+            this.addTeardown(@() setenv("SINGULARITY_HOME", env0{1}))
+            this.addTeardown(@() setenv("PROJECT_FOLDER", env0{2}))
+            setenv("SINGULARITY_HOME", tmp); setenv("PROJECT_FOLDER", "P");
+            mkdir(fullfile(tmp, "src", "ct3")); mkdir(fullfile(tmp, "src", "ct2"));
+            writelines("n", fullfile(tmp, "src", "x.PET_CALIBRATION.ptd"));
+            writelines("l", fullfile(tmp, "src", "x.PET_LISTMODE.ptd"));
+            bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=fullfile(tmp, "raw", "sub-1", "lm"));
+            s = struct("datetimestr", "20230220122457", "ct", fullfile(tmp, "src", "ct3"), ...
+                "norm", fullfile(tmp, "src", "x.PET_CALIBRATION.ptd"), "ptd", fullfile(tmp, "src", "x.PET_LISTMODE.ptd"));
+            ct_link = fullfile(tmp, "P", "sourcedata", "sub-1", "ses-20230220122457", "lm", "CT");
+
+            bmcb.build_sourcedata_lm(s, do_symlink=true);
+            bmcb.build_sourcedata_lm(s, do_symlink=true);  % same targets: idempotent
+            [~, r] = system("readlink '" + ct_link + "'");
+            this.verifyEqual(strtrim(string(r)), string(s.ct))
+
+            s2 = s; s2.ct = fullfile(tmp, "src", "ct2");
+            this.verifyError(@() bmcb.build_sourcedata_lm(s2, do_symlink=true), "mlsiemens:StagingError")
+            [~, r] = system("readlink '" + ct_link + "'");
+            this.verifyEqual(strtrim(string(r)), string(s.ct))  % unchanged after refusal
+
+            bmcb.build_sourcedata_lm(s2, do_symlink=true, relink=true);
+            [~, r] = system("readlink '" + ct_link + "'");
+            this.verifyEqual(strtrim(string(r)), string(s2.ct))
+        end
+
         function test_stage_unknown_sub_fails_loudly(this)
             this.verifyError(@() mlsiemens.BrainMoCoBuilder.stage_crosscal_phantoms(subs="999999"), ...
                 "mlsiemens:ValueError")

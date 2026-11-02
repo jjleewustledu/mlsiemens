@@ -118,6 +118,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.series_pet {mustBeText} = ""
                 opts.dcm_sessions {mustBeMember(opts.dcm_sessions, ["date", "listmode"])} = "date"
                 opts.do_symlink logical = false
+                opts.relink logical = false
             end
 
             this.build_raw_dcm(do_pet=opts.do_pet, do_mri=opts.do_mri, series_pet=opts.series_pet)
@@ -134,7 +135,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                     this.build_sourcedata_dcm_by_lm(map);
             end
             for k = asrow(keys) % *LISTMODE*
-                this.build_sourcedata_lm(map(k{1}), do_symlink=opts.do_symlink);
+                this.build_sourcedata_lm(map(k{1}), do_symlink=opts.do_symlink, relink=opts.relink);
             end
         end
 
@@ -590,15 +591,34 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
         function build_sourcedata_lm(this, s, opts)
             %% migrates to sourcedata; use rsync -aL to rsync listmode to Windows/e7
             %  opts.do_symlink:  symlink CT folder, norm and listmode rather than copying them.
+            %  opts.relink:  allow an existing link to be re-pointed to a different target.  Without
+            %      it, staging that would change where lm/CT or a listmode link points is an error:
+            %      a re-stage must not silently swap, e.g., the mu-map CT of a session already staged
+            %      and copied downstream (2026-11-01, sub-108284).
 
             arguments
                 this mlsiemens.BrainMoCoBuilder
                 s struct
                 opts.do_symlink logical = false
+                opts.relink logical = false
             end
 
             lm_path = fullfile(this.sourcedata, this.sub, "ses-"+string(s.datetimestr), "lm");
             if opts.do_symlink
+                [~, fn, xn] = fileparts(s.norm);
+                [~, fp, xp] = fileparts(s.ptd);
+                links = [string(fullfile(lm_path, "CT")), string(fullfile(lm_path, string(fn) + xn)), ...
+                    string(fullfile(lm_path, string(fp) + xp))];
+                targets = [string(s.ct), string(s.norm), string(s.ptd)];
+                for li = 1:numel(links)
+                    [st_, now_] = system(sprintf("readlink '%s'", links(li)));
+                    now_ = strtrim(string(now_));
+                    if st_ == 0 && now_ ~= targets(li) && ~opts.relink
+                        error("mlsiemens:StagingError", ...
+                            "%s: %s already points to %s, not %s; pass relink=true to re-point it", ...
+                            stackstr(), links(li), now_, targets(li));
+                    end
+                end
                 % one shell call; single quotes because export paths contain spaces and parens
                 [st, r] = mysystem(sprintf( ...
                     "mkdir -p '%s' && ln -sfn '%s' '%s/CT' && ln -sf '%s' '%s/' && ln -sf '%s' '%s/'", ...
@@ -1053,6 +1073,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.link_prefix {mustBeTextScalar} = ""
                 opts.do_symlink logical = true
                 opts.do_build_rawdata logical = true
+                opts.relink logical = false  % re-point links of an already staged session
             end
             sub_num = string(sub_num);
             series_pet = string(opts.series_pet);
@@ -1098,7 +1119,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             if opts.do_build_rawdata
                 bmcb.build_rawdata( ...
                     do_pet=true, do_mri=false, series_pet=series_pet, ...
-                    dcm_sessions="listmode", do_symlink=opts.do_symlink);
+                    dcm_sessions="listmode", do_symlink=opts.do_symlink, relink=opts.relink);
             end
 
             function link_into(dest, source_glob)
@@ -1145,6 +1166,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.subs string = string.empty
                 opts.status string = "ready"
                 opts.workdir {mustBeTextScalar} = "/vgpool02/data2/jjlee/bmcbuilder/crosscal"  % apart from subjects' own
+                opts.relink logical = false  % e.g., restaging with a different mu-map CT
             end
             if isemptytext(opts.manifest)
                 T = mlsiemens.BrainMoCoBuilder.read_crosscal_manifest();
@@ -1175,7 +1197,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                         lm_pattern=r.lm_pattern, ...
                         ct_series=str2double(r.ct_series), ...
                         series_pet=r.series_pet{1}, ...
-                        workdir=opts.workdir);
+                        workdir=opts.workdir, ...
+                        relink=opts.relink);
                     ses_path = fullfile(getenv("SINGULARITY_HOME"), getenv("PROJECT_FOLDER"), ...
                         "sourcedata", "sub-" + r.sub, "ses-" + r.ses);
                     if ~isfolder(fullfile(ses_path, "lm"))
