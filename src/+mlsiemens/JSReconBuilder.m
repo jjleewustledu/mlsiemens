@@ -169,6 +169,7 @@ classdef JSReconBuilder < handle & mlsystem.IHandle
                 try
                     pwd0 = pushd(g{gi});
                     [~,r] = mlpipeline.Bids.dcm2niix(g{gi});
+                    mlsiemens.NiftiZSpacingGuard.apply_folder(g{gi}, recursive=true);  % console PET z spacing
                     fprintf("%s:\n", stackstr())
                     disp(r)
 
@@ -217,7 +218,8 @@ classdef JSReconBuilder < handle & mlsystem.IHandle
                     dns = unique(dns);
                     if ~isempty(dns)
                         for d = asrow(dns)
-                            mlpipeline.Bids.dcm2niix(d{1});
+                            mlpipeline.Bids.dcm2niix(d{1});  % writes to pwd
+                            mlsiemens.NiftiZSpacingGuard.apply_folder(pwd);  % console PET z spacing
                         end
                     end   
                 catch ME

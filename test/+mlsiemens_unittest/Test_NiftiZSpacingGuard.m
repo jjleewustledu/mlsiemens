@@ -37,7 +37,7 @@ classdef Test_NiftiZSpacingGuard < matlab.unittest.TestCase
             this.verifyEqual(j.header_repair.old_value_mm, double(single(this.ROUNDED)), AbsTol=1e-9)
             this.verifyEqual(j.header_repair.new_value_mm, this.THICKNESS, AbsTol=1e-9)
             this.verifySubstring(string(j.header_repair.cause), "rounded to 0.01 mm")
-            this.verifySubstring(string(j.header_repair.tool.function), "NiftiZSpacingGuard")
+            this.verifySubstring(string(j.header_repair.tool.name), "NiftiZSpacingGuard")
             this.verifyTrue(isfield(j.header_repair.tool, "code_provenance"))
             this.verifyNotEmpty(j.header_repair.date)
             this.verifyEqual(j.Modality, 'PT')  % rest of the sidecar intact
@@ -118,7 +118,7 @@ classdef Test_NiftiZSpacingGuard < matlab.unittest.TestCase
         function test_no_json_not_applicable(this)
             fqfn = this.make_fixture("nojson", this.ROUNDED, "PT", this.THICKNESS);
             delete(this.json_for(fqfn));
-            [b0, ~] = this.snapshot(fqfn);
+            b0 = this.file_bytes(fqfn);
             rep = mlsiemens.NiftiZSpacingGuard.apply(fqfn);
             this.verifyEqual(rep.state, "not_applicable")
             this.verifyEqual(this.file_bytes(fqfn), b0)

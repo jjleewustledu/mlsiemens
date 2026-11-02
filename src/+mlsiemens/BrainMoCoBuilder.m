@@ -1371,6 +1371,8 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %      version (numeric):  [] | 20180622 | 20180627 | 20230411
             %      w : write behavior for name conflicts (0,1,2, default 2: 0=skip duplicates, 1=overwrite, 2=add suffix)
             %      z : gz compress images (y/o/i/n/3, default n) [y=pigz, o=optimal pigz, i=internal:zlib, n=no, 3=no,3D]
+            %      zspacing_guard logical = true:  apply mlsiemens.NiftiZSpacingGuard to each PT output,
+            %           repairing pixdim[3]/srow_z[2] derived from 0.01-mm-rounded console slice positions
             %
             %  Returns:
             %      s : mysystem status
@@ -1393,6 +1395,7 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 opts.toglob_mhdr {mustBeTextScalar} = "*.mhdr"
                 opts.toglob_vhdr {mustBeTextScalar} = "*.v.hdr"
                 opts.series {mustBeTextScalar} = "**"
+                opts.zspacing_guard logical = true
             end
             tempfolder = fullfile(folder, "temp");
             
@@ -1445,6 +1448,10 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
                 g = glob(fullfile(tempfolder, '*.nii.gz'));
                 if ~isempty(g)
                     j = append_json(g, folders{fidx});
+                    if opts.zspacing_guard
+                        % console PET slice positions are rounded to 0.01 mm; see NiftiZSpacingGuard
+                        cellfun(@mlsiemens.NiftiZSpacingGuard.apply, g, UniformOutput=false);
+                    end
                     cellfun(@(x) movefile(x, folder), g, UniformOutput=false);
                     cellfun(@(x) movefile(x, folder), j, UniformOutput=false);
                 end
