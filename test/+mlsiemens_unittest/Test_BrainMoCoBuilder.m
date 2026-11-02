@@ -12,7 +12,7 @@ classdef Test_BrainMoCoBuilder < matlab.unittest.TestCase
 
             r = T(T.sub == "108284", :);
             this.verifyTrue(ismember(r.status, ["ready", "staged"]), r.status)
-            this.verifyEqual(r.ct_series, "3")
+            this.verifyTrue(ismember(r.ct_series, ["2", "3"]), r.ct_series)  % AC CT (2) or display CT (3)
             this.verifyEqual(r.series_pet{1}, ["2", "3"])
             this.verifyEqual(r.ses, "20230220122457")
 
@@ -38,6 +38,27 @@ classdef Test_BrainMoCoBuilder < matlab.unittest.TestCase
             for si = 1:height(blocked)
                 this.verifyEqual(report.detail(report.sub == blocked.sub(si)), blocked.status(si))
             end
+        end
+
+        function test_find_ct_explicit_ac_series(this)
+            % a phantom session with an AC CT (500-mm FOV, series 2) and a display CT (300 mm, 3)
+            tmp = string(tempname);
+            this.addTeardown(@() rmdir(tmp, "s"))
+            pet = fullfile(tmp, "sub-1", "dcm", "pet");
+            mkdir(pet);
+            names = ["sub-1_ses-20230220122224_AC_CT_Brain_3.0_Hr38-2", ...
+                     "sub-1_ses-20230220122224_CT_Brain_3.0_Hr38_1-3"];
+            for n = names
+                writelines("x", fullfile(pet, n + ".nii.gz"));
+                writelines(jsonencode(struct("dicom_folder", "/dcm/" + n)), fullfile(pet, n + ".json"));
+            end
+            bmcb = mlsiemens.BrainMoCoBuilder(raw_lm_path=fullfile(tmp, "sub-1", "lm"));
+            dt = datetime(2023, 2, 20, 12, 24, 57, TimeZone="local");
+
+            this.verifyEqual(string(bmcb.find_ct(dt=dt)), "/dcm/" + names(2))               % default: display CT
+            this.verifyEqual(string(bmcb.find_ct(dt=dt, ct_series=2)), "/dcm/" + names(1))  % explicit AC CT
+            this.verifyEqual(string(bmcb.find_ct(dt=dt, ct_series=3)), "/dcm/" + names(2))
+            this.verifyError(@() bmcb.find_ct(dt=dt, ct_series=7), "mlsiemens:FileNotFoundError")
         end
 
         function test_stage_unknown_sub_fails_loudly(this)

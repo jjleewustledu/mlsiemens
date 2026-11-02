@@ -782,6 +782,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             %  opts.ct_series:  if nonempty, accept only these series numbers.  Recommended whenever
             %      one day has several CTs:  dcm2niix names files by study time, not acquisition time,
             %      so every CT of a study ties on datetime and the default choice is arbitrary.
+            %      An explicit series may be an "AC CT" (Siemens' 500-mm-FOV attenuation CT); without
+            %      one, AC CTs are excluded as before and the 300-mm display CT is chosen, which crops
+            %      the couch from the mu-map (SPEC-TRACE-108293 round 12).
 
             arguments
                 this mlsiemens.BrainMoCoBuilder
@@ -793,7 +796,9 @@ classdef BrainMoCoBuilder < handle & mlsystem.IHandle
             
             % glob CTs
             g = glob(fullfile(this.raw_dcm_pet_path, '*_CT_*.nii.gz')); 
-            g = g(~contains(g, '_AC_CT_'));
+            if isempty(opts.ct_series)
+                g = g(~contains(g, '_AC_CT_'));  % default:  display CT, as before
+            end
             assert(~isemptytext(g))
             for gidx = 1:length(g)
                 % find CT datetimes, series
