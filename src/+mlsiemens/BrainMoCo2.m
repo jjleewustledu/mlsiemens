@@ -1998,6 +1998,28 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             proto = mlfourd.ImagingContext2(ifc);
         end
 
+        function s = relative_ct_time(s, ses_path)
+            %% adds AcquisitionTimeRelativeToListmodeStart (s; negative = CT before PET): the CT's
+            %  DICOM AcquisitionDate/Time (scanner local time) minus the listmode start encoded in
+            %  ses-<yyyyMMddHHmmss> (same local clock, 1-s resolution).  The e7 "GMT" is not used:
+            %  the console offsets it 6 h without DST.  NaN with a note if either time is missing.
+            ses = regexp(string(ses_path), "ses-(?<dt>\d{14})", "names", "once");
+            s.AcquisitionTimeNote = "AcquisitionDate/Time: DICOM, scanner local time; " + ...
+                "AcquisitionTimeRelativeToListmodeStart: seconds from ses-<yyyyMMddHHmmss> (1-s resolution)";
+            s.AcquisitionTimeRelativeToListmodeStart = NaN;
+            if isempty(ses) || ~isfield(s, "AcquisitionDate") || ~isfield(s, "AcquisitionTime")
+                return
+            end
+            tok = regexp(string(s.AcquisitionTime), "^(\d{2})(\d{2})(\d{2}(?:\.\d+)?)", "tokens", "once");
+            if isempty(tok)
+                return
+            end
+            ct = datetime(string(s.AcquisitionDate), InputFormat="yyyyMMdd") + ...
+                hours(str2double(tok(1))) + minutes(str2double(tok(2))) + seconds(str2double(tok(3)));
+            lm = datetime(ses.dt, InputFormat="yyyyMMddHHmmss");
+            s.AcquisitionTimeRelativeToListmodeStart = seconds(ct - lm);
+        end
+
         function s = code_provenance()
             %% the mlsiemens checkout that built a product:  commit SHA, whether tracked files were
             %  modified, and its path; state "unmeasured" with a reason if git cannot say.
@@ -2043,13 +2065,14 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
                 try
                     info = dicominfo(fullfile(d(1).folder, d(1).name));
                     fields = ["SeriesNumber", "SeriesDescription", "ReconstructionDiameter", ...
-                        "ConvolutionKernel", "AcquisitionTime", "TableHeight"];
+                        "ConvolutionKernel", "AcquisitionDate", "AcquisitionTime", "TableHeight"];
                     s = struct("state", "measured", "path", c);
                     for f = fields
                         if isfield(info, f)
                             s.(f) = info.(f);
                         end
                     end
+                    s = mlsiemens.BrainMoCo2.relative_ct_time(s, ses_path);
                     return
                 catch ME
                     s.reason = "dicominfo failed on " + c + ": " + ME.message;

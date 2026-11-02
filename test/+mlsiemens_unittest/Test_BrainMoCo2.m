@@ -59,7 +59,7 @@ classdef Test_BrainMoCo2 < matlab.unittest.TestCase
 
         function test_umap_source(this)
             % sidecars name the CT series that built the mu-map; absence is "unmeasured", not a pass
-            ses = fullfile(this.tmp, "sub-1", "ses-1");
+            ses = fullfile(this.tmp, "sub-1", "ses-20230220122457");
             mkdir(fullfile(ses, "lm"));
             s = mlsiemens.BrainMoCo2.umap_source(ses);
             this.verifyEqual(s.state, "unmeasured")
@@ -68,13 +68,15 @@ classdef Test_BrainMoCo2 < matlab.unittest.TestCase
             ct_sop = '1.2.840.10008.5.1.4.1.1.2';  % CT Image Storage; dicomwrite wants char, not string
             md = struct('SOPClassUID', ct_sop, 'MediaStorageSOPClassUID', ct_sop, ...
                 'Modality', 'CT', 'SeriesNumber', 2, 'SeriesDescription', 'AC   CT Brain  3.0  Hr38', ...
-                'ReconstructionDiameter', 500, 'ConvolutionKernel', 'Hr38f', 'TableHeight', 99);
+                'ReconstructionDiameter', 500, 'ConvolutionKernel', 'Hr38f', 'TableHeight', 99, ...
+                'AcquisitionDate', '20230220', 'AcquisitionTime', '122348.150000');
             dicomwrite(zeros(4, 4, "uint16"), fullfile(ses, "lm", "CT", "a.dcm"), md, CreateMode="Copy");
             s = mlsiemens.BrainMoCo2.umap_source(ses);
             this.verifyEqual(s.state, "measured")
             this.verifyEqual(double(s.SeriesNumber), 2)
             this.verifyEqual(double(s.ReconstructionDiameter), 500)
             this.verifyTrue(contains(string(s.SeriesDescription), "AC"))
+            this.verifyEqual(s.AcquisitionTimeRelativeToListmodeStart, -68.85, AbsTol=1e-6)  % CT 69 s before PET
         end
 
         function test_code_provenance(this)
