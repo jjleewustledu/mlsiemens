@@ -119,7 +119,12 @@ classdef Test_JSReconBuilder_Win < matlab.unittest.TestCase
             if ~isemptytext(getenv("SUBS"))
                 subs = split(string(getenv("SUBS")))';
             end
-            report = mlsiemens.BrainMoCoBuilder.stage_crosscal_phantoms(subs=subs);
+            if isemptytext(getenv("CROSSCAL_WORKDIR"))
+                report = mlsiemens.BrainMoCoBuilder.stage_crosscal_phantoms(subs=subs);
+            else  % e.g., an AC-CT test kept apart from the default staging
+                report = mlsiemens.BrainMoCoBuilder.stage_crosscal_phantoms( ...
+                    subs=subs, workdir=getenv("CROSSCAL_WORKDIR"));
+            end
 
             this.verifyEmpty(report.sub(report.outcome == "failed"), join(report.detail, newline))
             staged = report(report.outcome == "staged", :);
