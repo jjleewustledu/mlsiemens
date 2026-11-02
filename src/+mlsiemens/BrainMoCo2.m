@@ -1993,8 +1993,26 @@ classdef BrainMoCo2 < handle & mlsystem.IHandle
             ifc.hdr = e7.nifti_hdr(ifc.hdr);
             j = e7.json_metadata(include_frame=opts.include_frame);
             j.umap_source = mlsiemens.BrainMoCo2.umap_source(fileparts(fileparts(opts.v_fqfn)));
+            j.code_provenance = mlsiemens.BrainMoCo2.code_provenance();
             ifc.json_metadata = j;
             proto = mlfourd.ImagingContext2(ifc);
+        end
+
+        function s = code_provenance()
+            %% the mlsiemens checkout that built a product:  commit SHA, whether tracked files were
+            %  modified, and its path; state "unmeasured" with a reason if git cannot say.
+            root = fileparts(fileparts(fileparts(mfilename("fullpath"))));  % src/+mlsiemens/ -> repo
+            s = struct("state", "unmeasured", "mlsiemens_path", string(root));
+            [st, sha] = system(sprintf('git -C "%s" rev-parse HEAD', root));
+            sha = strtrim(string(sha));
+            if st ~= 0 || isempty(regexp(sha, "^[0-9a-f]{40}$", "once"))
+                s.reason = "git rev-parse failed: " + sha;
+                return
+            end
+            [st2, dirty] = system(sprintf('git -C "%s" status --porcelain --untracked-files=no', root));
+            s.state = "measured";
+            s.mlsiemens_commit = sha;
+            s.mlsiemens_modified = st2 == 0 && strlength(strtrim(string(dirty))) > 0;
         end
 
         function s = umap_source(ses_path)

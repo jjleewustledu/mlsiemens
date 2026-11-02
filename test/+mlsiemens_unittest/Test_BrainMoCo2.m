@@ -77,6 +77,14 @@ classdef Test_BrainMoCo2 < matlab.unittest.TestCase
             this.verifyTrue(contains(string(s.SeriesDescription), "AC"))
         end
 
+        function test_code_provenance(this)
+            s = mlsiemens.BrainMoCo2.code_provenance();
+            this.verifyEqual(s.state, "measured")
+            this.verifyMatches(s.mlsiemens_commit, "^[0-9a-f]{40}$")
+            this.verifyTrue(islogical(s.mlsiemens_modified))
+            this.verifyTrue(isfolder(s.mlsiemens_path))
+        end
+
         function test_move_own_output_none(this)
             ses = fullfile(this.tmp, "sub-1", "ses-1");
             mkdir(fullfile(ses, "lm-start2"));
