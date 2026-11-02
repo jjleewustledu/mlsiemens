@@ -25,14 +25,17 @@ conda activate siemens_matlab_r2024a
 export PATH="$HOME/.local/bin:$PATH"   # dcm2niix_20230411
 export PROJECT_FOLDER="${PROJECT_FOLDER:-CCIR_01211}"
 
-repo="$HOME/MATLAB-Drive/mlsiemens"
+# MLSIEMENS_REPO selects the checkout to run, e.g. a feature worktree; MATLAB's startup path holds the
+# shared ~/MATLAB-Drive/mlsiemens, which is removed from the path so it cannot shadow the selection.
+default_repo="$HOME/MATLAB-Drive/mlsiemens"
+repo="${MLSIEMENS_REPO:-$default_repo}"
 cls="${test%%/*}"; proc="${test#*/}"
 {
-    echo "START $(date -Is) tag=$tag test=$test mlsiemens=$(git -C "$repo" rev-parse --short HEAD)" \
+    echo "START $(date -Is) tag=$tag test=$test repo=$repo mlsiemens=$(git -C "$repo" rev-parse --short HEAD)" \
          "dirty=$(git -C "$repo" status --porcelain --untracked-files=no | wc -l) conda=$CONDA_DEFAULT_ENV" \
          "dcm2niix=$(command -v dcm2niix_20230411) env:$*"
     /usr/local/pkg/MATLAB/R2024a/bin/matlab -batch \
-        "addpath(fullfile('$repo','test')); r = runtests('mlsiemens_unittest.$cls', ProcedureName='$proc'); disp(table(r)); exit(double(isempty(r) || any([r.Failed] | [r.Incomplete])))"
+        "if ~strcmp('$repo','$default_repo'), rmpath(genpath('$default_repo')); end; addpath(fullfile('$repo','src')); addpath(fullfile('$repo','test')); fprintf('mlsiemens.BrainMoCo2 from %s\\n', which('mlsiemens.BrainMoCo2')); r = runtests('mlsiemens_unittest.$cls', ProcedureName='$proc'); disp(table(r)); exit(double(isempty(r) || any([r.Failed] | [r.Incomplete])))"
     rc=$?
     echo "END $(date -Is) EXIT=$rc"
 } > "$log" 2>&1
